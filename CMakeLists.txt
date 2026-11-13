@@ -109,3 +109,7 @@ endif()
 add_executable(test_event_control tests/test_event_control.c)
 target_link_libraries(test_event_control PRIVATE psp_core)
 add_test(NAME event_control COMMAND test_event_control)
+
+add_executable(test_wait_signal tests/test_wait_signal.c)
+target_link_libraries(test_wait_signal PRIVATE psp_core)
+add_test(NAME wait_signal COMMAND test_wait_signal)

@@ -528,3 +528,25 @@ valid and corrupt PNG inputs and protects the fail-closed evidence format.
 The updated local PSP3DS source tree passed **30/30 CTest tests**, including
 this new test. No successful native screenshot artifact is asserted until
 the GitHub runner output is obtained and inspected.
+
+## Single-thread token wait/signal groundwork (2026-11-13)
+
+The portable scheduler now exposes `psp_perf_wait_signal(perf, token, deadline_us)`
+and `psp_perf_signal_wait(perf, token)`. This adds a deterministic,
+**single-guest-thread** wait point: a nonzero matching token resumes the
+waiting CPU without jumping the guest clock, while an absolute timeout
+resumes it when idle advancement reaches its deadline. Unrelated scheduled
+events are still returned to the caller without being discarded. Invalid
+tokens, an already-waiting guest, and expired deadlines are rejected.
+
+The `wait_signal` CTest suite exercises matching and mismatched signals,
+idle event delivery, timeout, and invalid arguments. An isolated
+representative scheduler implementation passed with `-Wall -Wextra -Werror`
+and AddressSanitizer/UndefinedBehaviorSanitizer on Linux. **The complete
+repository CTest suite and native Nintendo builds have not been verified
+for this change.**
+
+This is **not** firmware-compatible PSP semaphores, thread switching,
+interrupt dispatch, priority scheduling, or playable PSP game support.
+No new PSP syscall NIDs are bound. Next work requires multi-thread state
+and explicit wait reason/results before integration with real PSP kernel HLE.

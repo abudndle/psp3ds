@@ -14,6 +14,7 @@ typedef struct { uint64_t deadline; uint32_t token; } PspEvent;
 typedef struct {
  PspEvent pending[PSP_PERF_EVENTS]; size_t count;
  uint64_t now_us; PspThreadState thread_state; uint64_t wake_us;
+ uint32_t wait_signal_token; /* zero means no signal wait */
  unsigned initialized_mask;
  unsigned active_mask; /* optional work activation, not guest execution */
  uint32_t hot_pc[PSP_PERF_HOT_SLOTS], hot_hits[PSP_PERF_HOT_SLOTS];
@@ -37,6 +38,11 @@ uint32_t psp_perf_idle_hle(PspPerf *p,PspHle *hle,uint64_t until_us);
 int psp_perf_cancel_event(PspPerf *p,uint32_t token);
 /* Atomically move an existing token to a new absolute deadline. */
 int psp_perf_reschedule_event(PspPerf *p,uint32_t token,uint64_t deadline);
+/* One guest thread may wait for a nonzero token until an absolute deadline.
+ * This does not implement PSP kernel semaphores or thread switching. */
+int psp_perf_wait_signal(PspPerf *p,uint32_t token,uint64_t deadline_us);
+/* Return 1 if the matching wait was woken, 0 if unmatched, -1 if invalid. */
+int psp_perf_signal_wait(PspPerf *p,uint32_t token);
 void psp_perf_wait_until(PspPerf *p,uint64_t wake_us);
 /* Execute an instruction if runnable; otherwise return 2 for idle. */
 int psp_perf_step(PspPerf *p,PspHle *hle,PspCpu *cpu);
