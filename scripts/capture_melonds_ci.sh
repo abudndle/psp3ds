@@ -5,6 +5,9 @@ set -euo pipefail
 ROM="${1:?Usage: capture_melonds_ci.sh <built.nds> <output.png>}"
 OUTPUT="${2:?Provide screenshot destination}"
 if [[ ! -s "$ROM" ]]; then echo "Missing NDS ROM: $ROM" >&2; exit 2; fi
+ROM="$(realpath "$ROM")"
+EXPANSION_MODE="${MELONDS_SLOT2_EXPANSION:-0}"
+if [[ "$EXPANSION_MODE" != 0 && "$EXPANSION_MODE" != 1 ]]; then echo "Invalid Slot-2 emulator mode" >&2; exit 2; fi
 for cmd in xdotool xwd convert python3 timeout; do
   if ! command -v "$cmd" >/dev/null; then echo "Missing $cmd" >&2; exit 2; fi
 done
@@ -14,7 +17,9 @@ if [[ ! -s "$MELONDS_EXE" ]]; then echo "Missing melonDS binary" >&2; exit 2; fi
 # Prevent crash prompts or Qt trying to access a real graphics session.
 extra_args=()
 if [[ "$MELONDS_EXE" == *.AppImage ]]; then extra_args+=(--appimage-extract-and-run); fi
-QT_X11_NO_MITSHM=1 LIBGL_ALWAYS_SOFTWARE=1   "$MELONDS_EXE" "${extra_args[@]}" "$ROM"   >"$(dirname "$OUTPUT")/melonds-stdout.log" 2>"$(dirname "$OUTPUT")/melonds-stderr.log" &
+launch_args=()
+if [[ "$EXPANSION_MODE" == 0 ]]; then launch_args+=("$ROM"); fi
+QT_X11_NO_MITSHM=1 LIBGL_ALWAYS_SOFTWARE=1   "$MELONDS_EXE" "${extra_args[@]}" "${launch_args[@]}"   >"$(dirname "$OUTPUT")/melonds-stdout.log" 2>"$(dirname "$OUTPUT")/melonds-stderr.log" &
 emulator_pid=$!
 trap 'kill "$emulator_pid" 2>/dev/null || true; wait "$emulator_pid" 2>/dev/null || true' EXIT
 window=""
@@ -29,7 +34,30 @@ for attempt in $(seq 1 40); do
   sleep 1
 done
 if [[ -z "$window" ]]; then echo 'No visible melonDS window appeared' >&2; exit 3; fi
-sleep 4
+if [[ "$EXPANSION_MODE" == 1 ]]; then
+  echo "Attempting emulated Slot-2 Memory expansion via melonDS File menu"
+  xdotool windowfocus --sync "$window"
+  sleep 0.5
+  xdotool mousemove --window "$window" 16 10 click 1
+  sleep 0.3
+  xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-file-menu.png" || true
+  xdotool key Home
+  xdotool key --delay 130 Down Down Down Down Down Down Right
+  sleep 0.4
+  xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-addon-submenu.png" || true
+  xdotool key Return
+  sleep 0.5
+  xdotool key --clearmodifiers ctrl+o
+  sleep 0.4
+  xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-rom-dialog.png" || true
+  sleep 0.6
+  xdotool type --clearmodifiers --delay 15 "$ROM"
+  xdotool key Return
+  sleep 0.5
+  xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-after-open.png" || true
+  echo "Opened ROM after Slot-2 menu selection, guest detection not yet verified"
+fi
+sleep 5
 if ! kill -0 "$emulator_pid" 2>/dev/null; then
   echo 'melonDS exited before screenshot capture' >&2; exit 3
 fi

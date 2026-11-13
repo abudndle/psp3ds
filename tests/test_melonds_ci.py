@@ -10,15 +10,17 @@ for required in (
  'skylyrac/blocksds:slim-latest',
  'bash scripts/build_nds.sh',
  'actions/download-artifact@v4',
- 'melonDS-emu/melonDS/releases/latest',
+ 'melonDS-emu/melonDS/releases/download/1.1',
  'xvfb-run',
  'bash scripts/capture_melonds_ci.sh melonds-test/psp3ds_nds.nds',
  'melonds-evidence/melonds-window.png',
  'if: always()',
  'melonds-nds-window-or-diagnostics',
+ 'MELONDS_SLOT2_EXPANSION',
+ 'melonds-expansion/melonds-expansion.png',
 ):
  assert required in wf,required
 source=capture.read_text()
-for required in ('kill -0','xdotool search --onlyvisible','xwd -silent','Screenshot appears blank'):
+for required in ('kill -0','xdotool search --onlyvisible','xwd -silent','Screenshot appears blank', 'xdotool key Home', 'ctrl+o', 'EXPANSION_MODE'):
  assert required in source,required
 print('PASS: melonDS workflow must use a native build and actual visible window capture')
