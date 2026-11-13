@@ -29,6 +29,7 @@ create feature code, merge pull requests, or bypass review.
 | Synthetic 2,048-instruction benchmark | **Diagnostic available** | Same shared benchmark; DS reports its local ARM9 timer |
 | Conservative RAM/graphics budget policy | **Diagnostic available** | DS/DSi/Slot-2/old3DS/New3DS policies have separate caps |
 | Checked guest-data bus | **Experimental library** | Internal region on all; optional external bus only on verified DS+Pak |
+| Synthetic scrolling 2D scene | **Diagnostic available** | DS/DSi hardware tiled BG + OAM sprite; 3DS opt-in BGR8 framebuffer fallback (not PICA GPU batching) |
 | PSP GE graphics translation | **Not implemented** | Planned DS tile/OAM versus 3DS GPU rendering |
 | Commercial PSP game boot | **Not implemented** | No hardware backend; Jetpack Joyride remains untested/unplayable |
 
@@ -58,3 +59,14 @@ This approach supports automatically **testing parity** of future
 features; code-generation and autonomous feature development still
 depend on a separately configured development agent with repository
 write permissions. This contract does not enable such an agent itself.
+
+## First actual shared display-scene increment
+
+`psp_scene_build(frame)` creates an original deterministic 32×32 tile map, three
+4bpp tiles, a four-color BGR555 palette, horizontal scrolling and an 8×8
+moving actor. Host `shared_scene` validates scroll, actor, boundaries,
+and pixel-raster equivalence. DS/DSi uses main-engine background VRAM
+and a real OAM sprite. 3DS uses an explicitly labeled CPU framebuffer
+fallback on the lower screen, toggled with **A**, preserving the existing
+synthetic boot-marker at startup. **PICA200 GPU batching is not implemented.**
+The scene is synthetic and not PSP GE output or Jetpack Joyride content.
