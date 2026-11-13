@@ -314,3 +314,29 @@ and verified artifacts. It does NOT author emulator code or upload uncommitted
 files from ChatGPT, this Linux workspace, or a user's computer. Those sources
 must first be committed. Workflow execution success is not confirmed merely
 because the configuration has been committed.
+
+## Virtual PSP UMD device milestone — 2026-11-13
+
+The portable `PspUmd` device in `include/psp_umd.h` and
+`source/psp_umd.c` integrates previously separate ISO and CSO readers
+under a single on-demand device API:
+
+- `psp_umd_mount` selects ISO/CSO using file content and validates the
+  ISO9660 primary volume descriptor before accepting a mount.
+- `psp_umd_sector` decodes just the requested 2 KiB sector and reuses
+  the bounded four-sector cache. Disc changes invalidate cached sectors.
+- `psp_umd_find` and `psp_umd_read` expose bounded filesystem lookups
+  and byte-range reads from the currently mounted image.
+- `psp_umd_unmount` closes the underlying file and rejects later reads.
+- `test_umd` tests ISO → another ISO → CSO replacement, file reads,
+  boundary failures, cache reuse and unmount behavior.
+
+**Verified in Linux:** 24/24 ordinary host suites and 24/24 ASan/UBSan
+suites pass. The previously supplied Jetpack Joyride CSO remains readable
+by `psp_disc_probe` (disc ID `NPUZ00292`; encrypted `~PSP` EBOOT),
+but **cannot execute** in the present emulator. No game assets are committed.
+
+This is **not yet PSP UMD kernel HLE, full ISO9660 support, encrypted
+executable loading, a playable PSP game, a native 3DS/DS build, or proof
+of measured FPS gains**. The next milestone is connecting device operations
+to real guest kernel file handles and thread/blocking semantics.
