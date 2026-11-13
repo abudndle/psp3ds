@@ -340,3 +340,32 @@ This is **not yet PSP UMD kernel HLE, full ISO9660 support, encrypted
 executable loading, a playable PSP game, a native 3DS/DS build, or proof
 of measured FPS gains**. The next milestone is connecting device operations
 to real guest kernel file handles and thread/blocking semantics.
+
+## PSP file-handle HLE milestone (2026-11-13)
+
+The unified read-only UMD device now has a bounded guest-file layer:
+`include/psp_io.h` and `source/psp_io.c`. The `PspIo` handle table
+supports 8 simultaneous files; guest filenames must be `disc0:/...`
+paths, never host paths, and opening requires PSP's `PSP_O_RDONLY=0x0001`.
+It explicitly rejects writes, parent-directory traversal, missing media,
+invalid handles and unsupported devices.
+
+The `PspHle` dispatcher can attach a `PspIo` context and explicitly
+bind synthetic/import-resolved syscall identifiers for PSP-like
+`sceIoOpen`, `sceIoRead`, `sceIoLseek32` and `sceIoClose`.
+Guest string and buffer pointers are validated against mapped guest RAM;
+a failed buffer check does not advance the file position. Disc swaps
+increment the UMD media generation, making previously open handles stale.
+The implementation is intentionally read-only: **savedata, memory-stick I/O,
+real PSP NID auto-binding, async reads, and firmware-specific error codes
+are not supported**. It does not automatically execute a retail EBOOT.
+
+Verification: 25/25 Linux CTest host tests and 25/25 ASan/UBSan suites
+passed locally. The new `test_io` covers imported MIPS `SYSCALL`
+execution, independent descriptors, file seek/EOF, guest-pointer bounds,
+permission rejection and disc-swap invalidation. The uploaded
+Jetpack Joyride CSO is still discoverable by the disc probe, but its
+encrypted `~PSP` executable remains unplayable.
+
+Reference for guest I/O conventions:
+https://pspdev.github.io/pspsdk/group__FileIO.html
