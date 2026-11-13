@@ -40,6 +40,7 @@ static int64_t signed32(uint32_t v) {
   return v < 0x80000000u ? (int64_t)v : (int64_t)v - 4294967296LL;
 }
 static int trap(PspCpu *c, unsigned code, uint32_t info) {
+  c->ll_valid=0;
   c->last_trap_code=info;
   c->cp0_epc=c->delay_slot ? c->pc-4u : c->pc;
   c->cp0_cause=(c->cp0_cause & ~0x8000007cu) | ((code & 31u)<<2)
@@ -180,6 +181,25 @@ int psp_cpu_step(PspCpu *c) {
         c->gpr[rt]=merged;
       }
       break;
+    case 48: /* LL */
+      addr=a+(uint32_t)imm;
+      if ((addr&3u) || translate(c,addr,4,&off)) status=-2;
+      else {
+        c->gpr[rt]=r32(c->ram+off);
+        c->ll_address=addr;
+        c->ll_valid=1;
+      }
+      break;
+    case 56: /* SC */
+      addr=a+(uint32_t)imm;
+      if ((addr&3u) || translate(c,addr,4,&off)) status=-2;
+      else {
+        int success=c->ll_valid && c->ll_address==addr;
+        if (success) store32(c->ram+off,b);
+        c->gpr[rt]=(uint32_t)success;
+      }
+      c->ll_valid=0;
+      break;
     case 42: case 46:
       addr=a+(uint32_t)imm;
       {
@@ -205,6 +225,8 @@ int psp_cpu_step(PspCpu *c) {
   if (!status && (op==1 || op==2 || op==3 || op==4 || op==5 || op==6 || op==7 ||
       op==20 || op==21 || op==22 || op==23 || (op==0 && (fn==8 || fn==9))))
     has_delay=1;
+  if (!status && (op==40 || op==41 || op==42 || op==43 || op==46 || op==57) &&
+      (addr&~3u)==c->ll_address) c->ll_valid=0;
   c->gpr[0]=0;
   if (status) {c->fault=status;return status;}
   if (likely && !taken) {

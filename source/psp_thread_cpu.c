@@ -129,6 +129,7 @@ int psp_thread_cpu_switch(PspThreadCpu *r,uint32_t id) {
  if (r->active_id==id) return 0;
  if (r->active_id && psp_thread_cpu_flush(r)!=0) return -1;
  *r->live=r->saved[index];
+ r->live->ll_valid=0;
  r->active_id=id;
  return 0;
 }

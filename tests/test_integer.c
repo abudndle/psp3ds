@@ -80,4 +80,25 @@ static void test_cop1_transfer(void) {
  wr(mem+20,I(49,5,13,1));
  assert(psp_cpu_step(&c)==-2 && c.fpr[13]==0x7fc12345u);
 }
-int main(void){test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}
+static void test_ll_sc(void) {
+ uint8_t mem[48]={0};
+ PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.gpr[4]=BASE+40;
+ wr(mem,I(48,4,5,0));
+ wr(mem+4,I(9,5,5,1));
+ wr(mem+8,I(56,4,5,0));
+ wr(mem+12,I(56,4,5,0));
+ wr(mem+16,I(48,4,5,0));
+ wr(mem+20,I(43,4,0,0));
+ wr(mem+24,I(56,4,5,0));
+ wr(mem+28,I(48,4,5,1));
+ wr(mem+40,7);
+ for(int i=0;i<3;i++) assert(psp_cpu_step(&c)==0);
+ assert(c.gpr[5]==1 && mem[40]==8);
+ assert(psp_cpu_step(&c)==0 && c.gpr[5]==0 && mem[40]==8);
+ for(int i=0;i<3;i++) assert(psp_cpu_step(&c)==0);
+ assert(c.gpr[5]==0 && mem[40]==0);
+ assert(psp_cpu_step(&c)==-2);
+}
+int main(void){test_ll_sc();test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}
