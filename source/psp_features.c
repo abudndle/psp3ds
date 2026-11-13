@@ -1,6 +1,7 @@
 #include "psp_features.h"
 #include "psp_benchmark.h"
 #include "psp_core.h"
+#include "psp_mips_probe_fixture.h"
 #include <string.h>
 static const char *const names[PSP_FEATURE_COUNT]={
  "Synthetic MIPS CPU",
@@ -63,6 +64,20 @@ int psp_feature_run(PspFeatureId id,uint32_t *detail){
   PspCpu cpu;
   psp_cpu_init(&cpu,instructions,sizeof instructions,0x08800000u,0x08800000u);
   if(psp_cpu_step(&cpu)!=0 || psp_cpu_step(&cpu)!=0 || cpu.gpr[8]!=2u)
+   return -2;
+  /* Run the exact ADDIU pair used by the upstream PPSSPP 3DS probe on
+   * every portable target (DS, DSi, original/New 3DS, and host).
+   * Encode little-endian instructions explicitly, independent of host ABI. */
+  const uint32_t words[2]={PSP_PROBE_ADDIU_T0,PSP_PROBE_ADDIU_T1};
+  uint8_t guest[8];
+  for(unsigned i=0;i<2;i++)
+   for(unsigned byte=0;byte<4;byte++)
+    guest[i*4+byte]=(uint8_t)(words[i]>>(8u*byte));
+  PspCpu pp;
+  psp_cpu_init(&pp,guest,sizeof guest,PSP_PROBE_GUEST_BASE,PSP_PROBE_GUEST_BASE);
+  if(psp_cpu_step(&pp)!=0 || psp_cpu_step(&pp)!=0 ||
+     pp.gpr[8]!=PSP_PROBE_EXPECT_T0 || pp.gpr[9]!=PSP_PROBE_EXPECT_T1 ||
+     pp.gpr[0]!=0u || pp.pc!=PSP_PROBE_EXPECT_PC)
    return -2;
   *detail=cpu.gpr[8];
   return 0;
