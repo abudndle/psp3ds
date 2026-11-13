@@ -1,8 +1,10 @@
 ## Primary commercial compatibility target: Jetpack Joyride (PSP minis)
 
 **Jetpack Joyride (2012 PSP PlayStation minis edition)** is the designated first
-commercial title for PSP3DS compatibility development. Current status:
-**not tested / not playable**. See [Jetpack Joyride target roadmap](docs/jetpack-joyride-target.md)
+commercial title for PSP3DS compatibility development on **New 3DS**, with an
+additional, independently evaluated **original DS / DSi feasibility track**.
+Current status on all three targets: **not tested / not playable**. The
+existing `.nds` is a synthetic demonstration, **not** PSP game execution. See [Jetpack Joyride target roadmap](docs/jetpack-joyride-target.md)
 for the ordered engineering checkpoints, legal asset-handling requirements,
 and evidence needed before claiming boot or gameplay.
 
