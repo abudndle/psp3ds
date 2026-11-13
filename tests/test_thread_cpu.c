@@ -52,7 +52,7 @@ int main(void) {
  assert(live.gpr[9]==12);
  assert(psp_threads_signal(&tasks,17)==a);
  assert(psp_thread_cpu_switch(&runtime,(uint32_t)a)==0);
- assert(live.pc==BASE+12 && live.gpr[8]==3);
+ assert(live.pc==BASE+16 && live.gpr[8]==7);
  assert(psp_thread_cpu_step(&runtime)==0); /* B active */
  assert(psp_threads_stop(&tasks,(uint32_t)b)==0);
  int32_t c=psp_thread_cpu_spawn(&runtime,5,BASE+64,BASE+120);
