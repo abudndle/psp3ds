@@ -150,6 +150,8 @@ int psp_cpu_step(PspCpu *c) {
       else if ((instr & 0x7ffu) != 0) status=-1;
       else if (rs==0) c->gpr[rt]=c->fpr[rd];
       else if (rs==4) c->fpr[rd]=b;
+      else if (rs==2 && rd==31) c->gpr[rt]=c->fcr31;
+      else if (rs==6 && rd==31) c->fcr31=b & 0x0181ffffu;
       else status=-1;
       break;
     case 49: case 57: /* LWC1 / SWC1 */
