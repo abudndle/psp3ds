@@ -148,3 +148,23 @@ After building on a host, run:
 ```
 The next blocker is legal homebrew/commercial executable loading and PSP
 kernel emulation, followed by GPU/audio and a native 3DS build/test pipeline.
+
+## Shared Nintendo DS/DSi target and ROM/save package folders (2026-11-13)
+
+- `platforms/nds/Makefile` adds an experimental BlocksDS ARM9-only native
+  target in **this same GitHub repository**. Its `source/shared_core.c`
+  compiles the existing portable PSP MIPS interpreter. The DS entry point
+  detects `isDSiMode()` and runs a synthetic two-instruction CPU test.
+  This does not run commercial PSP games.
+- Install BlocksDS and run `make -C platforms/nds` to attempt the
+  `psp3ds_nds.nds` build; no native DS/DSi build was verified here.
+- Release archives include `psp/roms/` and `psp/roms/save/`. No game
+  files are distributed. A new portable `psp_game_save_dir` helper validates
+  game IDs (for instance `NPUZ00292`) and returns
+  `psp/roms/save/NPUZ00292`; it does not create directories or implement
+  emulated PSP save-data APIs.
+- The core library inventory and platform plans are documented at
+  [docs/PLATFORM_LIBRARIES.md](docs/PLATFORM_LIBRARIES.md).
+- Portable Linux verification passed 18/18 host tests and 18/18 ASan/UBSan
+  tests. Native .3dsx/.cia/.nds compilation, melonDS/Azahar runtime tests,
+  and playable Jetpack Joyride are unverified.
