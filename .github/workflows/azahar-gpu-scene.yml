@@ -1,0 +1,85 @@
+name: PSP3DS Azahar synthetic GPU scene proof
+on:
+  pull_request:
+    paths:
+      - 'source/main.c'
+      - 'source/psp_3ds_scene.c'
+      - 'Makefile'
+      - 'scripts/capture_azahar_ci.sh'
+      - 'scripts/verify_azahar_gpu_scene.py'
+      - 'tests/test_azahar_gpu_scene.py'
+      - '.github/workflows/azahar-gpu-scene.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-azahar-gpu-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-scene:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:20260610
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile the real Citro2D-backed .3dsx with CI-only synthetic scene autostart
+        run: make -j2 PSP3DS_SCENE_AUTOSTART=1
+      - name: Validate scene test executable exists
+        run: test -s psp3ds.3dsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-gpu-scene-3dsx
+          path: psp3ds.3dsx
+          if-no-files-found: error
+  azahar-gpu:
+    needs: build-scene
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: psp3ds-gpu-scene-3dsx
+          path: azahar-test
+      - name: Install X11 and screenshot dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xdotool x11-apps imagemagick python3-pil libgl1 libopengl0 libegl1 libfuse2 libxkbcommon-x11-0
+      - name: Download official pinned Azahar 2126.1.2 Linux AppImage
+        run: |
+          curl --fail --location --retry 3 --retry-delay 3 \
+            'https://github.com/azahar-emu/azahar/releases/download/2126.1.2/azahar.AppImage' \
+            --output azahar.AppImage
+          chmod +x azahar.AppImage
+          test -s azahar.AppImage
+          sha256sum azahar.AppImage > azahar-appimage.sha256
+      - name: Execute compiled homebrew in Azahar and capture real display pixels
+        env:
+          AZAHAR_EXE: ${{ github.workspace }}/azahar.AppImage
+          QT_QPA_PLATFORM: xcb
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          mkdir -p azahar-gpu-evidence
+          timeout 120 xvfb-run -a -s '-screen 0 1280x960x24' \
+            bash scripts/capture_azahar_ci.sh azahar-test/psp3ds.3dsx azahar-gpu-evidence/azahar-gpu.png
+      - name: Verify original synthetic sky, ground and actor pixels
+        run: |
+          python3 scripts/verify_azahar_gpu_scene.py \
+            --image azahar-gpu-evidence/azahar-gpu.png \
+            --report azahar-gpu-evidence/gpu-proof.json
+      - name: Preserve input hash and accurate limitations
+        if: always()
+        run: |
+          mkdir -p azahar-gpu-evidence
+          sha256sum azahar-test/psp3ds.3dsx > azahar-gpu-evidence/rom.sha256
+          if test -e azahar-appimage.sha256; then cp azahar-appimage.sha256 azahar-gpu-evidence/; fi
+          printf '%s\n' 'Only an original synthetic scene is under test. Emulator-screen pixels do not prove hardware FPS, commercial PSP boot, PSP GE support, or Jetpack Joyride.' > azahar-gpu-evidence/README.txt
+      - name: Upload actual screenshot and diagnostics, even when verification fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: azahar-gpu-scene-capture-or-failure
+          path: azahar-gpu-evidence/
+          if-no-files-found: error
