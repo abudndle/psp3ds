@@ -844,3 +844,26 @@ is still required.
 
 See [DS/DSi constrained-memory and graphics strategy](docs/ds-memory-graphics-strategy.md)
 for prioritized RAM/VRAM/2D graphics optimizations and measurable gates.
+
+## Dual-region internal/Slot-2 guest data bus (2026-11-13)
+
+`psp_guest_bus_init()` creates an explicit **hot internal RAM** region
+and an optional **cold verified Slot-2 RAM** region with separate,
+non-overlapping 32-bit PSP guest address intervals. Checked little-endian
+8/16/32-bit data reads and writes dispatch to native internal bytes
+or to the existing volatile 16-bit Slot-2 adapter. Misalignment,
+unmapped addresses, cross-region accesses, and overflow reject writes
+before touching memory; the same API works without an external cartridge.
+The NDS diagnostic exercises each region, restores the small external
+test window, and prints `Dual RAM bus: PASS` only after verification.
+
+The `guest_bus` host CTest covers routing, bounds, alignment,
+byte updates, optional expansion, and fail-closed overlap checks.
+The bus is deliberately **not yet connected to `psp_cpu_step()`**:
+the interpreter still assumes contiguous internal guest RAM for its
+code and data. No actual emulator/game allocator is provided yet.
+Full-bank RAM reliability, physical hardware behavior, and game
+performance still require testing.
+
+The low-RAM/GPU engineering priorities are in
+[DS/DSi constrained-memory and graphics strategy](docs/ds-memory-graphics-strategy.md).
