@@ -819,3 +819,28 @@ successful sampled sweep proves those sampled words only, not reliable
 contiguous PSP guest memory, complete physical RAM integrity, real
 hardware access timing, or a feasible commercial PSP game.** The DS
 emulator still does not allocate PSP guest RAM in Slot-2.
+
+## Verified Slot-2 guest data window (2026-11-13)
+
+`psp_guest_window` introduces bounded, 16-bit-bus-safe `read8`,
+`read16`, `read32`, `write8`, `write16`, and `write32` data
+access on a **verified, single-bank, still-open external RAM peripheral**.
+Accesses use volatile 16-bit transactions. Byte updates do a halfword
+read/modify/write, because direct 8-bit stores are not valid for the
+Slot-2 cartridge address region. Out-of-bounds/misaligned accesses and
+unverified or banked memory mappings fail closed.
+
+The DS homebrew exercises a four-halfword scratch window only after
+the two-location and 32-location RAM probes pass; it displays
+`Guest data I/O: PASS` after checked read/write operations and
+restoration of the original words. Host `guest_window` CTest verifies
+8/16/32-bit little-endian behavior and invalid/fault cases.
+
+**Important:** this is a bounded data-window adapter, **not** a PSP CPU
+load/store integration, a bank allocator, a 4/8/16 MiB executable image
+mapper, or evidence that retail PSP games work. The test does not
+benchmark or validate all external RAM. A physical memory-pack test
+is still required.
+
+See [DS/DSi constrained-memory and graphics strategy](docs/ds-memory-graphics-strategy.md)
+for prioritized RAM/VRAM/2D graphics optimizations and measurable gates.
