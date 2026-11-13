@@ -18,6 +18,7 @@ for expected in (
     "actions/upload-artifact@v4"
 ):
     assert expected in workflow, f"Missing CI build step: {expected}"
+assert "-ignoresign" in (root/"scripts/build_cia.sh").read_text(), "Unsigned homebrew access-descriptor option missing"
 checker=root/"tests/test_cia_output.py"
 with tempfile.TemporaryDirectory() as directory:
     sample=Path(directory)/"fixture.cia"
