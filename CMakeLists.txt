@@ -105,3 +105,7 @@ endif()
 if(Python3_Interpreter_FOUND)
   add_test(NAME capture_artifact COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_capture_artifact.py)
 endif()
+
+add_executable(test_event_control tests/test_event_control.c)
+target_link_libraries(test_event_control PRIVATE psp_core)
+add_test(NAME event_control COMMAND test_event_control)
