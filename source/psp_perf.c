@@ -38,6 +38,7 @@ int psp_perf_step(PspPerf *p,PspHle *hle,PspCpu *cpu){
  if(p->thread_state==PSP_THREAD_WAITING)return 2;
  return psp_hle_step(hle,cpu);
 }
+void psp_perf_enable_profiling(PspPerf *p,int enabled){if(p)p->profile_cpu=(uint8_t)(enabled!=0);}
 int psp_perf_run_slice(PspPerf *p,PspHle *hle,PspCpu *cpu,unsigned budget,unsigned *executed){
  if(executed)*executed=0;
  if(!p || !hle || !cpu || !executed || !budget || budget>65536u)return -2;
@@ -47,7 +48,7 @@ int psp_perf_run_slice(PspPerf *p,PspHle *hle,PspCpu *cpu,unsigned budget,unsign
   if(status==2)return 2;
   if(status<0)return status;
   (*executed)++;
-  (void)psp_perf_record_block(p,pc,16);
+  if(p->profile_cpu)(void)psp_perf_record_block(p,pc,16);
   if(cpu->pc<pc || status==1)return 0;
  }
  return 0;
