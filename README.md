@@ -938,3 +938,25 @@ across ten frames. Native .3dsx/CIA builds verify that the GPU libraries
 link, but they **do not prove that the A-button GPU frame renders
 correctly on actual 3DS hardware**, or that it is faster. PSP GE
 translation and Jetpack Joyride commercial gameplay remain absent.
+
+## Azahar GPU-scene runtime verification gate (2026-11-13)
+
+The `azahar-gpu-scene` workflow builds an **actual PSP3DS 3DSX**
+using the same Citro2D/PICA200 source as ordinary original/New 3DS
+builds, with a **CI-only automatic synthetic scene start**. Ordinary
+homebrew still requires pressing **A** to enter the GPU scene. CI runs
+the test 3DSX in a pinned official Azahar Linux AppImage under Xvfb,
+captures **real emulator-window pixels** and uses a fail-closed visual
+check for sky, ground and moving actor. The screenshot, hashes, JSON
+proof and emulator errors are archived even when verification fails.
+
+The `azahar_gpu_scene_detector` CTest uses explicitly **synthetic
+test-only fixtures** to prove its verifier rejects boot-marker-only,
+blank, inverted-layout and corrupt images. Synthetic fixtures are
+never represented as actual Azahar screenshots.
+
+**Evidence distinction:** 3DSX compilation verifies native API
+integration, a window capture verifies GUI startup, and a *passing
+real-image scene detector* verifies the scene is visibly present under
+Azahar. None alone proves Nintendo hardware performance, correct PSP
+graphics translation, Jetpack Joyride gameplay or commercial PSP boot.
