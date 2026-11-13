@@ -168,3 +168,41 @@ kernel emulation, followed by GPU/audio and a native 3DS build/test pipeline.
 - Portable Linux verification passed 18/18 host tests and 18/18 ASan/UBSan
   tests. Native .3dsx/.cia/.nds compilation, melonDS/Azahar runtime tests,
   and playable Jetpack Joyride are unverified.
+
+## Shared-platform and demand-driven runtime milestone (2026-11-13)
+
+This GitHub repository contains both the 3DS emulator research target and a
+BlocksDS-based DS/DSi shared-core build **scaffold**, not a playable PSP port.
+The source remains centralized in `source/` and `include/`.
+
+- `scripts/build_nds.sh`: stages the BlocksDS `rom_arm9_only` template,
+  copies the portable MIPS interpreter and uses
+  `platforms/nds/main.c` to exercise a synthetic `ADDIU` instruction.
+  Libnds `isDSiMode()` reports whether the launcher is in DSi mode.
+  No native `.nds` build or hardware test has been verified.
+- The 3DS Makefile now follows devkitARM two-pass compilation rules.
+  GitHub Actions `native-3ds.yml` is configured to attempt a real
+  `.3dsx` build and upload its artifact. There is **no confirmed successful
+  CI build** as of this change. A `.cia` requires further metadata and
+  packaging validation and is **not yet produced**.
+- `psp_perf_read_sector` now invalidates the 4-sector cache automatically
+  when its reader or context changes. Call `psp_perf_media_changed()` if
+  reopening a different game in-place with the same context pointer.
+  This is an integrity and demand-driven caching fix, not a measured
+  commercial-game speed increase.
+- `scripts/package_release.py` creates `psp/roms/save/` inside the ZIP,
+  with no game or copyrighted firmware files. The `psp_game_save_dir()`
+  helper only generates validated per-title paths; PSP savedata HLE is
+  not yet implemented.
+- The 3DS dependency inventory and optional packages are documented
+  in `docs/PLATFORM_LIBRARIES.md`; do not install every portlib, because
+  unused libraries increase complexity without making emulation faster.
+- **Local Linux verification:** 18/18 host tests and 18/18 ASan/UBSan tests
+  passed. The BlocksDS script reports a missing SDK because the cross
+  compiler is not installed locally. A DS entry-point syntax-only check
+  using a mock header passed, but it is *not* a native libnds compilation.
+  Neither melonDS nor Azahar was available for an actual emulator run.
+
+Next substantive work: validate native 3DS/DS builds and start integrating
+virtual PSP UMD access and full kernel scheduling. Hardware-speed claims and
+commercial game compatibility remain unverified.
