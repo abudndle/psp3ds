@@ -15,6 +15,7 @@ typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
  PspHleBinding entries[PSP_HLE_MAX_BINDINGS];
  size_t count;
+ size_t last_binding_index; /* verified cache hint for repeated PSP HLE calls */
  uint64_t uptime_us;
 } PspHle;
 void psp_hle_init(PspHle *hle);
