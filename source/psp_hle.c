@@ -21,7 +21,8 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_INTR_SUSPEND && service!=PSP_HLE_INTR_RESUME && service!=PSP_HLE_PART_ALLOC &&
       service!=PSP_HLE_PART_HEAD && service!=PSP_HLE_PART_FREE &&
       service!=PSP_HLE_STDIN && service!=PSP_HLE_STDOUT && service!=PSP_HLE_STDERR && service!=PSP_HLE_IO_WRITE &&
-      service!=PSP_HLE_SET_GPO)) return -1;
+      service!=PSP_HLE_SET_GPO && service!=PSP_HLE_IMPOSE_LANGUAGE &&
+      service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -105,6 +106,34 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
  case PSP_HLE_SET_GPO:hle->guest_debug_output=cpu->gpr[4];break;
+ case PSP_HLE_CREATE_CALLBACK:{
+   size_t off;
+   v0=0x80020190u;
+   if (!hle->threads || hle->threads->live!=cpu || !hle->threads->active_id ||
+       guest_ptr(cpu,cpu->gpr[4],1,&off)!=0 || (cpu->gpr[5]&3u) ||
+       guest_ptr(cpu,cpu->gpr[5],4,&off)!=0) break;
+   for (unsigned i=0;i<sizeof hle->callbacks/sizeof hle->callbacks[0];i++) {
+    if (hle->callbacks[i].owner) continue;
+    hle->callbacks[i].owner=hle->threads->active_id;
+    hle->callbacks[i].entry=cpu->gpr[5];
+    hle->callbacks[i].argument=cpu->gpr[6];
+    v0=0x3000u+i;
+    break;
+   }
+   break;
+ }
+ case PSP_HLE_REGISTER_EXIT_CALLBACK:{
+   uint32_t index=cpu->gpr[4]-0x3000u;
+   v0=0x800201a1u;
+   if (index<sizeof hle->callbacks/sizeof hle->callbacks[0] &&
+       hle->callbacks[index].owner) {
+    hle->exit_callback_uid=cpu->gpr[4];
+    v0=0;
+   }
+   break;
+ }
+ case PSP_HLE_IMPOSE_LANGUAGE:
+   hle->impose_language=cpu->gpr[4];hle->impose_button=cpu->gpr[5];break;
  case PSP_HLE_IO_WRITE:{
    uint32_t fd=cpu->gpr[4],count=cpu->gpr[6];size_t off;
    v0=UINT32_MAX;
