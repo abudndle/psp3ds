@@ -16,9 +16,11 @@ for required in (
  'melonds-evidence/melonds-window.png',
  'if: always()',
  'melonds-nds-window-or-diagnostics',
+ 'MELONDS_SLOT2_EXPANSION',
+ 'melonds-expansion/melonds-expansion.png',
 ):
  assert required in wf,required
 source=capture.read_text()
-for required in ('kill -0','xdotool search --onlyvisible','xwd -silent','Screenshot appears blank'):
+for required in ('kill -0','xdotool search --onlyvisible','xwd -silent','Screenshot appears blank', 'xdotool key Home', 'ctrl+o', 'EXPANSION_MODE'):
  assert required in source,required
 print('PASS: melonDS workflow must use a native build and actual visible window capture')
