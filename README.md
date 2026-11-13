@@ -289,3 +289,28 @@ This milestone **does not make commercial PSP games playable**.
 
 Actual gameplay for Jetpack Joyride is still blocked by its encrypted
 `~PSP` executable and unimplemented PSP kernel/GPU/audio services.
+
+## Automatic GitHub uploads (2026-11-13)
+
+`.github/workflows/auto-publish.yml` runs on **every push to main**,
+manual workflow dispatch, and a daily 04:17 UTC schedule. It compiles and runs
+all portable host tests before producing two artifacts:
+- `psp3ds-source.zip`: a Git-tracked source snapshot containing approved
+  source, tests, scripts, documentation and workflows.
+- `psp3ds-sd-layout.zip`: the SD-card folder layout with `psp/roms/save/`;
+  native binaries appear only if they have actually been built in that job.
+
+`scripts/verify_release.py` validates both archives and rejects PSP ROM
+images, save files, signing secrets and invalid/empty included binaries. Game
+files and original PSP assets must **never** be uploaded to this public repo.
+The new `.gitignore` also ignores common private files and generated builds.
+
+GitHub Actions artifacts are retained for 30 days. Native `.3dsx` and `.nds`
+build workflows upload their own binaries **only after a successful native
+build**; a `.cia` is not available until the packaging toolchain is verified.
+
+IMPORTANT: GitHub Actions automatically uploads **already-committed** sources
+and verified artifacts. It does NOT author emulator code or upload uncommitted
+files from ChatGPT, this Linux workspace, or a user's computer. Those sources
+must first be committed. Workflow execution success is not confirmed merely
+because the configuration has been committed.
