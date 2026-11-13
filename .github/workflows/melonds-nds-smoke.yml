@@ -1,0 +1,110 @@
+name: PSP3DS melonDS NDS smoke test
+on:
+  pull_request:
+    paths:
+      - 'platforms/nds/**'
+      - 'source/psp_benchmark.c'
+      - 'include/psp_benchmark.h'
+      - 'scripts/capture_melonds_ci.sh'
+      - '.github/workflows/melonds-nds-smoke.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-melonds-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  nds:
+    runs-on: ubuntu-latest
+    container:
+      image: skylyrac/blocksds:slim-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile actual DS homebrew
+        run: bash scripts/build_nds.sh
+      - name: Upload tested NDS
+        uses: actions/upload-artifact@v4
+        with:
+          name: melonds-test-nds
+          path: build-nds/psp3ds_nds.nds
+          if-no-files-found: error
+  melonds:
+    needs: nds
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: melonds-test-nds
+          path: melonds-test
+      - name: Install X11 screenshot and emulator runtime dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb x11-utils x11-apps xdotool imagemagick python3-pil file libopengl0 libgl1 libegl1 libxkbcommon-x11-0
+      - name: Fetch official current melonDS Linux x64 release archive
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, urllib.request, zipfile, os
+          headers={'User-Agent':'psp3ds-ci'}
+          req=urllib.request.Request(
+              'https://api.github.com/repos/melonDS-emu/melonDS/releases/latest',
+              headers=headers)
+          with urllib.request.urlopen(req,timeout=30) as response:
+              release=json.load(response)
+          assets=release.get('assets',[])
+          names=[a['name'] for a in assets]
+          print('melonDS release:',release.get('tag_name'), 'assets:', names)
+          candidates=[
+              a for a in assets if 'x86_64' in a['name'].lower() and
+              ('appimage' in a['name'].lower()) and a['name'].lower().endswith('.zip')
+          ]
+          if not candidates:
+              candidates=[
+                  a for a in assets if 'ubuntu-x86_64' in a['name'].lower()
+                  and a['name'].lower().endswith('.zip')
+              ]
+          if len(candidates)!=1:
+              raise SystemExit('No unique official x86_64 Linux asset ZIP available')
+          url=candidates[0]['browser_download_url']
+          req=urllib.request.Request(url,headers=headers)
+          with urllib.request.urlopen(req,timeout=120) as response:
+              pathlib.Path('melonds-release.zip').write_bytes(response.read())
+          with zipfile.ZipFile('melonds-release.zip') as z:
+              members=[m for m in z.infolist() if not m.is_dir()]
+              apps=[m for m in members if pathlib.PurePosixPath(m.filename).name.endswith('.AppImage')]
+              bins=[m for m in members if pathlib.PurePosixPath(m.filename).name=='melonDS']
+              chosen=(apps or bins)
+              if len(chosen)!=1:
+                  raise SystemExit('Expected one melonDS executable, found '+str([x.filename for x in members]))
+              executable=pathlib.Path('melonDS.AppImage' if apps else 'melonDS')
+              executable.write_bytes(z.read(chosen[0]))
+          executable.chmod(0o755)
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('MELONDS_EXE='+str(executable.resolve())+'\n')
+          print('Extracted official melonDS executable:', executable)
+          PY
+          test -s "${MELONDS_EXE:-melonDS.AppImage}" || test -s melonDS
+        continue-on-error: false
+      - name: Launch NDS in actual melonDS and capture visible window
+        env:
+          QT_QPA_PLATFORM: xcb
+        run: |
+          mkdir -p melonds-evidence
+          timeout 100 xvfb-run -a -s '-screen 0 1280x960x24' bash scripts/capture_melonds_ci.sh melonds-test/psp3ds_nds.nds melonds-evidence/melonds-window.png
+      - name: Include source ROM hash and evidence notes
+        if: always()
+        run: |
+          mkdir -p melonds-evidence
+          sha256sum melonds-test/psp3ds_nds.nds > melonds-evidence/rom.sha256
+          printf '%s\n' 'This is a real emulator-window capture only; it does not prove guest instruction execution, Slot-2 Pak behavior, or Jetpack Joyride gameplay.' > melonds-evidence/README.txt
+      - name: Upload actual emulator screenshot or failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: melonds-nds-window-or-diagnostics
+          path: |
+            melonds-evidence/
+          if-no-files-found: error
