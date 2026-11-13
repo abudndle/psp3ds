@@ -3,6 +3,7 @@
 #include "psp_thread_cpu.h"
 #include <string.h>
 #include <limits.h>
+#include <time.h>
 void psp_hle_init(PspHle *hle) {
  if (hle) memset(hle,0,sizeof(*hle));
 }
@@ -22,7 +23,7 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_PART_HEAD && service!=PSP_HLE_PART_FREE &&
       service!=PSP_HLE_STDIN && service!=PSP_HLE_STDOUT && service!=PSP_HLE_STDERR && service!=PSP_HLE_IO_WRITE &&
       service!=PSP_HLE_SET_GPO && service!=PSP_HLE_IMPOSE_LANGUAGE &&
-      service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK && service!=PSP_HLE_POWER_REGISTER && service!=PSP_HLE_UMD_REGISTER && service!=PSP_HLE_UMD_CHECK)) return -1;
+      service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK && service!=PSP_HLE_POWER_REGISTER && service!=PSP_HLE_UMD_REGISTER && service!=PSP_HLE_UMD_CHECK && service!=PSP_HLE_UMD_ACTIVATE && service!=PSP_HLE_UMD_WAIT && service!=PSP_HLE_RTC_CLOCK)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -105,6 +106,46 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_RTC_CLOCK:{
+   size_t off;
+   v0=0x80010016u;
+   if (guest_ptr(cpu,cpu->gpr[4],16,&off)!=0) break;
+   time_t now=time(NULL);
+   if (now==(time_t)-1) break;
+   int64_t seconds=(int64_t)now+(int64_t)(int32_t)cpu->gpr[5]*60;
+   time_t adjusted=(time_t)seconds;
+   if ((int64_t)adjusted!=seconds) break;
+   const struct tm *date=gmtime(&adjusted);
+   if (!date || date->tm_year< -1900 || date->tm_year>63635) break;
+   const unsigned fields[]={date->tm_year+1900,date->tm_mon+1,date->tm_mday,
+                            date->tm_hour,date->tm_min,date->tm_sec};
+   for (unsigned i=0;i<6;i++) {
+    cpu->ram[off+2*i]=(uint8_t)fields[i];
+    cpu->ram[off+2*i+1]=(uint8_t)(fields[i]>>8);
+   }
+   write_u32le(cpu->ram+off+12,0);
+   v0=0;
+   break;
+ }
+ case PSP_HLE_UMD_ACTIVATE:{
+   size_t off;
+   v0=0x80010016u;
+   if (cpu->gpr[4]<1 || cpu->gpr[4]>2 ||
+       guest_ptr(cpu,cpu->gpr[5],7,&off)!=0 || memcmp(cpu->ram+off,"disc0:",7)) break;
+   v0=0x80010013u;
+   if (!hle->io || !hle->io->umd || hle->io->umd->kind==PSP_UMD_NONE) break;
+   hle->umd_active_generation=hle->io->umd->generation;
+   v0=0;break;
+ }
+ case PSP_HLE_UMD_WAIT:{
+   /* Fixed mounted-media path. A transition requiring a wait is unsupported. */
+   unsigned state=1;
+   if (hle->io && hle->io->umd && hle->io->umd->kind!=PSP_UMD_NONE)
+    state=2u | (hle->umd_active_generation==hle->io->umd->generation ? 0x30u : 0u);
+   if (!(cpu->gpr[4] & 0x3bu)) v0=0x80010016u;
+   else if (!(state & cpu->gpr[4])) return -3;
+   break;
+ }
  case PSP_HLE_UMD_CHECK:
    v0=hle->io && hle->io->umd && hle->io->umd->kind!=PSP_UMD_NONE;
    break;

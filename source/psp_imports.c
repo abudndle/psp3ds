@@ -17,7 +17,7 @@ static int valid_service(PspHleService s) {
         s==PSP_HLE_IO_WRITE ||
         s==PSP_HLE_SET_GPO || s==PSP_HLE_IMPOSE_LANGUAGE ||
         s==PSP_HLE_CREATE_CALLBACK || s==PSP_HLE_REGISTER_EXIT_CALLBACK ||
-        s==PSP_HLE_POWER_REGISTER || s==PSP_HLE_UMD_REGISTER || s==PSP_HLE_UMD_CHECK ||
+        s==PSP_HLE_POWER_REGISTER || s==PSP_HLE_UMD_REGISTER || s==PSP_HLE_UMD_CHECK || s==PSP_HLE_UMD_ACTIVATE || s==PSP_HLE_UMD_WAIT || s==PSP_HLE_RTC_CLOCK ||
         s==PSP_HLE_IO_OPEN || s==PSP_HLE_IO_READ ||
         s==PSP_HLE_IO_LSEEK32 || s==PSP_HLE_IO_CLOSE;
 }

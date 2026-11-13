@@ -32,7 +32,7 @@ typedef enum {
  PSP_HLE_INTR_SUSPEND=18,
  PSP_HLE_INTR_RESUME=19,
  PSP_HLE_PART_ALLOC=20, PSP_HLE_PART_HEAD=21, PSP_HLE_PART_FREE=22,
- PSP_HLE_STDIN=23, PSP_HLE_STDOUT=24, PSP_HLE_STDERR=25, PSP_HLE_IO_WRITE=26, PSP_HLE_SET_GPO=27, PSP_HLE_IMPOSE_LANGUAGE=28, PSP_HLE_CREATE_CALLBACK=29, PSP_HLE_REGISTER_EXIT_CALLBACK=30, PSP_HLE_POWER_REGISTER=31, PSP_HLE_UMD_REGISTER=32, PSP_HLE_UMD_CHECK=33
+ PSP_HLE_STDIN=23, PSP_HLE_STDOUT=24, PSP_HLE_STDERR=25, PSP_HLE_IO_WRITE=26, PSP_HLE_SET_GPO=27, PSP_HLE_IMPOSE_LANGUAGE=28, PSP_HLE_CREATE_CALLBACK=29, PSP_HLE_REGISTER_EXIT_CALLBACK=30, PSP_HLE_POWER_REGISTER=31, PSP_HLE_UMD_REGISTER=32, PSP_HLE_UMD_CHECK=33, PSP_HLE_UMD_ACTIVATE=34, PSP_HLE_UMD_WAIT=35, PSP_HLE_RTC_CLOCK=36
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
@@ -49,6 +49,7 @@ typedef struct {
  uint32_t impose_language, impose_button;
  uint32_t exit_callback_uid;
  uint32_t umd_callback_uid;
+ uint32_t umd_active_generation;
  uint32_t power_callbacks[16];
  struct { uint32_t owner, entry, argument; } callbacks[8];
  /* Caller reserves this guest arena outside module and stack mappings. */
