@@ -9,6 +9,7 @@
 #include "psp_platform_budget.h"
 #include "psp_features.h"
 #include "psp_scene.h"
+#include "psp_ge_subset.h"
 int psp_nds_scene_init(void);
 void psp_nds_scene_update(uint32_t frame);
 #include "../../../include/psp_core.h"
@@ -132,6 +133,17 @@ int main(void){
  }
 
 
+ /* Same experimental GE command decoder as original/New 3DS. */
+ {
+  const uint32_t words[]={UINT32_C(0x04060002),UINT32_C(0x0f000000),
+                          UINT32_C(0x0c000000)};
+  const PspGeDecodedSprite sprite={32,70,8,8,0x7c1f};
+  PspGeSubsetResult ge;
+  int accepted=psp_ge_subset_translate(words,3,&sprite,1,&ge)==0 &&
+               ge.batch.count==1 &&
+               ge.batch.rects[0].x==32;
+  printf("GE sprite subset: %s\n",accepted?"PASS":"FAILED");
+ }
  test_shared_cpu();
  benchmark_shared_mips();
  test_slot2_ram();

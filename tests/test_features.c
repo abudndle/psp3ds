@@ -19,7 +19,7 @@ int main(void){
   }
   assert(model[t].features[PSP_FEATURE_CPU_SMOKE].state==PSP_FEATURE_AVAILABLE);
   assert(model[t].features[PSP_FEATURE_MIPS_BENCHMARK].state==PSP_FEATURE_AVAILABLE);
-  assert(model[t].features[PSP_FEATURE_GRAPHICS_TRANSLATION].state==PSP_FEATURE_PLANNED);
+  assert(model[t].features[PSP_FEATURE_GRAPHICS_TRANSLATION].state==PSP_FEATURE_EXPERIMENTAL);
   assert(model[t].features[PSP_FEATURE_PSP_GAME_BOOT].state==PSP_FEATURE_PLANNED);
   assert(model[t].features[PSP_FEATURE_SYNTHETIC_SCENE].state==PSP_FEATURE_AVAILABLE);
   uint32_t value=123;
