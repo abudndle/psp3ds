@@ -36,7 +36,7 @@ done
 if [[ -z "$window" ]]; then echo 'No visible melonDS window appeared' >&2; exit 3; fi
 if [[ "$EXPANSION_MODE" == 1 ]]; then
   echo "Attempting emulated Slot-2 Memory expansion via melonDS File menu"
-  xdotool windowactivate --sync "$window"
+  xdotool windowfocus --sync "$window"
   sleep 0.5
   xdotool key --clearmodifiers Alt_L+f
   sleep 0.3
