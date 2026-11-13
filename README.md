@@ -772,3 +772,29 @@ reported size, then repeat on DSi to verify the skip path. Never write
 directly to an unconfirmed GBA cartridge address.
 
 Source: https://blocksds.skylyrac.net/tutorial/intermediate/peripherals/
+
+## Nintendo DS/DSi MIPS throughput and melonDS smoke CI (2026-11-13)
+
+The native NDS demonstration now executes a **repeatable 2,048-instruction**
+synthetic MIPS/Allegrex integer workload through the same shared CPU
+interpreter used in host CTest. Its screen displays the verified instruction
+count and raw ARM9 TIMER0 ticks at clock/1024. These are local
+measurements: do not equate the benchmark with commercial PSP performance,
+a game frame rate, or native original-DS hardware speed. The new host
+`benchmark` test runs bounded positive and invalid input cases.
+
+`.github/workflows/melonds-nds-smoke.yml` separately builds an actual
+`.nds` using BlocksDS, retrieves the official melonDS Linux AppImage,
+attempts to boot the compiled ROM in Xvfb, captures **real** window pixels
+with `xwd` and archives the screenshot/diagnostic logs. The smoke check
+rejects a missing emulator window or blank picture. It does **not**
+authenticate the on-screen guest text or prove the Slot-2 accessory is
+detected. A screenshot of a melonDS GUI is not proof that the 2,048
+guest instructions executed.
+
+**Slot-2 hardware constraint:** standard melonDS emulation without an
+explicitly emulated, compatible DS Browser Memory Expansion Pak
+cannot establish that an 8 MiB physical Slot-2 cartridge was detected
+or verified. Even if an emulated expansion is supported and configured,
+physical DS/DS Lite read-write validation remains separate.
+No Jetpack Joyride game executable or retail asset is included.
