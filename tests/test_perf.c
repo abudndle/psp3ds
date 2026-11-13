@@ -32,6 +32,11 @@ int main(void){
  uint8_t sector[PSP_PERF_SECTOR_SIZE];
  assert(psp_perf_read_sector(&p,7,read_sector,NULL,sector)==0 && reads==1 && sector[1]==7);
  assert(psp_perf_read_sector(&p,7,read_sector,NULL,sector)==1 && reads==1);
+ /* Same sector number from another reader context is not the same disc. */
+ int another_disc=5;
+ assert(psp_perf_read_sector(&p,7,read_sector,&another_disc,sector)==0 && reads==2);
+ assert(psp_perf_read_sector(&p,7,read_sector,&another_disc,sector)==1 && reads==2);
+ assert(psp_perf_read_sector(&p,7,read_sector,NULL,sector)==0 && reads==3);
  for(uint32_t j=8;j<13;j++)assert(psp_perf_read_sector(&p,j,read_sector,NULL,sector)==0);
  assert(psp_perf_read_sector(&p,7,read_sector,NULL,sector)==0);
  reads=0;
