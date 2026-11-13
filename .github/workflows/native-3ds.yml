@@ -26,6 +26,31 @@ jobs:
         run: make -j2
       - name: Check native output
         run: test -s psp3ds.3dsx
+      - name: Install Linux dependencies for CIA packaging
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git build-essential autoconf automake libtool pkg-config ca-certificates
+      - name: Build and verify cxitool and makerom
+        shell: bash
+        run: |
+          bash scripts/install_cia_tools.sh
+          export PATH="$HOME/.local/bin:$PATH"
+          command -v cxitool
+          command -v makerom
+      - name: Package native .cia
+        shell: bash
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          bash scripts/build_cia.sh psp3ds.3dsx psp3ds.cia
+          test -s psp3ds.cia
+          python3 tests/test_cia_output.py psp3ds.cia
+      - name: Upload actual .cia
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-native-cia
+          path: psp3ds.cia
+          if-no-files-found: error
       - name: Upload actual .3dsx
         uses: actions/upload-artifact@v4
         with:
