@@ -45,3 +45,45 @@ Most PSP kernel HLE, remaining compressed PSPREL2 modes, PRX relocation types an
 The 5-minute GitHub Actions schedule runs host verification only; it does not autonomously write new emulator code, and GitHub may delay or skip scheduled runs. No game or firmware assets are included.
 
 Reference: https://github.com/hrydgard/ppsspp (GPL-2.0-or-later).
+
+## Performance milestone: selective work and bounded caching (2026-11-12)
+
+This milestone adds a portable **performance infrastructure layer**; it does not
+turn this research prototype into a playable PSP emulator. Its host tests are
+synthetic, and speed improvements on New 3DS have **not been measured**.
+
+- `psp_perf_schedule` and `psp_perf_idle_hle`: ordered timer events, waiting-
+  thread time jumps and matching deterministic HLE clock advancement. No
+  complete PSP thread scheduler or interrupt controller exists yet.
+- `psp_perf_request_subsystem`: first-use initialization bookkeeping for
+  GPU, audio and UMD subsystems. Actual GPU/audio implementations are pending.
+- `psp_perf_run_slice`: bounded CPU instruction execution with early trap/idle
+  return; hot-PC profiling for identifying interpreter optimization candidates.
+  This is **not** a JIT, IR translator or ARM machine-code generator.
+- HLE dispatcher: cache the most recently resolved syscall binding, validating
+  its ID on each use. Unknown syscalls still raise traps.
+- `psp_perf_texture_seen` and `psp_perf_invalidate_textures`: generation-
+  checked texture-state cache metadata. No PICA200 renderer is implemented.
+- `psp_iso_open`, `psp_iso_read`, `psp_iso_cached`: basic ISO9660 signature
+  check, bounded 2048-byte sector reads from a file and a four-sector LRU cache.
+  There is no ISO9660 directory walker, CSO decoder or UMD HLE yet.
+- `psp_perf_profile`: conservative defaults; no unverified per-game hacks.
+  Optional frameskip and quality policy remain future renderer work.
+
+To reproduce host tests:
+```sh
+cmake -S . -B build-host -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-host --parallel
+ctest --test-dir build-host --output-on-failure
+```
+To reproduce ASan + UBSan tests:
+```sh
+cmake -S . -B build-sanitize -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -O1" \
+  -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+cmake --build build-sanitize --parallel
+ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build-sanitize --output-on-failure
+```
+Both commands passed locally for **15/15 suites**. The GitHub Actions
+workflow is configured to rerun normal and sanitizer tests. No native
+`.3dsx` or commercial PSP game execution has been verified.
