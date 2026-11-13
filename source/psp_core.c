@@ -77,6 +77,8 @@ int psp_cpu_step(PspCpu *c) {
         case 4: c->gpr[rd]=b<<(a&31u); break;
         case 6: c->gpr[rd]=b>>(a&31u); break;
         case 7: c->gpr[rd]=asr32(b,a&31u); break;
+        case 10: if (!b) c->gpr[rd]=a; break; /* MOVZ */
+        case 11: if (b) c->gpr[rd]=a; break; /* MOVN */
         case 12: return trap(c,8,(instr>>6)&0xfffffu);
         case 13: return trap(c,9,(instr>>6)&0xfffffu);
         case 32: {uint32_t value=a+b; if (sum_overflow(a,b,value)) return trap(c,12,0); c->gpr[rd]=value;break;}

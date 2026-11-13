@@ -110,4 +110,13 @@ static void test_ll_sc(void) {
  assert(psp_cpu_step(&c)==0 && psp_cpu_step(&c)==0);
  assert(c.gpr[5]==0x0181ffffu);
 }
-int main(void){test_fcr31();test_ll_sc();test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}
+ static void test_conditional_move(void) {
+ uint8_t mem[16]={0}; PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.gpr[4]=42;c.gpr[5]=1;
+ execute(&c,mem,R(4,5,6,0,10)); assert(c.gpr[6]==0);
+ execute(&c,mem,R(4,5,6,0,11)); assert(c.gpr[6]==42);
+ execute(&c,mem,R(0,0,6,0,11)); assert(c.gpr[6]==42);
+ execute(&c,mem,R(0,0,6,0,10)); assert(c.gpr[6]==0);
+}
+int main(void){test_conditional_move();test_fcr31();test_ll_sc();test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}

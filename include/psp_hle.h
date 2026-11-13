@@ -32,7 +32,7 @@ typedef enum {
  PSP_HLE_INTR_SUSPEND=18,
  PSP_HLE_INTR_RESUME=19,
  PSP_HLE_PART_ALLOC=20, PSP_HLE_PART_HEAD=21, PSP_HLE_PART_FREE=22,
- PSP_HLE_STDIN=23, PSP_HLE_STDOUT=24, PSP_HLE_STDERR=25, PSP_HLE_IO_WRITE=26
+ PSP_HLE_STDIN=23, PSP_HLE_STDOUT=24, PSP_HLE_STDERR=25, PSP_HLE_IO_WRITE=26, PSP_HLE_SET_GPO=27
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
@@ -45,6 +45,7 @@ typedef struct {
  uint64_t uptime_us;
  uint32_t compiled_sdk_version;
  uint32_t compiler_version;
+ uint32_t guest_debug_output;
  /* Caller reserves this guest arena outside module and stack mappings. */
  uint32_t partition_low, partition_high, partition_next_uid;
  struct { uint32_t address, size, uid; } partition_blocks[16];
