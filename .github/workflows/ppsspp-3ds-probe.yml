@@ -1,5 +1,11 @@
 name: PPSSPP 3DS ABI probe
 on:
+  push:
+    branches:
+      - 'port/ppsspp-interpreter-probe'
+    paths:
+      - 'ports/ppsspp-3ds/**'
+      - '.github/workflows/ppsspp-3ds-probe.yml'
   pull_request:
     paths:
       - 'ports/ppsspp-3ds/**'
