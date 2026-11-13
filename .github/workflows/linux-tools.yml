@@ -13,6 +13,8 @@ on:
       - 'scripts/install_blocksds_ubuntu.sh'
       - 'scripts/install_linux_emulators.sh'
       - '.github/workflows/linux-tools.yml'
+      - 'scripts/install_cia_tools.sh'
+      - '.github/workflows/native-3ds.yml'
 permissions:
   contents: read
 concurrency:
@@ -70,7 +72,8 @@ jobs:
           path: psp3ds.3dsx
           if-no-files-found: error
   linux-emulators:
-    if: github.event_name == 'workflow_dispatch' && inputs.install_emulators
+    # Run once on installer changes as well as on explicit manual requests.
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.install_emulators)
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
