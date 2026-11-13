@@ -369,3 +369,32 @@ encrypted `~PSP` executable remains unplayable.
 
 Reference for guest I/O conventions:
 https://pspdev.github.io/pspsdk/group__FileIO.html
+
+## PSP real NID import linking milestone (2026-11-13)
+
+The PSP prototype can now associate four confirmed `IoFileMgrForUser`
+function imports with the existing read-only `disc0:` file HLE:
+`sceIoOpen` (0x109F50BC), `sceIoRead` (0x6A638D83),
+`sceIoLseek32` (0x68963324), and `sceIoClose` (0x810C4BC3).
+`psp_imports_link_known` uses the existing all-or-nothing guest
+stub linker to allocate internal syscall IDs and bind those HLE services.
+
+The mapping is deliberately small and fail-closed: unrecognized library names,
+unknown NIDs, unsupported PSP services and invalid/overlapping stubs reject
+the batch before modifying guest memory or bindings. PSP syscall IDs are
+still dynamically assigned per import; the NIDs are not syscall IDs.
+
+`test_real_nids` checks all four mappings, validates emitted
+`jr $ra` + `syscall` instructions, executes a real MIPS stub through HLE,
+and confirms unknown NIDs leave guest stubs and binding counts unchanged.
+**Linux host suites: 26/26 passed; ASan/UBSan suites: 26/26 passed.**
+
+This is **not** automatic PRX import discovery, encrypted executable
+decryption, complete PSP I/O semantics, savedata support, or commercial
+game playback. The next integration target is retrieving parsed PSP import
+metadata from an already loaded guest image and linking only verified
+supported functions.
+
+References:
+- https://pspdev.github.io/psplibdoc/modules/iofilemgr.prx_IoFileMgrForUser.html
+- https://pspdev.github.io/pspsdk/group__FileIO.html
