@@ -15,6 +15,7 @@ typedef struct {
  PspEvent pending[PSP_PERF_EVENTS]; size_t count;
  uint64_t now_us; PspThreadState thread_state; uint64_t wake_us;
  unsigned initialized_mask;
+ unsigned active_mask; /* optional work activation, not guest execution */
  uint32_t hot_pc[PSP_PERF_HOT_SLOTS], hot_hits[PSP_PERF_HOT_SLOTS];
  uint32_t texture_key[PSP_PERF_TEXTURE_SLOTS], texture_generation[PSP_PERF_TEXTURE_SLOTS];
  uint8_t texture_valid[PSP_PERF_TEXTURE_SLOTS];
@@ -39,6 +40,15 @@ int psp_perf_step(PspPerf *p,PspHle *hle,PspCpu *cpu);
 int psp_perf_run_slice(PspPerf *p,PspHle *hle,PspCpu *cpu,unsigned budget,unsigned *executed);
 /* 1 if newly initialized, 0 if previously requested, -1 if invalid. */
 int psp_perf_request_subsystem(PspPerf *p,PspSubsystem subsystem);
+/* Optional backends perform no work until activated; CPU/timers are unaffected. */
+int psp_perf_set_subsystem_active(PspPerf *p,PspSubsystem subsystem,int active);
+int psp_perf_subsystem_active(const PspPerf *p,PspSubsystem subsystem);
+/* 0 = CPU slice complete, 1 = pending event delivered, 2 = waiting,
+ * 3 = guest wake, negative = argument/CPU failure. Event handling remains
+ * the caller's responsibility; no guest instructions are skipped when runnable. */
+int psp_perf_run_demand(PspPerf *p,PspHle *hle,PspCpu *cpu,
+                        unsigned budget,uint64_t idle_deadline_us,
+                        unsigned *executed,uint32_t *event_token);
 /* Profile hot code without modifying guest instruction execution. */
 int psp_perf_record_block(PspPerf *p,uint32_t pc,uint32_t threshold);
 int psp_perf_texture_seen(PspPerf *p,uint32_t key,uint32_t generation);
