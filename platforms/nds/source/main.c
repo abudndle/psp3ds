@@ -7,17 +7,14 @@
 #include "psp_guest_window.h"
 #include "psp_guest_bus.h"
 #include "psp_platform_budget.h"
+#include "psp_features.h"
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
 static void test_shared_cpu(void){
- PspCpu cpu;
- uint32_t base=0x08800000u;
- const uint8_t instructions[]={1,0,8,0x24,1,0,8,0x25};
- for(unsigned i=0;i<sizeof(instructions);i++)test_ram[i]=instructions[i];
- psp_cpu_init(&cpu,test_ram,sizeof(test_ram),base,base);
- int a=psp_cpu_step(&cpu),b=psp_cpu_step(&cpu);
- printf("MIPS CPU demo: %s\n",a==0&&b==0&&cpu.gpr[8]==2?"PASS":"FAILED");
+ uint32_t value=0;
+ int pass=psp_feature_run(PSP_FEATURE_CPU_SMOKE,&value)==0 && value==2u;
+ printf("MIPS CPU demo: %s\\n",pass?"PASS":"FAILED");
 }
 static void test_slot2_ram(void){
  if(isDSiMode()){
@@ -102,14 +99,14 @@ static void test_slot2_ram(void){
 /* TIMER0 counts at approximately 32768Hz (ARM9 ~33.51 MHz/1024).
  * This is a local device-timer measurement only, never commercial PSP FPS. */
 static void benchmark_shared_mips(void){
- PspBenchResult result;
  TIMER0_CR=0;
  TIMER0_DATA=0;
  TIMER0_CR=TIMER_ENABLE|TIMER_DIV_1024;
- int status=psp_benchmark_run(16,&result);
+ uint32_t executed=0;
+ int status=psp_feature_run(PSP_FEATURE_MIPS_BENCHMARK,&executed);
  uint16_t ticks=TIMER0_DATA;
  TIMER0_CR=0;
- printf("MIPS %lu insns: %s\n",(unsigned long)result.executed_instructions,
+ printf("MIPS %lu insns: %s\n",(unsigned long)executed,
         status==0?"PASS":"FAILED");
  printf("TIMER0 /1024: %u ticks\n",(unsigned)ticks);
  printf("Synthetic CPU test only\n");
@@ -123,6 +120,13 @@ int main(void){
  if(psp_platform_budget_choose(target,&policy)==0)
   printf("Policy: %s; hot %luK\n",policy.name,
          (unsigned long)(policy.hot_ram_budget/1024u));
+ PspFeatureManifest features;
+ if(psp_features_manifest(target,&features)==0){
+  printf("Features: %u same IDs\\n",(unsigned)PSP_FEATURE_COUNT);
+  printf("PSP game: %s\\n",
+         psp_feature_state_name(features.features[PSP_FEATURE_PSP_GAME_BOOT].state));
+ }
+
 
  test_shared_cpu();
  benchmark_shared_mips();
