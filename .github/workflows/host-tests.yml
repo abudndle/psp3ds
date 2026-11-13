@@ -1,7 +1,7 @@
 name: PSP3DS host regression tests
 on:
   push:
-    branches: [main]
+    branches: [main, 'port/ppsspp-interpreter-probe']
   pull_request:
   workflow_dispatch:
   schedule:
