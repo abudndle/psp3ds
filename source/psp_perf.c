@@ -38,8 +38,23 @@ int psp_perf_reschedule_event(PspPerf *p,uint32_t token,uint64_t deadline){
  p->pending[i]=(PspEvent){deadline,token};
  return 0;
 }
+int psp_perf_wait_signal(PspPerf *p,uint32_t token,uint64_t deadline){
+ if(!p || !token || deadline<=p->now_us || p->thread_state!=PSP_THREAD_RUNNABLE)return -1;
+ p->wait_signal_token=token;
+ p->wake_us=deadline;
+ p->thread_state=PSP_THREAD_WAITING;
+ return 0;
+}
+int psp_perf_signal_wait(PspPerf *p,uint32_t token){
+ if(!p || !token)return -1;
+ if(p->thread_state!=PSP_THREAD_WAITING || p->wait_signal_token!=token)return 0;
+ p->thread_state=PSP_THREAD_RUNNABLE;
+ p->wait_signal_token=0;
+ p->wake_us=0;
+ return 1;
+}
 void psp_perf_wait_until(PspPerf *p,uint64_t wake){
- if(p && wake>p->now_us){p->thread_state=PSP_THREAD_WAITING;p->wake_us=wake;}
+ if(p && wake>p->now_us){p->thread_state=PSP_THREAD_WAITING;p->wake_us=wake;p->wait_signal_token=0;}
 }
 uint32_t psp_perf_idle_advance(PspPerf *p,uint64_t until){
  if(!p || until<p->now_us || p->thread_state!=PSP_THREAD_WAITING)return 0;
@@ -47,7 +62,7 @@ uint32_t psp_perf_idle_advance(PspPerf *p,uint64_t until){
  if(p->wake_us<target)target=p->wake_us;
  if(p->count && p->pending[0].deadline<target)target=p->pending[0].deadline;
  p->now_us=target;
- if(p->wake_us<=target)p->thread_state=PSP_THREAD_RUNNABLE;
+ if(p->wake_us<=target){p->thread_state=PSP_THREAD_RUNNABLE;p->wait_signal_token=0;}
  if(p->count && p->pending[0].deadline<=target){
   uint32_t token=p->pending[0].token;
   memmove(p->pending,p->pending+1,(--p->count)*sizeof(PspEvent));
