@@ -47,6 +47,12 @@ static void test_slot2_ram(void){
   PspSlot2Result sweep=psp_slot2_probe_samples(region,capacity,1,banks==1,32);
   printf("Sweep: %lu/32 %s\n",(unsigned long)sweep.probed_locations,
          sweep.status==PSP_SLOT2_RW_VERIFIED?"PASS":"FAILED");
+  if(sweep.status==PSP_SLOT2_RW_VERIFIED){
+   PspPlatformBudget expansion_policy;
+   if(psp_platform_budget_choose(PSP_TARGET_DS_SLOT2,&expansion_policy)==0)
+    printf("Pak cold cap: %luK\n",
+           (unsigned long)(expansion_policy.cold_data_budget/1024u));
+  }
   if(sweep.status==PSP_SLOT2_RW_VERIFIED && capacity>=256u){
    /* Test four 16-bit words only, restoring all original bytes before
     * closing the peripheral. No PSP CPU executes from this memory. */
