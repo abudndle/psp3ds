@@ -39,3 +39,7 @@ add_test(NAME disc COMMAND test_disc)
 add_executable(test_paths tests/test_paths.c)
 target_link_libraries(test_paths PRIVATE psp_core)
 add_test(NAME paths COMMAND test_paths)
+
+add_executable(test_demand tests/test_demand.c)
+target_link_libraries(test_demand PRIVATE psp_core)
+add_test(NAME demand COMMAND test_demand)
