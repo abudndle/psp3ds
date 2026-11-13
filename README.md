@@ -87,3 +87,5 @@ ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build-sanitize --output-on-failure
 Both commands passed locally for **15/15 suites**. The GitHub Actions
 workflow is configured to rerun normal and sanitizer tests. No native
 `.3dsx` or commercial PSP game execution has been verified.
+
+- **New 3DS CPU speed:** 3DS startup calls libctru `osSetSpeedupEnable(true)` and restores it on exit. This is an unverified native build path; no hardware speedup measurement has been recorded. Reference: https://github.com/devkitPro/libctru/blob/master/libctru/include/3ds/os.h
