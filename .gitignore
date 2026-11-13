@@ -1,0 +1,12 @@
+build/
+build-host/
+build-asan/
+*.o
+*.elf
+*.3dsx
+*.cia
+*.3ds
+*.iso
+*.cso
+*.pbp
+.DS_Store
