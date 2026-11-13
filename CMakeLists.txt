@@ -121,3 +121,7 @@ add_test(NAME threads COMMAND test_threads)
 add_executable(test_thread_cpu tests/test_thread_cpu.c)
 target_link_libraries(test_thread_cpu PRIVATE psp_core)
 add_test(NAME thread_cpu COMMAND test_thread_cpu)
+
+add_executable(test_thread_hle tests/test_thread_hle.c)
+target_link_libraries(test_thread_hle PRIVATE psp_core)
+add_test(NAME thread_hle COMMAND test_thread_hle)
