@@ -40,13 +40,21 @@ if [[ "$EXPANSION_MODE" == 1 ]]; then
   sleep 0.5
   xdotool key --clearmodifiers Alt_L+f
   sleep 0.3
+  xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-file-menu.png" || true
   xdotool key Home
-  xdotool key --delay 130 Down Down Down Down Down Down Right Return
+  xdotool key --delay 130 Down Down Down Down Down Down Right
+  sleep 0.4
+  xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-addon-submenu.png" || true
+  xdotool key Return
   sleep 0.5
   xdotool key --clearmodifiers ctrl+o
+  sleep 0.4
+  xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-rom-dialog.png" || true
   sleep 0.6
   xdotool type --clearmodifiers --delay 15 "$ROM"
   xdotool key Return
+  sleep 0.5
+  xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-after-open.png" || true
   echo "Opened ROM after Slot-2 menu selection, guest detection not yet verified"
 fi
 sleep 5
