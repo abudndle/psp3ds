@@ -4,6 +4,7 @@
 #include "psp_core.h"
 #include "psp_catalog.h"
 #include "psp_platform_budget.h"
+#include "psp_features.h"
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
 }
@@ -46,6 +47,21 @@ int main(void) {
     (unsigned long)(policy.hot_ram_budget/1024u),
     (unsigned long)(policy.texture_budget/1024u));
   printf("Sprite batching planned\n");
+  PspFeatureManifest features;
+  if(psp_features_manifest(target,&features)==0){
+   uint32_t cpu_value=0,bench_value=0;
+   int cpu_ok=psp_feature_run(PSP_FEATURE_CPU_SMOKE,&cpu_value)==0 &&
+              cpu_value==2u;
+   int bench_ok=psp_feature_run(PSP_FEATURE_MIPS_BENCHMARK,&bench_value)==0 &&
+                bench_value==2048u;
+   printf("Parity CPU: %s\n",cpu_ok?"PASS":"FAILED");
+   printf("MIPS %lu insns: %s\n",(unsigned long)bench_value,
+          bench_ok?"PASS":"FAILED");
+   printf("Features: %u same IDs\n",(unsigned)PSP_FEATURE_COUNT);
+   printf("PSP game: %s\n",
+          psp_feature_state_name(features.features[PSP_FEATURE_PSP_GAME_BOOT].state));
+  }
+
  }
 
  /* Scan ROM names without loading or executing their contents. */
