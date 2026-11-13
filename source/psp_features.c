@@ -35,6 +35,7 @@ int psp_features_manifest(PspTarget target,PspFeatureManifest *out){
  out->features[PSP_FEATURE_GUEST_DATA_BUS].backend=
    target==PSP_TARGET_DS_SLOT2?PSP_BACKEND_SLOT2_DATA:PSP_BACKEND_INTERNAL_RAM;
  /* These are chosen FUTURE backends, not actual rendered PSP graphics. */
+ out->features[PSP_FEATURE_GRAPHICS_TRANSLATION].state=PSP_FEATURE_EXPERIMENTAL;
  out->features[PSP_FEATURE_GRAPHICS_TRANSLATION].backend=
    out->policy.graphics==PSP_GRAPHICS_DS_TILES?
    PSP_BACKEND_DS_2D:PSP_BACKEND_3DS_GPU;
