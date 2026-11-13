@@ -34,8 +34,13 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  int status=psp_cpu_step(cpu);
  if(status!=-3 || ((cpu->cp0_cause>>2)&31u)!=8u)return status;
  const PspHleBinding *binding=NULL;
- for(size_t i=0;i<hle->count;i++)if(hle->entries[i].syscall_id==cpu->last_trap_code){
-   binding=&hle->entries[i];break;
+ if(hle->last_binding_index<hle->count &&
+    hle->entries[hle->last_binding_index].syscall_id==cpu->last_trap_code){
+   binding=&hle->entries[hle->last_binding_index];
+ }else{
+   for(size_t i=0;i<hle->count;i++)if(hle->entries[i].syscall_id==cpu->last_trap_code){
+     hle->last_binding_index=i;binding=&hle->entries[i];break;
+   }
  }
  if(!binding)return -3;
  uint64_t us=hle->uptime_us;
