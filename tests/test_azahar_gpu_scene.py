@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory() as directory:
     path=Path(directory)/"synthetic-fixture.png"
     scene=Image.new("RGB",(853,526),(34,34,36))
     paint=ImageDraw.Draw(scene)
-    paint.rectangle((280,260,599,439),fill=(0,247,255))
+    paint.rectangle((280,260,599,439),fill=(0,131,255))
     paint.rectangle((280,395,599,439),fill=(123,107,0))
     paint.rectangle((335,330,343,339),fill=(255,0,255))
     scene.save(path)
@@ -30,13 +30,13 @@ with tempfile.TemporaryDirectory() as directory:
     assert not detector.detect(path)[0]
     scene.save(path)
     d=ImageDraw.Draw(scene)
-    d.rectangle((280,260,599,439),fill=(0,247,255))
+    d.rectangle((280,260,599,439),fill=(0,131,255))
     d.rectangle((280,395,599,439),fill=(123,107,0))
     # Invert scene ordering: should reject.
     bad=Image.new("RGB",(853,526),(34,34,36))
     d=ImageDraw.Draw(bad)
     d.rectangle((280,260,599,304),fill=(123,107,0))
-    d.rectangle((280,305,599,439),fill=(0,247,255))
+    d.rectangle((280,305,599,439),fill=(0,131,255))
     d.rectangle((330,360,338,370),fill=(255,0,255))
     bad.save(path)
     assert not detector.detect(path)[0]
