@@ -1,0 +1,36 @@
+name: Native PSP3DS homebrew build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-3ds:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:20260610
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify 3DS cross compiler and zlib
+        run: |
+          test -n "${DEVKITPRO:-}"
+          test -n "${DEVKITARM:-}"
+          test -f "$DEVKITARM/3ds_rules"
+          test -f "$DEVKITPRO/portlibs/3ds/include/zlib.h"
+      - name: Compile .3dsx
+        run: make -j2
+      - name: Check native output
+        run: test -s psp3ds.3dsx
+      - name: Upload actual .3dsx
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-native-3dsx
+          path: |
+            psp3ds.3dsx
+            psp3ds.smdh
+          if-no-files-found: error
