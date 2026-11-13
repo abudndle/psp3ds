@@ -1,0 +1,103 @@
+name: PSP3DS Linux emulator smoke tests and screenshots
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/emulator-screenshots.yml'
+      - 'scripts/capture_melonds_ci.sh'
+      - 'scripts/build_nds.sh'
+      - 'tests/test_emulator_screenshot_ci.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-real-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  linux-host-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install host build dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake build-essential zlib1g-dev python3
+      - name: Configure compile and run full Linux CTest suite
+        run: |
+          cmake -S . -B build-ci -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-ci --parallel 2
+          ctest --test-dir build-ci --output-on-failure
+      - name: Record host test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-github-linux-ctest
+          path: build-ci/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
+  real-melonds-screenshot:
+    needs: linux-host-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      WONDERFUL_TOOLCHAIN: /opt/wonderful
+      BLOCKSDS: /opt/wonderful/thirdparty/blocksds/core
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux ROM build, virtual display and screenshot dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            curl ca-certificates git make tar python3 python3-pil \
+            xvfb x11-utils xdotool imagemagick libfuse2
+      - name: Install BlocksDS via Wonderful Toolchain
+        run: |
+          sudo mkdir -p /opt/wonderful
+          sudo chown "$(id -u):$(id -g)" /opt/wonderful
+          bash scripts/install_blocksds_ubuntu.sh
+          echo '/opt/wonderful/bin' >> "$GITHUB_PATH"
+          echo '/opt/wonderful/toolchain/gcc-arm-none-eabi/bin' >> "$GITHUB_PATH"
+      - name: Compile actual DS shared-core ROM
+        run: |
+          bash scripts/build_nds.sh
+          find build-nds -maxdepth 1 -name '*.nds' -type f -size +0c
+      - name: Download official Linux melonDS release
+        run: |
+          mkdir -p screenshots
+          python3 - <<'PY'
+          import json,urllib.request
+          req=urllib.request.Request('https://api.github.com/repos/melonDS-emu/melonDS/releases/latest',headers={'User-Agent':'PSP3DS-CI'})
+          with urllib.request.urlopen(req,timeout=40) as f: data=json.load(f)
+          for a in data['assets']:
+              name=a['name'].lower()
+              if name.endswith('.appimage') and any(x in name for x in ('x86_64','amd64','x64')):
+                  url=a['browser_download_url']
+                  break
+          else:
+              raise SystemExit('Official melonDS release did not contain a Linux x86_64 AppImage')
+          with urllib.request.urlopen(url,timeout=120) as response, open('screenshots/melonDS.AppImage','wb') as output:
+              import shutil
+              shutil.copyfileobj(response,output)
+          PY
+          chmod +x screenshots/melonDS.AppImage
+          file screenshots/melonDS.AppImage
+      - name: Boot the built ROM and capture a genuine emulator window
+        env:
+          QT_QPA_PLATFORM: xcb
+          MELONDS_EXE: ${{ github.workspace }}/screenshots/melonDS.AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          rom="$(find "$PWD/build-nds" -maxdepth 1 -type f -name '*.nds' -print -quit)"
+          test -s "$rom"
+          timeout 90s xvfb-run -a -s '-screen 0 1280x900x24' \
+            bash scripts/capture_melonds_ci.sh "$rom" screenshots/psp3ds-melonds.png
+          file screenshots/psp3ds-melonds.png
+      - name: Upload actual melonDS screenshot and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-melonds-real-screenshot-or-diagnostics
+          path: |
+            screenshots/psp3ds-melonds.png
+            screenshots/melonds-stdout.log
+            screenshots/melonds-stderr.log
+          if-no-files-found: warn
