@@ -58,7 +58,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            python3 python3-pil ca-certificates xvfb x11-utils \
+            python3 python3-pil ca-certificates xvfb x11-utils x11-apps \
             xdotool imagemagick file
       - name: Download official stable Azahar Linux AppImage
         run: |
