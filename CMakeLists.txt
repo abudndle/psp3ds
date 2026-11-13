@@ -129,3 +129,7 @@ add_test(NAME thread_hle COMMAND test_thread_hle)
 if(Python3_Interpreter_FOUND)
   add_test(NAME azahar_boot_marker COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_azahar_boot_marker.py)
 endif()
+
+add_executable(test_loader_safety tests/test_loader_safety.c)
+target_link_libraries(test_loader_safety PRIVATE psp_core)
+add_test(NAME loader_safety COMMAND test_loader_safety)

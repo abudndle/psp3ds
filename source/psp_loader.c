@@ -18,7 +18,8 @@ int psp_elf_load(const uint8_t *file, size_t len, uint8_t *ram, size_t ram_len,
     if ((uint64_t)phoff + (uint64_t)phentsize * phnum > len) return PSP_LOAD_BAD_SEGMENT;
     uint32_t entry = rd32(file + 24);
     uint64_t end_ram = (uint64_t)ram_base + ram_len;
-    if (entry < ram_base || (uint64_t)entry >= end_ram) return PSP_LOAD_ENTRY_INVALID;
+    if ((entry & 3u) || entry < ram_base || (uint64_t)entry >= end_ram)
+        return PSP_LOAD_ENTRY_INVALID;
     int entry_executable = 0;
     uint16_t loaded = 0;
     for (unsigned i = 0; i < phnum; ++i) {
@@ -27,11 +28,27 @@ int psp_elf_load(const uint8_t *file, size_t len, uint8_t *ram, size_t ram_len,
         uint32_t off = rd32(ph + 4), addr = rd32(ph + 8);
         uint32_t fsz = rd32(ph + 16), msz = rd32(ph + 20);
         uint32_t flags = rd32(ph + 24);
-        if (msz < fsz || (uint64_t)off + fsz > len ||
+        if (msz == 0 || msz < fsz || (uint64_t)off + fsz > len ||
             addr < ram_base || (uint64_t)addr + msz > end_ram)
             return PSP_LOAD_BAD_SEGMENT;
-        if ((flags & 1u) && (uint64_t)entry >= addr && (uint64_t)entry < (uint64_t)addr + msz)
+        /* The entry PC must refer to file-backed executable instructions,
+         * never an uninitialized BSS tail. */
+        if ((flags & 1u) && (uint64_t)entry >= addr &&
+            (uint64_t)entry + 4u <= (uint64_t)addr + fsz)
             entry_executable = 1;
+        /* Reject ambiguous memory ownership before writing *any* segment.
+         * Overlaps can otherwise make the effective entry point depend on
+         * program-header ordering, including overwriting executable code. */
+        for (unsigned j = 0; j < i; ++j) {
+            const uint8_t *previous = file + phoff + (size_t)j * phentsize;
+            if (rd32(previous) != 1) continue;
+            uint64_t prev_addr = rd32(previous + 8);
+            uint64_t prev_size = rd32(previous + 20);
+            if (prev_size &&
+                (uint64_t)addr < prev_addr + prev_size &&
+                prev_addr < (uint64_t)addr + msz)
+                return PSP_LOAD_BAD_SEGMENT;
+        }
         loaded++;
     }
     if (loaded == 0 || !entry_executable) return PSP_LOAD_ENTRY_INVALID;

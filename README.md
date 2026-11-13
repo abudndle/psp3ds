@@ -636,3 +636,23 @@ thread-stack allocation, preemption, or commercial PSP executable loading.
 An actual PSP game such as Jetpack Joyride is still not playable.
 The new test is registered in CTest; a complete host build, sanitizer
 run and native 3DS compilation are **not yet confirmed** for this change.
+
+## Plain PSP ELF loading validation hardening (2026-11-13)
+
+The unencrypted, fixed-address MIPS ELF32 `ET_EXEC` loader now rejects
+overlapping `PT_LOAD` guest-memory ranges, zero-length mapped segments,
+misaligned entry points, and entry points not fully backed by four
+bytes of file-supplied executable instructions. Previously an entry
+address in the zero-filled BSS tail could be treated as executable,
+or a later segment could overwrite code loaded by an earlier segment.
+All segments are checked **before guest RAM is modified**, preserving
+fail-closed behavior for these malformed images.
+
+The `loader_safety` CTest covers overlapping ranges in both program-header
+orders, entry-address alignment and file-backed coverage, intact RAM and
+zeroed result fields after rejection, and adjacent valid data/BSS
+segments. The existing `loader` and `boot` suites also run in CI.
+
+This is strict validation of the supported **plain ELF32/MIPS ET_EXEC**
+subset, not PSP encrypted `EBOOT.BIN` decryption, PRX relocation,
+firmware-compatible executable loading, or commercial PSP gameplay.
