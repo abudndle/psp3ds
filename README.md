@@ -485,3 +485,24 @@ GitHub.
 Official SDK containers:
 - https://blocksds.skylyrac.net/docs/setup/docker/
 - https://hub.docker.com/r/devkitpro/devkitarm/tags
+
+## Automated homebrew CIA packaging (2026-11-13)
+
+The native 3DS GitHub Actions workflow now attempts a **real homebrew CIA**
+artifact after successful 3DSX compilation. On the network-enabled Linux
+runner, `scripts/install_cia_tools.sh` builds `cxitool` from
+`devkitPro/3dstools` (`cxi-stuff` branch) and `makerom` from
+`3DSGuy/Project_CTR`. It installs the tools to `~/.local/bin`, then invokes
+`scripts/build_cia.sh psp3ds.3dsx psp3ds.cia`. The
+`tests/test_cia_output.py` check examines the CIA container header and
+section bounds before publication.
+
+Successful runs upload two separate artifacts: `psp3ds-native-3dsx` and
+`psp3ds-native-cia` at
+https://github.com/abudndle/psp3ds/actions/workflows/native-3ds.yml .
+The setup uses no game ROMs, firmware dumps or private Nintendo keys.
+A plausible CIA header does not guarantee installation or hardware execution.
+
+**Verification status:** A successful GitHub Actions native CIA build is
+not yet confirmed. Local Linux tests cannot verify an actual 3DS CIA without
+the native toolchain and a runnable cxitool/makerom installation.
