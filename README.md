@@ -89,3 +89,23 @@ workflow is configured to rerun normal and sanitizer tests. No native
 `.3dsx` or commercial PSP game execution has been verified.
 
 - **New 3DS CPU speed:** 3DS startup calls libctru `osSetSpeedupEnable(true)` and restores it on exit. This is an unverified native build path; no hardware speedup measurement has been recorded. Reference: https://github.com/devkitPro/libctru/blob/master/libctru/include/3ds/os.h
+
+## Next milestone: CSO v1 streaming (2026-11-13)
+
+- `psp_cso_open` validates the CSO v1 header, a 2,048-byte sector size, the
+  block-offset index, and file bounds. CSO v2 and ZSO are rejected explicitly.
+- `psp_cso_read` reads only the requested sector, uses raw DEFLATE for
+  compressed blocks, and copies stored blocks directly. The block index stays
+  on disk rather than being allocated in RAM.
+- `psp_cso_cached` reuses the existing four-sector cache. **Reset `PspPerf`
+  before opening a different image** so cached sectors from a previous image
+  cannot be reused incorrectly.
+- `test_cso` covers compressed and plain blocks, cache hits, out-of-range
+  sectors, unsupported versions, and malformed offsets.
+- The host build requires zlib. The 3DS Makefile links `-lz` but the native
+  devkitPro toolchain and 3DS runtime have not been verified.
+- This is a sector reader, not UMD kernel integration, CSO v2 support, a
+  commercial-game loader, or a speed benchmark.
+
+Verification: `ctest` passed 16/16 host suites and 16/16 under
+AddressSanitizer/UndefinedBehaviorSanitizer locally.
