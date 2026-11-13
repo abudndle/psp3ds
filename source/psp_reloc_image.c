@@ -32,6 +32,7 @@ int psp_reloc_image_apply(const uint8_t *elf,size_t len,PspCpu *cpu,
  if(entsize<32 || phnum!=n || phnum>MAX_HEADERS ||
     (uint64_t)phoff+(uint64_t)entsize*phnum>len)
   return -2;
+ int segment_relative=rd16(elf+16)==0xffa0u;
  size_t streams=0;
  for(size_t i=0;i<n;i++) {
   const uint8_t *ph=elf+phoff+i*entsize;
@@ -65,9 +66,9 @@ int psp_reloc_image_apply(const uint8_t *elf,size_t len,PspCpu *cpu,
   if(type!=PT_SCE_PSPREL && type!=PT_SCE_PSPREL2)continue;
   size_t off=rd32(ph+4),size=rd32(ph+16);
   if(type==PT_SCE_PSPREL)
-   status=psp_reloc_apply(cpu,elf+off,size,segments,n);
+   status=psp_reloc_apply_with_base_mode(cpu,elf+off,size,segments,n,segment_relative);
   else
-   status=psp_reloc2_apply(cpu,elf+off,size,segments,n,(unsigned)n);
+   status=psp_reloc2_apply_with_base_mode(cpu,elf+off,size,segments,n,(unsigned)n,segment_relative);
   if(status!=0)break;
  }
  if(status)memcpy(cpu->ram,snapshot,cpu->ram_size);

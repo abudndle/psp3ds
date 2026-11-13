@@ -20,4 +20,8 @@ typedef struct {
  * Returns 0 on success, negative on failure. Does not load PRX files. */
 int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
                     const PspRelocSegment *segments, size_t segment_count);
+/* PSP PRX addends are relative to the referenced segment when mode is nonzero. */
+int psp_reloc_apply_with_base_mode(PspCpu *cpu, const uint8_t *records,
+                                  size_t record_len, const PspRelocSegment *segments,
+                                  size_t count, int segment_relative);
 #endif

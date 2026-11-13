@@ -11,8 +11,8 @@ static void write32(uint8_t *p,uint32_t v) {
 }
 typedef struct { size_t offset; uint32_t value; } Write;
 typedef struct { size_t offset; unsigned addr_base; uint32_t old; } PendingHi;
-int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
-                    const PspRelocSegment *segments,size_t n) {
+int psp_reloc_apply_with_base_mode(PspCpu *cpu, const uint8_t *records, size_t record_len,
+                    const PspRelocSegment *segments,size_t n, int segment_relative) {
  if (!cpu || !cpu->ram || (!records && record_len) || !segments || n==0 || n>256 ||
      record_len%8 || record_len/8>PSP_RELOC_MAX_RECORDS) return -1;
  size_t count=record_len/8;
@@ -56,7 +56,8 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
   if (seen[slot / 8u] & mask) goto cleanup;
   seen[slot / 8u] |= mask;
   uint32_t old=read32(cpu->ram+(size_t)off);
-  uint32_t delta=source->mapped_vaddr-source->original_vaddr;
+  uint32_t delta=source->mapped_vaddr;
+  if (!segment_relative) delta-=source->original_vaddr;
   uint32_t value;
   if(type==5) {
    /* HI16 carries are determined by the sign-extended LO16 addend. */
@@ -103,4 +104,10 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
 cleanup:
  free(writes);free(pending);free(seen);
  return status;
+}
+
+
+int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
+                    const PspRelocSegment *segments, size_t count) {
+ return psp_reloc_apply_with_base_mode(cpu,records,record_len,segments,count,0);
 }

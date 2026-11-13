@@ -49,7 +49,7 @@ int main(void){
  size_t applied=999;
  image(elf);init(&cpu,ram);
  assert(psp_reloc_image_apply(elf,sizeof elf,&cpu,seg,4,&applied)==0);
- assert(applied==2 && r32(ram+8)==0x1033 && r32(ram+12)==0x1055);
+ assert(applied==2 && r32(ram+8)==BASE+128+0x33 && r32(ram+12)==BASE+128+0x55);
  assert(cpu.pc==BASE);
  assert(psp_cpu_step(&cpu)==0 && cpu.gpr[8]==7);
  /* Failure in second relocation stream rolls back first stream's write. */
@@ -78,7 +78,7 @@ int main(void){
  /* A single valid uncompressed relocation stream remains supported. */
  image(elf);init(&cpu,ram);ph(elf,3,0,416,0,22,22);
  assert(psp_reloc_image_apply(elf,sizeof elf,&cpu,seg,4,&applied)==0);
- assert(applied==1 && r32(ram+8)==0x1033 && r32(ram+12)==0x55);
+ assert(applied==1 && r32(ram+8)==BASE+128+0x33 && r32(ram+12)==0x55);
  puts("PASS: PRX ELF stream discovery, PSPREL/PSPREL2, rollback and guest execution");
  return 0;
 }
