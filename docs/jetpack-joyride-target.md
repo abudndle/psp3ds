@@ -32,10 +32,24 @@ should use **original synthetic/homebrew test fixtures**, not commercial files.
 
 ## Game-driven emulation scope
 
-The first playable target is a repeatable Jetpack Joyride run on New 3DS,
-from cold boot through title, input, graphics, audio, collision and restart.
-Start with one known-good local game revision and input format. Preserve
-the other devices' smoke tests and evaluate gameplay on each separately.
+The project targets a repeatable Jetpack Joyride run on all five hardware
+profiles below. Use the same known-good PSP game revision and shared runtime
+where possible. New 3DS provides the first integration checkpoint. Each
+profile needs its own gameplay and performance verification.
+
+| Hardware profile | Device-specific verification |
+| --- | --- |
+| New 3DS family | Establish the first repeatable gameplay run and measure peak RAM, frame time and audio underruns. |
+| Original 3DS / 3DS XL | Repeat the run at the original CPU and memory limits. |
+| DSi / DSi XL | Verify DSi-mode memory use, ARM9 throughput, DS GPU output and audio timing. |
+| DS / DS Lite with Slot-2 Pak | Verify gameplay with guest data split across main RAM and the separately addressed expansion Pak. |
+| DS / DS Lite without a Pak | Verify gameplay within main RAM, measuring the cost of streaming assets and keeping resident data small. |
+
+For each profile, verify cold boot to the game's title, input-driven ascent
+and descent, graphics and audio during a run, scoring, collision and restart.
+Record the game revision, build, hardware mode, peak memory and frame timing.
+When a profile misses its budget, record the measured blocker and use it to
+guide the next optimization.
 
 For each boot or gameplay checkpoint, capture the first unsupported guest
 operation locally. Record the checkpoint, guest PC, operation category
@@ -57,7 +71,7 @@ Defer PSP firmware boot, the PSP system menu, peripheral emulation,
 additional media formats and compatibility work for other titles until a
 target needs them. Preserve working shared functionality. Unsupported
 operations must report a diagnostic and stop safely. Optimize measured
-frame-time or memory bottlenecks on New 3DS before tuning other devices.
+frame-time and memory bottlenecks independently on each profile.
 
 ## Compatibility checkpoints (in dependency order)
 
