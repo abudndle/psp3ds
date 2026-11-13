@@ -9,6 +9,7 @@ static int valid_service(PspHleService s) {
  return s==PSP_HLE_SYSTEM_TIME_LOW || s==PSP_HLE_SYSTEM_TIME_WIDE ||
         s==PSP_HLE_SYSTEM_TIME || s==PSP_HLE_SET_COMPILED_SDK ||
         s==PSP_HLE_GET_COMPILED_SDK || s==PSP_HLE_SET_COMPILER_VERSION ||
+        s==PSP_HLE_KERNEL_CREATE_THREAD || s==PSP_HLE_KERNEL_START_THREAD ||
         s==PSP_HLE_IO_OPEN || s==PSP_HLE_IO_READ ||
         s==PSP_HLE_IO_LSEEK32 || s==PSP_HLE_IO_CLOSE;
 }

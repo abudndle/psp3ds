@@ -12,6 +12,7 @@ typedef enum {
  PSP_TASK_EMPTY = 0,
  PSP_TASK_RUNNABLE,
  PSP_TASK_WAITING,
+ PSP_TASK_DORMANT,
  PSP_TASK_STOPPED
 } PspTaskState;
 typedef enum {
@@ -38,6 +39,8 @@ typedef struct {
 void psp_threads_init(PspThreads *threads);
 /* Positive task ID on success; negative on invalid args/capacity. */
 int32_t psp_threads_create(PspThreads *threads, uint8_t priority);
+int32_t psp_threads_create_dormant(PspThreads *threads, uint8_t priority);
+int psp_threads_start(PspThreads *threads, uint32_t id);
 /* Select highest priority runnable task, round-robin among ties. */
 int32_t psp_threads_pick(PspThreads *threads);
 /* Put a task to sleep until an absolute deadline or matching token. */

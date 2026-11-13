@@ -2,6 +2,8 @@
 /* PSP IoFileMgrForUser NIDs confirmed against PSP library documentation.
  * Unknown calls are not treated as successfully implemented. */
 static const PspExport known_exports[] = {
+ {"ThreadManForUser",0x446d8de6u,PSP_HLE_KERNEL_CREATE_THREAD},
+ {"ThreadManForUser",0xf475845du,PSP_HLE_KERNEL_START_THREAD},
  {"SysMemUserForUser",0x358ca1bbu,PSP_HLE_SET_COMPILED_SDK},
  {"SysMemUserForUser",0xfc114573u,PSP_HLE_GET_COMPILED_SDK},
  {"SysMemUserForUser",0xf77d77cbu,PSP_HLE_SET_COMPILER_VERSION},

@@ -25,7 +25,9 @@ typedef enum {
  PSP_HLE_THREAD_EXIT=11,
  PSP_HLE_SET_COMPILED_SDK=12,
  PSP_HLE_GET_COMPILED_SDK=13,
- PSP_HLE_SET_COMPILER_VERSION=14
+ PSP_HLE_SET_COMPILER_VERSION=14,
+ PSP_HLE_KERNEL_CREATE_THREAD=15,
+ PSP_HLE_KERNEL_START_THREAD=16
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {

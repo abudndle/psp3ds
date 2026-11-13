@@ -15,7 +15,8 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_THREAD_CREATE && service!=PSP_HLE_THREAD_WAIT &&
       service!=PSP_HLE_THREAD_SIGNAL && service!=PSP_HLE_THREAD_EXIT &&
       service!=PSP_HLE_SET_COMPILED_SDK && service!=PSP_HLE_GET_COMPILED_SDK &&
-      service!=PSP_HLE_SET_COMPILER_VERSION)) return -1;
+      service!=PSP_HLE_SET_COMPILER_VERSION &&
+      service!=PSP_HLE_KERNEL_CREATE_THREAD && service!=PSP_HLE_KERNEL_START_THREAD)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -63,6 +64,14 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  case PSP_HLE_SET_COMPILED_SDK:hle->compiled_sdk_version=cpu->gpr[4];break;
  case PSP_HLE_GET_COMPILED_SDK:v0=hle->compiled_sdk_version;break;
  case PSP_HLE_SET_COMPILER_VERSION:hle->compiler_version=cpu->gpr[4];break;
+ case PSP_HLE_KERNEL_CREATE_THREAD:
+   v0=(uint32_t)(hle->threads && hle->threads->live==cpu && cpu->gpr[6]>=8u && cpu->gpr[6]<=119u ?
+       psp_thread_cpu_create(hle->threads,(uint8_t)cpu->gpr[6],cpu->gpr[5],cpu->gpr[7]):-1);
+   break;
+ case PSP_HLE_KERNEL_START_THREAD:
+   v0=(uint32_t)(hle->threads && hle->threads->live==cpu ?
+       psp_thread_cpu_start(hle->threads,cpu->gpr[4],cpu->gpr[5],cpu->gpr[6]):-1);
+   break;
  case PSP_HLE_SYSTEM_TIME_LOW:v0=(uint32_t)us;break;
  case PSP_HLE_SYSTEM_TIME_WIDE:v0=(uint32_t)us;v1=(uint32_t)(us>>32);break;
  case PSP_HLE_SYSTEM_TIME:{

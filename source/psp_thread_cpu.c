@@ -26,15 +26,16 @@ int psp_thread_cpu_init(PspThreadCpu *r, PspThreads *scheduler,
  r->ram_base=live->ram_base;
  return 0;
 }
-int32_t psp_thread_cpu_spawn(PspThreadCpu *r, uint8_t priority,
-                             uint32_t entry_pc, uint32_t stack_pointer) {
+static int32_t add_context(PspThreadCpu *r, uint8_t priority,
+                             uint32_t entry_pc, uint32_t stack_pointer, int dormant) {
  if (!valid_mapping(r) || (entry_pc & 3u) || (stack_pointer & 3u) ||
      entry_pc<r->ram_base || stack_pointer<r->ram_base) return -1;
  uint64_t code_offset=(uint64_t)entry_pc-r->ram_base;
  uint64_t stack_offset=(uint64_t)stack_pointer-r->ram_base;
  if (code_offset>r->ram_size || r->ram_size-code_offset<4 ||
      stack_offset>r->ram_size) return -1;
- int32_t id=psp_threads_create(r->scheduler,priority);
+ int32_t id=dormant ? psp_threads_create_dormant(r->scheduler,priority) :
+                     psp_threads_create(r->scheduler,priority);
  if (id<=0) return -1;
  int index=-1;
  for (int i=0;i<PSP_THREADS_MAX;i++) {
@@ -49,8 +50,49 @@ int32_t psp_thread_cpu_spawn(PspThreadCpu *r, uint8_t priority,
  if (r->slot_id[index]==r->active_id) r->active_id=0;
  psp_cpu_init(&r->saved[index],r->ram,r->ram_size,r->ram_base,entry_pc);
  r->saved[index].gpr[29]=stack_pointer;
+ r->stack_sizes[index]=0;
  r->slot_id[index]=(uint32_t)id;
  return id;
+}
+int32_t psp_thread_cpu_spawn(PspThreadCpu *r, uint8_t priority,
+                             uint32_t entry, uint32_t stack_pointer) {
+ return add_context(r, priority, entry, stack_pointer, 0);
+}
+int psp_thread_cpu_set_stack_arena(PspThreadCpu *r, uint32_t low, uint32_t high) {
+ if (!valid_mapping(r) || r->stack_cursor || low < r->ram_base || high <= low ||
+     ((low | high) & 15u) || high - r->ram_base > r->ram_size) return -1;
+ r->stack_floor=low;
+ r->stack_cursor=high;
+ return 0;
+}
+int32_t psp_thread_cpu_create(PspThreadCpu *r, uint8_t priority,
+                              uint32_t entry, uint32_t size) {
+ if (!valid_mapping(r) || !r->stack_cursor || size < 256u ||
+     size > UINT32_MAX-15u) return -1;
+ size=(size+15u)&~15u;
+ if (size > r->stack_cursor-r->stack_floor) return -1;
+ int32_t id=add_context(r,priority,entry,r->stack_cursor,1);
+ if (id < 0) return id;
+ r->stack_sizes[slot_for(r,(uint32_t)id)]=size;
+ r->stack_cursor-=size;
+ return id;
+}
+int psp_thread_cpu_start(PspThreadCpu *r, uint32_t id,
+                         uint32_t size, uint32_t args) {
+ if (!valid_mapping(r)) return -1;
+ int index=slot_for(r,id);
+ const PspTask *task=psp_threads_get(r->scheduler,id);
+ if (index<0 || !task || task->state!=PSP_TASK_DORMANT ||
+     r->stack_sizes[index]<32u || size>r->stack_sizes[index]-32u ||
+     (size && (args<r->ram_base ||
+      (uint64_t)(args-r->ram_base)+size>r->ram_size))) return -1;
+ PspCpu *cpu=&r->saved[index];
+ uint32_t arg_address=(cpu->gpr[29]-size)&~15u;
+ if (size) memmove(r->ram+(arg_address-r->ram_base),r->ram+(args-r->ram_base),size);
+ cpu->gpr[29]=arg_address-16u;
+ cpu->gpr[4]=size;
+ cpu->gpr[5]=size ? arg_address : 0;
+ return psp_threads_start(r->scheduler,id);
 }
 int psp_thread_cpu_flush(PspThreadCpu *r) {
  if (!valid_mapping(r) || !r->active_id) return -1;

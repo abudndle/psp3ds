@@ -21,18 +21,30 @@ const PspTask *psp_threads_get(const PspThreads *threads, uint32_t id) {
 void psp_threads_init(PspThreads *threads) {
  if (threads) { memset(threads,0,sizeof(*threads)); threads->next_id=1; }
 }
-int32_t psp_threads_create(PspThreads *threads, uint8_t priority) {
+static int32_t create(PspThreads *threads, uint8_t priority, PspTaskState state) {
  if (!threads || !threads->next_id || threads->next_id > INT32_MAX) return -1;
  for (size_t i=0;i<PSP_THREADS_MAX;i++) {
   PspTask *t=&threads->tasks[i];
   if (t->state != PSP_TASK_EMPTY && t->state != PSP_TASK_STOPPED) continue;
   memset(t,0,sizeof(*t));
   t->id=threads->next_id++;
-  t->state=PSP_TASK_RUNNABLE;
+  t->state=state;
   t->priority=priority;
   return (int32_t)t->id;
  }
  return -1;
+}
+int32_t psp_threads_create(PspThreads *threads, uint8_t priority) {
+ return create(threads, priority, PSP_TASK_RUNNABLE);
+}
+int32_t psp_threads_create_dormant(PspThreads *threads, uint8_t priority) {
+ return create(threads, priority, PSP_TASK_DORMANT);
+}
+int psp_threads_start(PspThreads *threads, uint32_t id) {
+ PspTask *task = lookup(threads, id);
+ if (!task || task->state != PSP_TASK_DORMANT) return -1;
+ task->state = PSP_TASK_RUNNABLE;
+ return 0;
 }
 int32_t psp_threads_pick(PspThreads *threads) {
  if (!threads) return -1;
