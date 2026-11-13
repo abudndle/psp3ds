@@ -228,3 +228,33 @@ All **19/19 Linux host tests and 19/19 ASan/UBSan tests passed locally**.
 Next required integration: connect guest kernel wait/signal operations and
 hardware interrupts to the event scheduler, and profile real New 3DS
 workloads. This scheduling API alone cannot run encrypted retail PSP games.
+
+## Demand-driven execution milestone (2026-11-13)
+
+The experimental portable PSP runtime now includes `psp_demand_run()`
+(`source/psp_demand.c`), a **bounded** driver for the existing event queue,
+CPU interpreter and HLE virtual clock:
+
+- While a guest thread is waiting, skip directly to the next scheduled
+  event, wake-up timestamp or deadline; preserve guest elapsed time in HLE.
+- Invoke host-provided callbacks on due events. Callbacks may resume guest
+  execution; their implementation is still the caller's responsibility.
+- Execute CPU instructions only for runnable guest state and never skip
+  CPU instructions, memory accesses, traps, or branch delay slots.
+- Bound instruction/event work per call and report instruction counts,
+  event counts and virtual microseconds spent idle.
+- Turn CPU hot-block profiling off by default using
+  `psp_perf_enable_profiling()` to avoid unnecessary per-instruction work.
+  Profiling can be reenabled when collecting performance traces.
+- Existing backend activity flags and disc/texture caches remain optional,
+  and do not fake guest-visible hardware completion.
+
+Verification: **19/19 Linux host tests and 19/19 ASan/UBSan tests passed**
+in the working Linux environment, including `test_demand_runtime`.
+These tests do not benchmark PSP games. The library is not wired to a
+full PSP kernel thread scheduler or real GPU/audio pipeline yet.
+Commercial PSP games (including Jetpack Joyride) remain unplayable.
+
+The next true performance milestones require runnable guest workloads,
+PSP thread/interrupt HLE, rendering/audio backends, native .3dsx/.nds
+build verification, and measurements on actual hardware/emulators.
