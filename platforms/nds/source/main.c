@@ -5,6 +5,7 @@
 #include "psp_slot2_probe.h"
 #include "psp_benchmark.h"
 #include "psp_guest_window.h"
+#include "psp_guest_bus.h"
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
@@ -65,6 +66,26 @@ static void test_slot2_ram(void){
    for(unsigned i=0;i<4;i++) region[i]=saved[i];
    for(unsigned i=0;i<4;i++) if(region[i]!=saved[i])ok=0;
    printf("Guest data I/O: %s\n",ok?"PASS":"FAILED");
+   if(ok) {
+    uint8_t hot[16]={0};
+    PspGuestWindow cold_window;
+    PspGuestBus bus;
+    int routed=psp_guest_window_init(&cold_window,region,
+                   0x09000000u,256u,1,1)==0;
+    if(routed) routed=psp_guest_bus_init(&bus,hot,0x08800000u,
+                                   sizeof hot,&cold_window)==0;
+    uint32_t cold_value=0,hot_value=0;
+    if(routed) routed=psp_guest_bus_write32(&bus,0x08800000u,0x10203040u)==0;
+    if(routed) routed=psp_guest_bus_write32(&bus,0x09000000u,0x50607080u)==0;
+    if(routed) routed=psp_guest_bus_read32(&bus,0x08800000u,&hot_value)==0 &&
+                               hot_value==0x10203040u;
+    if(routed) routed=psp_guest_bus_read32(&bus,0x09000000u,&cold_value)==0 &&
+                               cold_value==0x50607080u;
+    if(routed) routed=psp_guest_bus_write8(&bus,0x09000100u,0)==-1;
+    for(unsigned i=0;i<4;i++)region[i]=saved[i];
+    for(unsigned i=0;i<4;i++)if(region[i]!=saved[i])routed=0;
+    printf("Dual RAM bus: %s\n",routed?"PASS":"FAILED");
+   }
   }
  }
  /* Never present RAM as a general C heap. Close it after the probe. */
