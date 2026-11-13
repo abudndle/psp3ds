@@ -1,22 +1,21 @@
-# Nintendo DS with DSi enhancements (future PSP experiment)
+# PSP3DS Nintendo DS / DSi-enhanced experiment
 
-This is the **planned** second console target in the same PSP3DS GitHub repo,
-not a second GitHub repository. There is no `.nds` binary or BlocksDS build
-yet. The future build should run in basic DS mode on DS/DS Lite, optionally
-use detected Slot-2 RAM expansion, and enable DSi enhancements when available.
+This target is inside the **same GitHub repository** as PSP3DS.
 
-BlocksDS dependency candidates:
-- libnds for input, ARM9/ARM7 and storage access;
-- Maxmod for sound if an audio backend becomes practical;
-- Nitro Engine for experimental 3D rendering;
-- optional NightFox's Lib / libdsf for UI;
-- optional libteak only in DSi mode if benchmarks justify its use.
+The BlocksDS ARM9-only Makefile compiles the existing portable
+`source/psp_core.c` through a small wrapper. Its native entry point
+detects DSi mode using `isDSiMode()` and executes two synthetic MIPS
+instructions to demonstrate code reuse. It does **not** execute PSP games.
 
-Do not attempt to allocate PSP-sized guest RAM on DS without validating
-hardware capacity. The DS/DSi is vastly less powerful than a PSP, so
-commercial-game compatibility is **not an achievable commitment** at this
-stage. The first milestones should be compilable `.nds` startup, hardware
-identification, bounded guest-memory allocation, then CPU unit demos.
+With BlocksDS installed:
+```sh
+make -C platforms/nds
+```
+Expected output: `platforms/nds/psp3ds_nds.nds`.
 
-See [library inventory](../../docs/PLATFORM_LIBRARIES.md) and
-[BlocksDS documentation](https://blocksds.skylyrac.net/docs/libs/).
+The actual BlocksDS compiler is absent from the current Linux environment,
+so the native `.nds` binary and melonDS testing are **not verified**.
+DSi enhancements are identified but PSP-specific enhanced memory, 3D/audio,
+Slot-2 RAM expansion and game-loading services are unimplemented.
+
+See [platform libraries](../../docs/PLATFORM_LIBRARIES.md).
