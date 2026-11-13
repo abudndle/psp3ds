@@ -398,3 +398,25 @@ supported functions.
 References:
 - https://pspdev.github.io/psplibdoc/modules/iofilemgr.prx_IoFileMgrForUser.html
 - https://pspdev.github.io/pspsdk/group__FileIO.html
+
+## Loaded-module import auto-linking milestone (2026-11-13)
+
+The host-verified `psp_module_link_known()` API combines the existing
+plain-ELF module-info discovery, already-mapped PRX import-table parsing,
+and verified `IoFileMgrForUser` NID-to-HLE mappings. The caller supplies
+an **already mapped** and (where necessary) relocated guest image. Unknown
+or malformed imports reject the entire patch batch: no partial guest
+stub edits or HLE binding changes. The optional module-info output is
+cleared on failure. This does not decrypt retail `~PSP` executables or
+automatically load PRX modules.
+
+Synthetic test `module_link` verifies discovery from ELF section headers,
+real PSP I/O NIDs extracted from guest .lib.stub records, atomic
+linking, and unchanged guest memory for unsupported NIDs and malformed
+records. **27/27 host tests and 27/27 ASan/UBSan suites passed on Linux**.
+The integration is not yet called from a fully featured PSP loader, and
+it does not make Jetpack Joyride playable.
+
+Next milestone: safely integrate this operation into the supported
+plain-ELF loading path and extend verified kernel/thread HLE operations.
+Native .3dsx/.nds/.cia and emulator launches remain unverified.
