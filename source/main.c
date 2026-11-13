@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "psp_core.h"
 #include "psp_catalog.h"
+#include "psp_platform_budget.h"
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
 }
