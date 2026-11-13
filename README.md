@@ -1,3 +1,11 @@
+## Primary commercial compatibility target: Jetpack Joyride (PSP minis)
+
+**Jetpack Joyride (2012 PSP PlayStation minis edition)** is the designated first
+commercial title for PSP3DS compatibility development. Current status:
+**not tested / not playable**. See [Jetpack Joyride target roadmap](docs/jetpack-joyride-target.md)
+for the ordered engineering checkpoints, legal asset-handling requirements,
+and evidence needed before claiming boot or gameplay.
+
 # PSP3DS — experimental PSP emulator research for Nintendo 3DS
 
 **Research prototype only. It does not run commercial PSP games.** Target device is New Nintendo 3DS. PPSSPP is an architectural reference; no PPSSPP source code has been incorporated.
