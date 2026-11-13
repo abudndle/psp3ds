@@ -85,3 +85,7 @@ add_test(NAME boot COMMAND test_boot)
 if(Python3_Interpreter_FOUND)
   add_test(NAME installers COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_installers.py)
 endif()
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME cia_packaging COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_cia_packaging.py)
+endif()
