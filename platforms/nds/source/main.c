@@ -6,6 +6,7 @@
 #include "psp_benchmark.h"
 #include "psp_guest_window.h"
 #include "psp_guest_bus.h"
+#include "psp_platform_budget.h"
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
