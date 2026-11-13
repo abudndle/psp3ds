@@ -960,3 +960,21 @@ integration, a window capture verifies GUI startup, and a *passing
 real-image scene detector* verifies the scene is visibly present under
 Azahar. None alone proves Nintendo hardware performance, correct PSP
 graphics translation, Jetpack Joyride gameplay or commercial PSP boot.
+
+## Experimental PSP GE sprite-command subset (2026-11-13)
+
+An early, **fail-closed PSP GE command-stream bridge** now recognizes
+only the exact NOP, sprite `PRIM` (two vertices), FINISH and END
+sequence used by synthetic original test fixtures. Each PRIM consumes
+an explicitly **predecoded** 2D rectangle; unsupported PSP GE state,
+vertex addressing, triangles, control flow, textures and malformed
+sequences fail without a partial translated scene. The translated
+batch reaches the same Citro2D/PICA200 GPU drawing path on original
+and New 3DS; DS/DSi compile and validate the shared decoder.
+
+The `ge_subset` host regression checks full pixel parity across
+eight scene frames and unsupported-command rejection. **Real PSP
+vertex-memory fetch, VTYPE decoding, GPU render state, commercial
+PSP gameplay and Jetpack Joyride rendering remain unimplemented**.
+The feature registry labels graphics translation **experimental**,
+not playable. See [GE sprite subset scope](docs/psp-ge-sprite-subset.md).
