@@ -798,3 +798,24 @@ cannot establish that an 8 MiB physical Slot-2 cartridge was detected
 or verified. Even if an emulated expansion is supported and configured,
 physical DS/DS Lite read-write validation remains separate.
 No Jetpack Joyride game executable or retail asset is included.
+
+## DS Slot-2 RAM sampled bank sweep (2026-11-13)
+
+The DS/DS Lite native diagnostic now performs an additional **32-sample
+read/write sweep** only if the official BlocksDS Slot-2 detector has
+confirmed one flat external RAM bank and the prior two-word probe passes.
+`psp_slot2_probe_samples()` distributes 16-bit checks across the
+SDK-reported address range, including its last word. Each location is
+restored immediately and checked after restoration. A bounded limit of
+64 samples avoids long-lived writes or unbounded scanning. The DS screen
+prints `Sweep: 32/32 PASS` only if every sampled read/write succeeds.
+
+The portable `slot2_sweep` CTest checks a synthetic 8 MiB bank at both
+32 and 64 sample densities, verifies byte-for-byte preservation of all
+8 MiB, and ensures absent/banked/invalid memories fail without touching
+data. The melonDS CI workflow independently boots the same native ROM
+with and without the emulator's emulated Memory Expansion Pak. **A
+successful sampled sweep proves those sampled words only, not reliable
+contiguous PSP guest memory, complete physical RAM integrity, real
+hardware access timing, or a feasible commercial PSP game.** The DS
+emulator still does not allocate PSP guest RAM in Slot-2.
