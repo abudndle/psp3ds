@@ -10,7 +10,7 @@ for required in (
  'skylyrac/blocksds:slim-latest',
  'bash scripts/build_nds.sh',
  'actions/download-artifact@v4',
- 'melonDS-emu/melonDS/releases/latest',
+ 'melonDS-emu/melonDS/releases/download/1.1',
  'xvfb-run',
  'bash scripts/capture_melonds_ci.sh melonds-test/psp3ds_nds.nds',
  'melonds-evidence/melonds-window.png',
