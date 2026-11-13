@@ -1,9 +1,12 @@
 ## Primary commercial compatibility target: Jetpack Joyride (PSP minis)
 
 **Jetpack Joyride (2012 PSP PlayStation minis edition)** is the designated first
-commercial title for PSP3DS compatibility development on **New 3DS**, with an
-additional, independently evaluated **original DS / DSi feasibility track**.
-Current status on all three targets: **not tested / not playable**. The
+commercial title for PSP3DS compatibility development on **New 3DS** and
+**original 3DS / 3DS XL**, with independently evaluated **original DS / DS Lite**,
+**original DS / DS Lite + Slot-2 Memory Expansion Pak**, and **DSi** tracks.
+Current Jetpack Joyride status on every target: **not tested / not playable**.
+The Slot-2 RAM Pak adds memory on original DS/DS Lite only; it does not boost
+CPU speed and cannot be used with DSi or 3DS. The
 existing `.nds` is a synthetic demonstration, **not** PSP game execution. See [Jetpack Joyride target roadmap](docs/jetpack-joyride-target.md)
 for the ordered engineering checkpoints, legal asset-handling requirements,
 and evidence needed before claiming boot or gameplay.
