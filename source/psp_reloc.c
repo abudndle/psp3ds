@@ -68,9 +68,11 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
    continue;
   }
   if(type==6) {
-   /* Paired low halves must sign-extend; ORI is allowed standalone only. */
+   /* Load/store offsets sign-extend just like ADDIU. */
    unsigned opcode=old>>26;
-   if(opcode!=9 && (opcode!=13 || hi_count))goto cleanup; /* ADDIU, or standalone ORI */
+   int load_store = (opcode >= 0x20 && opcode <= 0x26) ||
+                    (opcode >= 0x28 && opcode <= 0x2e);
+   if (!load_store && opcode != 9 && (opcode != 13 || hi_count)) goto cleanup;
    int32_t low=(int32_t)(int16_t)(old&0xffffu);
    for(size_t j=0;j<hi_count;j++) {
     if(pending[j].addr_base!=addr_base || used>=count)goto cleanup;
