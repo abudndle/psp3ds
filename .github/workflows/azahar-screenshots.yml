@@ -8,6 +8,9 @@ on:
       - 'tests/test_azahar_screenshot_ci.py'
       - 'scripts/verify_emulator_capture.py'
       - 'scripts/verify_capture_artifact.py'
+      - 'scripts/verify_azahar_boot_marker.py'
+      - 'tests/test_azahar_boot_marker.py'
+      - 'source/main.c'
   pull_request:
     paths:
       - '.github/workflows/azahar-screenshots.yml'
@@ -103,6 +106,12 @@ jobs:
               screenshots/psp3ds-azahar.png
           test -s screenshots/psp3ds-azahar.png
           file screenshots/psp3ds-azahar.png
+      - name: Verify PSP3DS application boot marker inside emulator image
+        if: always()
+        run: |
+          python3 scripts/verify_azahar_boot_marker.py \
+            --image screenshots/psp3ds-azahar.png \
+            --report screenshots/boot-marker.json
       - name: Record screenshot authenticity and executable checksum
         if: always()
         shell: bash
@@ -128,6 +137,7 @@ jobs:
             screenshots/psp3ds.3dsx
             screenshots/psp3ds-azahar.png
             screenshots/evidence.json
+            screenshots/boot-marker.json
             screenshots/azahar-stdout.log
             screenshots/azahar-stderr.log
           if-no-files-found: warn

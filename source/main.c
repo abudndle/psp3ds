@@ -6,6 +6,27 @@
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
 }
+/* Boot-test signature: three highly saturated bars on the lower LCD.
+ * This only proves that our own 3DS homebrew frame is displayed by Azahar.
+ * It is not PSP game execution or a general 3DS hardware compatibility test.
+ * libctru's default GSP_BGR8_OES framebuffer has 240x320 rotated pixels. */
+static void psp3ds_draw_boot_marker(void) {
+ u16 width=0,height=0;
+ u8 *fb=gfxGetFramebuffer(GFX_BOTTOM,GFX_LEFT,&width,&height);
+ if(!fb || !width || !height)return;
+ for(unsigned y=0;y<height;y++){
+  unsigned band=(3u*y)/height;
+  unsigned char b=band==0?255:band==1?255:0;
+  unsigned char g=band==0?0:255;
+  unsigned char r=band==1?0:255;
+  for(unsigned x=0;x<width;x++){
+   size_t offset=((size_t)y*width+x)*3u;
+   fb[offset]=b;
+   fb[offset+1]=g;
+   fb[offset+2]=r;
+  }
+ }
+}
 int main(void) {
  osSetSpeedupEnable(true); /* Request New 3DS high-speed mode; old models unaffected. */
  gfxInitDefault();consoleInit(GFX_TOP,NULL);
@@ -35,6 +56,12 @@ int main(void) {
   fclose(f);
  } else printf("No EBOOT.PBP found.\n");
  printf("\nSTART: exit\n");
- while(aptMainLoop()){hidScanInput();if(hidKeysDown()&KEY_START)break;gspWaitForVBlank();}
+ while(aptMainLoop()){
+  hidScanInput();if(hidKeysDown()&KEY_START)break;
+  psp3ds_draw_boot_marker();
+  gfxFlushBuffers();
+  gfxSwapBuffers();
+  gspWaitForVBlank();
+ }
  gfxExit();osSetSpeedupEnable(false);return 0;
 }

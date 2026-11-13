@@ -15,6 +15,9 @@ checks=(
     'xvfb-run',
     'x11-apps',
     'libopengl0',
+    'scripts/verify_azahar_boot_marker.py',
+    'screenshots/boot-marker.json',
+    'source/main.c',
     'scripts/capture_azahar_ci.sh',
     'psp3ds-azahar.png',
     'if: always()',
@@ -29,6 +32,11 @@ for check in checks:
     assert check in workflow, 'Missing Azahar workflow guard: '+check
 assert '              screenshots/psp3ds-azahar.png\n            screenshots/evidence.json' not in workflow, 'Unintended evidence.json shell invocation after capture'
 assert 'python3 scripts/verify_capture_artifact.py' in workflow, 'Downloaded artifact integrity verification missing'
+marker_lines=[line.rstrip() for line in workflow.splitlines() if
+              line.strip().startswith(('python3 scripts/verify_azahar_boot_marker.py',
+                                       '--image screenshots/psp3ds-azahar.png'))]
+assert len(marker_lines)==2 and all(line.endswith(chr(92)) and
+              not line.endswith(chr(92)*2) for line in marker_lines), 'Boot marker command must have exactly one shell continuation backslash'
 source=script.read_text()
 for check in ('kill -0', 'xdotool search --onlyvisible', 'xwd -silent', 'Screenshot appears blank'):
     assert check in source, 'Missing screenshot authenticity check: '+check
