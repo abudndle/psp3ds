@@ -26,6 +26,14 @@ jobs:
         run: make -j2
       - name: Check native output
         run: test -s psp3ds.3dsx
+      - name: Upload actual .3dsx
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-native-3dsx
+          path: |
+            psp3ds.3dsx
+            psp3ds.smdh
+          if-no-files-found: error
       - name: Install Linux dependencies for CIA packaging
         shell: bash
         run: |
@@ -50,12 +58,4 @@ jobs:
         with:
           name: psp3ds-native-cia
           path: psp3ds.cia
-          if-no-files-found: error
-      - name: Upload actual .3dsx
-        uses: actions/upload-artifact@v4
-        with:
-          name: psp3ds-native-3dsx
-          path: |
-            psp3ds.3dsx
-            psp3ds.smdh
           if-no-files-found: error
