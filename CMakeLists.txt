@@ -73,3 +73,7 @@ add_test(NAME io COMMAND test_io)
 add_executable(test_real_nids tests/test_real_nids.c)
 target_link_libraries(test_real_nids PRIVATE psp_core)
 add_test(NAME real_nids COMMAND test_real_nids)
+
+add_executable(test_module_link tests/test_module_link.c)
+target_link_libraries(test_module_link PRIVATE psp_core)
+add_test(NAME module_link COMMAND test_module_link)
