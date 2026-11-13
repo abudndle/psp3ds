@@ -177,3 +177,7 @@ add_test(NAME platform_budget COMMAND test_platform_budget)
 add_executable(test_features tests/test_features.c)
 target_link_libraries(test_features PRIVATE psp_core)
 add_test(NAME feature_parity COMMAND test_features)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME feature_wiring COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_feature_wiring.py)
+endif()
