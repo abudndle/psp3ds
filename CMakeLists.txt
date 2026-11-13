@@ -9,3 +9,7 @@ foreach(name core loader integer allegrex4 exceptions hle imports prx module rel
   target_link_libraries(test_${name} PRIVATE psp_core)
   add_test(NAME ${name} COMMAND test_${name})
 endforeach()
+
+add_executable(test_reloc_hilo tests/test_reloc_hilo.c)
+target_link_libraries(test_reloc_hilo PRIVATE psp_core)
+add_test(NAME reloc_hilo COMMAND test_reloc_hilo)
