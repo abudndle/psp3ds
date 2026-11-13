@@ -144,6 +144,18 @@ int psp_cpu_step(PspCpu *c) {
       } else status=-1;
       break;
     }
+    case 17: /* COP1 register transfers preserve all 32 bits. */
+      if ((instr & 0x7ffu) != 0) status=-1;
+      else if (rs==0) c->gpr[rt]=c->fpr[rd];
+      else if (rs==4) c->fpr[rd]=b;
+      else status=-1;
+      break;
+    case 49: case 57: /* LWC1 / SWC1 */
+      addr=a+(uint32_t)imm;
+      if ((addr&3u) || translate(c,addr,4,&off)) status=-2;
+      else if (op==49) c->fpr[rt]=r32(c->ram+off);
+      else store32(c->ram+off,c->fpr[rt]);
+      break;
     case 32: case 33: case 35: case 36: case 37:
       addr=a+(uint32_t)imm;
       if (((op==33 || op==37) && (addr&1u)) || (op==35 && (addr&3u)) ||
