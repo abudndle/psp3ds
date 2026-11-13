@@ -101,3 +101,7 @@ endif()
 if(Python3_Interpreter_FOUND)
   add_test(NAME capture_manifest COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_capture_manifest.py)
 endif()
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME capture_artifact COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_capture_artifact.py)
+endif()
