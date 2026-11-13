@@ -91,6 +91,16 @@ jobs:
           timeout 90s xvfb-run -a -s '-screen 0 1280x900x24' \
             bash scripts/capture_melonds_ci.sh "$rom" screenshots/psp3ds-melonds.png
           file screenshots/psp3ds-melonds.png
+      - name: Record screenshot authenticity and executable checksum
+        if: always()
+        shell: bash
+        run: |
+          rom="$(find build-nds -maxdepth 1 -type f -name '*.nds' -print -quit 2>/dev/null || true)"
+          python3 scripts/verify_emulator_capture.py \
+            --emulator melonds \
+            --executable "${rom:-build-nds/missing.nds}" \
+            --screenshot screenshots/psp3ds-melonds.png \
+            --manifest screenshots/evidence.json || true
       - name: Upload actual melonDS screenshot and logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -98,6 +108,7 @@ jobs:
           name: psp3ds-melonds-real-screenshot-or-diagnostics
           path: |
             screenshots/psp3ds-melonds.png
+            screenshots/evidence.json
             screenshots/melonds-stdout.log
             screenshots/melonds-stderr.log
           if-no-files-found: warn
