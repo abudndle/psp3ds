@@ -76,6 +76,11 @@ int psp_perf_texture_seen(PspPerf *p,uint32_t key,uint32_t generation){
 void psp_perf_invalidate_textures(PspPerf *p){if(p)memset(p->texture_valid,0,sizeof(p->texture_valid));}
 int psp_perf_read_sector(PspPerf *p,uint32_t lba,PspSectorRead reader,void *context,uint8_t *out){
  if(!p || !reader || !out)return -1;
+ if(p->sector_reader_identity!=reader || p->sector_context_identity!=context){
+  psp_perf_media_changed(p);
+  p->sector_reader_identity=reader;
+  p->sector_context_identity=context;
+ }
  for(unsigned i=0;i<PSP_PERF_SECTOR_SLOTS;i++)if(p->sector_valid[i] && p->sector_lba[i]==lba){
   memcpy(out,p->sector_data[i],PSP_PERF_SECTOR_SIZE);p->sector_age[i]=++p->tick;return 1;
  }
