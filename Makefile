@@ -10,7 +10,7 @@ INCLUDES := include
 ARCH := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 CFLAGS := -O2 -Wall -Wextra -std=c11 -ffunction-sections $(ARCH) $(INCLUDE) -D__3DS__
 LDFLAGS := -specs=3dsx.specs $(ARCH)
-LIBS := -lctru -lm
+LIBS := -lctru -lz -lm
 LIBDIRS := $(CTRULIB)
 export OUTPUT := $(CURDIR)/$(TARGET)
 export VPATH := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
