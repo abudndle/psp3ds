@@ -7,7 +7,8 @@
 - Bounds-checked loader for plain, unencrypted, fixed-address ELF32/MIPS ET_EXEC segments, including BSS and executable entry-point validation; no encrypted retail executable support, PRX relocation or PSP firmware APIs.
 - MIPS/Allegrex integer interpreter subset including arithmetic, branches, delay slots, branch-likely annulment, unaligned memory access, HI/LO, basic CP0 diagnostic state and syscall/break/overflow traps.
 - Minimal native 3DS Homebrew Launcher entry point (reads and inspects sdmc:/psp3ds/EBOOT.PBP up to 8MiB).
-- Five portable host regression test suites, exercised via GitHub Actions.
+- Six portable host regression test suites, exercised via GitHub Actions.
+- Initial HLE syscall dispatcher with explicitly bound 20-bit syscall IDs and deterministic system-time services (`sceKernelGetSystemTimeLow`, `sceKernelGetSystemTimeWide`, `sceKernelGetSystemTime` equivalents). Tests cover unknown syscalls, invalid guest pointers and delay-slot resumption. This is NOT PSP firmware compatibility.
 
 ## Host validation
 ```sh
@@ -20,7 +21,7 @@ ctest --test-dir build-host --output-on-failure
 Install devkitPro 3DS toolchain, devkitARM and libctru, then run `make`. This build path has **not been verified** with actual toolchain or hardware.
 
 ## Important limitations
-The PSP kernel/HLE, module import resolver, threads, VFPU/FPU, GPU, audio and commercial-game support are NOT implemented. Source-level host tests do not demonstrate a playable emulator.
+Most PSP kernel HLE, PRX module import resolution, threads, VFPU/FPU, GPU, audio and commercial-game support are NOT implemented. The syscall binding table is currently configured manually for tests, not generated from game imports. Source-level host tests do not demonstrate a playable emulator.
 
 ## Milestones
 1. [x] Header identification
@@ -28,8 +29,8 @@ The PSP kernel/HLE, module import resolver, threads, VFPU/FPU, GPU, audio and co
 3. [x] Expanded integer instruction subset
 4. [x] Unaligned memory and branch-likely subset
 5. [x] CPU exception and CP0 diagnostic groundwork
-6. [ ] Kernel syscall dispatch and memory mapping
-7. [ ] PSP threads, filesystem and module HLE
+6. [x] Initial syscall dispatcher and basic guest pointer translation (limited time services only)
+7. [ ] Real PSP module import resolution, thread scheduling, filesystem and module HLE
 8. [ ] GPU, audio and controls
 9. [ ] Commercial game execution and hardware optimization
 
