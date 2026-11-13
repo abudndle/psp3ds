@@ -71,7 +71,8 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
    /* Load/store offsets sign-extend just like ADDIU. */
    unsigned opcode=old>>26;
    int load_store = (opcode >= 0x20 && opcode <= 0x26) ||
-                    (opcode >= 0x28 && opcode <= 0x2e);
+                    (opcode >= 0x28 && opcode <= 0x2e) ||
+                    opcode == 0x31 || opcode == 0x39; /* LWC1, SWC1 */
    if (!load_store && opcode != 9 && (opcode != 13 || hi_count)) goto cleanup;
    int32_t low=(int32_t)(int16_t)(old&0xffffu);
    for(size_t j=0;j<hi_count;j++) {

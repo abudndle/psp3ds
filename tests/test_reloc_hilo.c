@@ -52,6 +52,13 @@ int main(void){
  reset(mem,&cpu,s);wr(mem+8,0x3c081234);wr(mem+12,0x8d087ff0);
  assert(psp_reloc_apply(&cpu,recs,16,s,2)==0);
  assert(rd(mem+8)==0x3c081235 && rd(mem+12)==0x8d088ff0);
+ /* COP1 loads and stores also use a signed 16-bit offset. */
+ const uint32_t cop1[]={0xc5087ff0u,0xe5087ff0u};
+ for(size_t i=0;i<sizeof cop1/sizeof cop1[0];i++){
+  reset(mem,&cpu,s);wr(mem+8,0x3c081234);wr(mem+12,cop1[i]);
+  assert(psp_reloc_apply(&cpu,recs,16,s,2)==0);
+  assert(rd(mem+8)==0x3c081235 && rd(mem+12)==cop1[i]+0x1000u);
+ }
  reset(mem,&cpu,s);wr(mem+8,0x3c081234);wr(mem+12,0x01094021);
  memcpy(before,mem,sizeof mem);
  assert(psp_reloc_apply(&cpu,recs,16,s,2)<0 && memcmp(mem,before,sizeof mem)==0);
