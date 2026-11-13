@@ -2,6 +2,7 @@
 /* PSP IoFileMgrForUser NIDs confirmed against PSP library documentation.
  * Unknown calls are not treated as successfully implemented. */
 static const PspExport known_exports[] = {
+ {"sceGe_user",0xe47e40e4u,PSP_HLE_GE_EDRAM_ADDR},
  {"sceCtrl",0x1f4011e6u,PSP_HLE_CTRL_SET_MODE},
  {"sceCtrl",0x6a2774f3u,PSP_HLE_CTRL_SET_CYCLE},
  {"IoFileMgrForUser",0x27eb27b8u,PSP_HLE_IO_LSEEK64},

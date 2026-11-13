@@ -20,11 +20,17 @@ int psp_inspect(const uint8_t *d, size_t n, PspFileInfo *o) {
   if (n>=0x8006 && memcmp(d+0x8001,"CD001",5)==0) { o->type=PSP_FILE_ISO; return 0; }
   return -3;
 }
-static int translate(PspCpu *c,uint32_t addr, size_t bytes,size_t *off) {
-  if (addr<c->ram_base) return -1;
-  uint64_t x=(uint64_t)addr-c->ram_base;
-  if (x>c->ram_size || bytes>c->ram_size-(size_t)x) return -1;
-  *off=(size_t)x;return 0;
+static uint8_t *translate(PspCpu *c,uint32_t addr,size_t bytes) {
+  if (c->edram && addr>=PSP_GE_EDRAM_BASE && addr-PSP_GE_EDRAM_BASE<PSP_GE_EDRAM_SIZE) {
+    size_t offset=addr-PSP_GE_EDRAM_BASE;
+    size_t size=c->edram_size<PSP_GE_EDRAM_SIZE ? c->edram_size : PSP_GE_EDRAM_SIZE;
+    if (offset<=size && bytes<=size-offset) return c->edram+offset;
+    return NULL;
+  }
+  if (addr<c->ram_base) return NULL;
+  uint64_t offset=(uint64_t)addr-c->ram_base;
+  if (offset>c->ram_size || bytes>c->ram_size-(size_t)offset) return NULL;
+  return c->ram+(size_t)offset;
 }
 void psp_cpu_init(PspCpu *c,uint8_t *ram,size_t ram_size,uint32_t base,uint32_t start) {
   memset(c,0,sizeof(*c));c->ram=ram;c->ram_size=ram_size;c->ram_base=base;c->pc=start;c->next_pc=start+4;
@@ -72,9 +78,9 @@ static uint32_t trunc_single_to_word(uint32_t bits) {
 }
 int psp_cpu_step(PspCpu *c) {
   if (!c || !c->ram || c->halted) return -2;
-  size_t off;
-  if ((c->pc & 3u) || translate(c,c->pc,4,&off)) { c->fault=-2; return -2; }
-  uint32_t instr=r32(c->ram+off),op=instr>>26,rs=(instr>>21)&31,rt=(instr>>16)&31;
+  uint8_t *ptr;
+  if ((c->pc & 3u) || !(ptr=translate(c,c->pc,4))) { c->fault=-2; return -2; }
+  uint32_t instr=r32(ptr),op=instr>>26,rs=(instr>>21)&31,rt=(instr>>16)&31;
   uint32_t rd=(instr>>11)&31,sh=(instr>>6)&31,fn=instr&63;
   uint32_t uimm=instr&65535u;
   int32_t imm=(int32_t)signed16((uint16_t)uimm);
@@ -172,18 +178,18 @@ int psp_cpu_step(PspCpu *c) {
       break;
     case 49: case 57: /* LWC1 / SWC1 */
       addr=a+(uint32_t)imm;
-      if ((addr&3u) || translate(c,addr,4,&off)) status=-2;
-      else if (op==49) c->fpr[rt]=r32(c->ram+off);
-      else store32(c->ram+off,c->fpr[rt]);
+      if ((addr&3u) || !(ptr=translate(c,addr,4))) status=-2;
+      else if (op==49) c->fpr[rt]=r32(ptr);
+      else store32(ptr,c->fpr[rt]);
       break;
     case 32: case 33: case 35: case 36: case 37:
       addr=a+(uint32_t)imm;
       if (((op==33 || op==37) && (addr&1u)) || (op==35 && (addr&3u)) ||
-          translate(c,addr,op==35?4:((op==33 || op==37)?2:1),&off)) status=-2;
-      else if(op==32) c->gpr[rt]=(uint32_t)(int32_t)(int8_t)c->ram[off];
-      else if(op==36) c->gpr[rt]=c->ram[off];
-      else if(op==35) c->gpr[rt]=r32(c->ram+off);
-      else {uint16_t val=r16(c->ram+off);c->gpr[rt]=(op==33)?(uint32_t)(int32_t)signed16(val):val;}
+          !(ptr=translate(c,addr,op==35?4:((op==33 || op==37)?2:1)))) status=-2;
+      else if(op==32) c->gpr[rt]=(uint32_t)(int32_t)(int8_t)*ptr;
+      else if(op==36) c->gpr[rt]=*ptr;
+      else if(op==35) c->gpr[rt]=r32(ptr);
+      else {uint16_t val=r16(ptr);c->gpr[rt]=(op==33)?(uint32_t)(int32_t)signed16(val):val;}
       break;
     case 34: case 38:
       addr=a+(uint32_t)imm;
@@ -191,29 +197,29 @@ int psp_cpu_step(PspCpu *c) {
         uint32_t aligned=addr&~3u, k=addr&3u;
         uint32_t merged=b;
         unsigned first=(op==34)?0:k, last=(op==34)?k:3;
-        if (translate(c,aligned+first,last-first+1,&off)) {status=-2;break;}
+        if (!(ptr=translate(c,aligned+first,last-first+1))) {status=-2;break;}
         for (unsigned i=first;i<=last;i++) {
           unsigned dest=(op==34)?(3-k+i):(i-k);
-          merged=(merged&~(0xffu<<(8*dest))) | ((uint32_t)c->ram[off+i-first]<<(8*dest));
+          merged=(merged&~(0xffu<<(8*dest))) | ((uint32_t)ptr[i-first]<<(8*dest));
         }
         c->gpr[rt]=merged;
       }
       break;
     case 48: /* LL */
       addr=a+(uint32_t)imm;
-      if ((addr&3u) || translate(c,addr,4,&off)) status=-2;
+      if ((addr&3u) || !(ptr=translate(c,addr,4))) status=-2;
       else {
-        c->gpr[rt]=r32(c->ram+off);
+        c->gpr[rt]=r32(ptr);
         c->ll_address=addr;
         c->ll_valid=1;
       }
       break;
     case 56: /* SC */
       addr=a+(uint32_t)imm;
-      if ((addr&3u) || translate(c,addr,4,&off)) status=-2;
+      if ((addr&3u) || !(ptr=translate(c,addr,4))) status=-2;
       else {
         int success=c->ll_valid && c->ll_address==addr;
-        if (success) store32(c->ram+off,b);
+        if (success) store32(ptr,b);
         c->gpr[rt]=(uint32_t)success;
       }
       c->ll_valid=0;
@@ -223,20 +229,20 @@ int psp_cpu_step(PspCpu *c) {
       {
         uint32_t aligned=addr&~3u, k=addr&3u;
         unsigned first=(op==42)?0:k, last=(op==42)?k:3;
-        if (translate(c,aligned+first,last-first+1,&off)) {status=-2;break;}
+        if (!(ptr=translate(c,aligned+first,last-first+1))) {status=-2;break;}
         for (unsigned i=first;i<=last;i++) {
           unsigned src=(op==42)?(3-k+i):(i-k);
-          c->ram[off+i-first]=(uint8_t)(b>>(8*src));
+          ptr[i-first]=(uint8_t)(b>>(8*src));
         }
       }
       break;
     case 40: case 41: case 43:
       addr=a+(uint32_t)imm;
       if (((op==41) && (addr&1u)) || (op==43 && (addr&3u)) ||
-          translate(c,addr,op==43?4:(op==41?2:1),&off)) status=-2;
-      else if(op==40) c->ram[off]=(uint8_t)b;
-      else if(op==41) store16(c->ram+off,b);
-      else store32(c->ram+off,b);
+          !(ptr=translate(c,addr,op==43?4:(op==41?2:1)))) status=-2;
+      else if(op==40) *ptr=(uint8_t)b;
+      else if(op==41) store16(ptr,b);
+      else store32(ptr,b);
       break;
     default: status=-1;
   }

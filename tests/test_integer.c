@@ -132,4 +132,13 @@ static void test_trunc_single(void) {
   assert(c.fpr[13]==expected[i]);
  }
 }
-int main(void){test_trunc_single();test_conditional_move();test_fcr31();test_ll_sc();test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}
+ static void test_edram(void) {
+ uint8_t mem[12]={0}, edram[4]={0}; PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.edram=edram;c.edram_size=sizeof edram;
+ c.gpr[4]=PSP_GE_EDRAM_BASE;c.gpr[5]=0x12345678u;
+ execute(&c,mem,I(43,4,5,0));execute(&c,mem,I(35,4,6,0));
+ assert(c.gpr[6]==0x12345678u && edram[0]==0x78);
+ wr(mem+8,I(35,4,6,4));assert(psp_cpu_step(&c)==-2);
+}
+int main(void){test_edram();test_trunc_single();test_conditional_move();test_fcr31();test_ll_sc();test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}

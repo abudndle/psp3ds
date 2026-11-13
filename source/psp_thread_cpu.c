@@ -57,6 +57,8 @@ static int32_t add_context(PspThreadCpu *r, uint8_t priority,
  /* A retired active task must not later flush into its successor's slot. */
  if (r->slot_id[index]==r->active_id) r->active_id=0;
  psp_cpu_init(&r->saved[index],r->ram,r->ram_size,r->ram_base,entry_pc);
+ r->saved[index].edram=r->live->edram;
+ r->saved[index].edram_size=r->live->edram_size;
  r->saved[index].gpr[29]=stack_pointer;
  r->stack_sizes[index]=0;
  r->slot_id[index]=(uint32_t)id;
