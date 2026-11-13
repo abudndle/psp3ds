@@ -1,0 +1,88 @@
+name: Provision Nintendo SDKs and Linux emulators
+on:
+  workflow_dispatch:
+    inputs:
+      install_emulators:
+        description: 'Also install Linux melonDS and Azahar (downloads large packages)'
+        type: boolean
+        required: false
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/install_blocksds_ubuntu.sh'
+      - 'scripts/install_linux_emulators.sh'
+      - '.github/workflows/linux-tools.yml'
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-toolchains-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  wonderful-blocksds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      WONDERFUL_TOOLCHAIN: /opt/wonderful
+      BLOCKSDS: /opt/wonderful/thirdparty/blocksds/core
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ubuntu prerequisites
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends curl ca-certificates tar make
+      - name: Install Wonderful Toolchain and BlocksDS as in Mii Maker DS
+        run: |
+          sudo mkdir -p /opt/wonderful
+          sudo chown "$(id -u):$(id -g)" /opt/wonderful
+          bash scripts/install_blocksds_ubuntu.sh
+          echo '/opt/wonderful/bin' >> "$GITHUB_PATH"
+          echo '/opt/wonderful/toolchain/gcc-arm-none-eabi/bin' >> "$GITHUB_PATH"
+      - name: Verify native SDK files
+        run: |
+          test -s "$BLOCKSDS/templates/rom_arm9_only/Makefile"
+          command -v wf-pacman
+          command -v arm-none-eabi-gcc
+          arm-none-eabi-gcc --version | head -1
+      - name: Compile DS-compatible shared PSP core demo
+        run: bash scripts/build_nds.sh
+      - name: Upload real NDS binary on successful compilation
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-nds-from-installed-blocksds
+          path: build-nds/*.nds
+          if-no-files-found: error
+  devkitpro-3ds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    container:
+      image: devkitpro/devkitarm:20260610
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify devkitPro and compile native 3DS binary
+        run: |
+          test -n "${DEVKITARM:-}"
+          test -f "$DEVKITARM/3ds_rules"
+          test -f "$DEVKITPRO/portlibs/3ds/include/zlib.h"
+          make -j2
+          test -s psp3ds.3dsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-3dsx-from-devkitpro
+          path: psp3ds.3dsx
+          if-no-files-found: error
+  linux-emulators:
+    if: github.event_name == 'workflow_dispatch' && inputs.install_emulators
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official melonDS AppImage and Azahar Flatpak
+        run: bash scripts/install_linux_emulators.sh
+      - name: Verify downloaded emulator installations
+        run: |
+          test -s "$HOME/.local/bin/melonDS.AppImage"
+          file "$HOME/.local/bin/melonDS.AppImage"
+          flatpak --user info org.azahar_emu.Azahar
+      - name: Report emulator installation scope
+        run: |
+          echo 'Installed in this disposable CI runner, not inside ChatGPT or on your PC.'
+          echo 'GUI launch and ROM boot are separate smoke-test milestones.'
