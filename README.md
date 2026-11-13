@@ -258,3 +258,34 @@ Commercial PSP games (including Jetpack Joyride) remain unplayable.
 The next true performance milestones require runnable guest workloads,
 PSP thread/interrupt HLE, rendering/audio backends, native .3dsx/.nds
 build verification, and measurements on actual hardware/emulators.
+
+## Shared native builds, ROM catalog and release verification (2026-11-13)
+
+This milestone **does not make commercial PSP games playable**.
+
+- `scripts/build_nds.sh` now stages BlocksDS's official ARM9-only template
+  without retaining SDK example sources. It builds a shared PSP MIPS CPU
+  demonstration only. The new `.github/workflows/native-nds.yml` runs in
+  the official `skylyrac/blocksds:slim-latest` container and uploads a
+  nonempty `.nds` if compilation succeeds. A real cross-build and melonDS
+  boot have **not yet been confirmed**.
+- The existing devkitARM workflow targets a native `.3dsx`; its success
+  and an Azahar run remain unverified.
+- `scripts/build_cia.sh` requires a real compiled `.3dsx` and externally
+  installed `cxitool` plus `makerom`. It fails on missing prerequisites
+  rather than producing a fake `.cia`.
+- `psp_catalog_scan()` enumerates ISO, CSO, and PBP names in `psp/roms`
+  without entering the `save` subdirectory. The 3DS entry point lists
+  discovered names from `sdmc:/psp/roms`. Detection is **not gameplay**.
+- `scripts/package_release.py` packages the requested empty
+  `psp/roms/save/` structure and any nonempty native binaries that
+  actually exist. It never includes the user-supplied Jetpack Joyride CSO
+  or any other proprietary game content. `psp_game_save_dir()` can generate
+  per-game paths, but PSP savedata kernel services are still missing.
+- **Linux verification:** 22/22 ordinary tests and 22/22 sanitizer tests
+  passed. The BlocksDS staging path was also tested with a mock build
+  command, **not** a real Nintendo cross-compiler. Neither melonDS nor
+  Azahar is installed in this environment.
+
+Actual gameplay for Jetpack Joyride is still blocked by its encrypted
+`~PSP` executable and unimplemented PSP kernel/GPU/audio services.
