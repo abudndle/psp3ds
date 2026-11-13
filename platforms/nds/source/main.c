@@ -112,6 +112,12 @@ int main(void){
  consoleDemoInit();
  printf("PSP3DS / DS research\nMode: %s\n",isDSiMode()?"DSi-enhanced":"Nintendo DS");
  printf("Shared CPU; NOT PSP games\n\n");
+ PspPlatformBudget policy;
+ PspTarget target=isDSiMode()?PSP_TARGET_DSI:PSP_TARGET_DS;
+ if(psp_platform_budget_choose(target,&policy)==0)
+  printf("Policy: %s; hot %luK\n",policy.name,
+         (unsigned long)(policy.hot_ram_budget/1024u));
+
  test_shared_cpu();
  benchmark_shared_mips();
  test_slot2_ram();
