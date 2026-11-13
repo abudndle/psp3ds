@@ -2,6 +2,9 @@
 /* PSP IoFileMgrForUser NIDs confirmed against PSP library documentation.
  * Unknown calls are not treated as successfully implemented. */
 static const PspExport known_exports[] = {
+ {"sceUmdUser",0x46ebb729u,PSP_HLE_UMD_CHECK},
+ {"sceUmdUser",0xaee7404du,PSP_HLE_UMD_REGISTER},
+ {"scePower",0x04b7766eu,PSP_HLE_POWER_REGISTER},
  {"ThreadManForUser",0xe81caf8fu,PSP_HLE_CREATE_CALLBACK},
  {"LoadExecForUser",0x4ac57943u,PSP_HLE_REGISTER_EXIT_CALLBACK},
  {"sceImpose",0x36aa6e91u,PSP_HLE_IMPOSE_LANGUAGE},

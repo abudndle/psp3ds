@@ -22,7 +22,7 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_PART_HEAD && service!=PSP_HLE_PART_FREE &&
       service!=PSP_HLE_STDIN && service!=PSP_HLE_STDOUT && service!=PSP_HLE_STDERR && service!=PSP_HLE_IO_WRITE &&
       service!=PSP_HLE_SET_GPO && service!=PSP_HLE_IMPOSE_LANGUAGE &&
-      service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK)) return -1;
+      service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK && service!=PSP_HLE_POWER_REGISTER && service!=PSP_HLE_UMD_REGISTER && service!=PSP_HLE_UMD_CHECK)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -105,6 +105,9 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_UMD_CHECK:
+   v0=hle->io && hle->io->umd && hle->io->umd->kind!=PSP_UMD_NONE;
+   break;
  case PSP_HLE_SET_GPO:hle->guest_debug_output=cpu->gpr[4];break;
  case PSP_HLE_CREATE_CALLBACK:{
    size_t off;
@@ -122,12 +125,35 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
    }
    break;
  }
+ case PSP_HLE_POWER_REGISTER:{
+   uint32_t slot=cpu->gpr[4], uid=cpu->gpr[5], index=uid-0x3000u;
+   const unsigned slots=sizeof hle->power_callbacks/sizeof hle->power_callbacks[0];
+   v0=0x80000102u;
+   if (slot!=UINT32_MAX && slot>=slots) break;
+   v0=0x80000100u;
+   if (index>=sizeof hle->callbacks/sizeof hle->callbacks[0] ||
+       !hle->callbacks[index].owner) break;
+   if (slot==UINT32_MAX) {
+    for (slot=0;slot<slots && hle->power_callbacks[slot];slot++) {}
+    v0=0x80000022u;
+    if (slot==slots) break;
+    v0=slot;
+   } else {
+    v0=0x80000020u;
+    if (hle->power_callbacks[slot]) break;
+    v0=0;
+   }
+   hle->power_callbacks[slot]=uid;
+   break;
+ }
+ case PSP_HLE_UMD_REGISTER:
  case PSP_HLE_REGISTER_EXIT_CALLBACK:{
    uint32_t index=cpu->gpr[4]-0x3000u;
    v0=0x800201a1u;
    if (index<sizeof hle->callbacks/sizeof hle->callbacks[0] &&
        hle->callbacks[index].owner) {
-    hle->exit_callback_uid=cpu->gpr[4];
+    if (binding->service==PSP_HLE_UMD_REGISTER) hle->umd_callback_uid=cpu->gpr[4];
+    else hle->exit_callback_uid=cpu->gpr[4];
     v0=0;
    }
    break;
