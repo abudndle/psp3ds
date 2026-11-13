@@ -12,7 +12,7 @@ from PIL import Image, UnidentifiedImageError
 
 def tag(pixel):
     r, g, b = pixel[:3]
-    if r < 65 and g > 185 and b > 185:
+    if r < 65 and 100 < g < 195 and b > 200:
         return "sky"
     if 65 < r < 165 and 65 < g < 165 and b < 70:
         return "ground"
