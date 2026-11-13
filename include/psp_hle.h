@@ -30,7 +30,8 @@ typedef enum {
  PSP_HLE_KERNEL_START_THREAD=16,
  PSP_HLE_MODULE_ID_BY_ADDRESS=17,
  PSP_HLE_INTR_SUSPEND=18,
- PSP_HLE_INTR_RESUME=19
+ PSP_HLE_INTR_RESUME=19,
+ PSP_HLE_PART_ALLOC=20, PSP_HLE_PART_HEAD=21, PSP_HLE_PART_FREE=22
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
@@ -42,6 +43,9 @@ typedef struct {
  uint64_t uptime_us;
  uint32_t compiled_sdk_version;
  uint32_t compiler_version;
+ /* Caller reserves this guest arena outside module and stack mappings. */
+ uint32_t partition_low, partition_high, partition_next_uid;
+ struct { uint32_t address, size, uid; } partition_blocks[16];
  int interrupts_suspended;
  uint32_t module_base, module_size, module_id;
  int trace_unresolved_imports; /* Opt in to trapping when an unresolved import is called. */

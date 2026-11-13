@@ -84,6 +84,29 @@ int main(void) {
  cpu.gpr[4]=3;cpu.gpr[31]=BASE+176;
  assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
  assert(!hle.interrupts_suspended);
+ unsigned char arena[2048]={0};
+ psp_cpu_init(&cpu,arena,sizeof arena,BASE,BASE);
+ hle.partition_low=BASE+257;hle.partition_high=BASE+1536;
+ const PspImport memcalls[]={
+  {"SysMemUserForUser",0x237dbd4fu,BASE},
+  {"SysMemUserForUser",0x9d9a5ba1u,BASE+8},
+  {"SysMemUserForUser",0xb6d61d02u,BASE+16}
+ };
+ assert(psp_imports_link_known(&cpu,&hle,memcalls,3)==0);
+ cpu.gpr[4]=2;cpu.gpr[5]=BASE+32;cpu.gpr[6]=3;cpu.gpr[7]=257;
+ cpu.gpr[8]=512;cpu.gpr[31]=BASE+8;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ unsigned uid=cpu.gpr[2];
+ assert(uid>=0x2000 && uid<0x80000000u);
+ cpu.gpr[4]=uid;cpu.gpr[31]=BASE+16;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ assert(cpu.gpr[2]==BASE+512);
+ cpu.gpr[31]=BASE+8;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ assert(cpu.gpr[2]==0);
+ cpu.gpr[31]=BASE+24;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ assert(cpu.gpr[2]==0);
  puts("PASS: import NID lookup, stub patching, rollback, jr-delay-slot HLE");
  return 0;
 }

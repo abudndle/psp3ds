@@ -18,7 +18,8 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_SET_COMPILER_VERSION &&
       service!=PSP_HLE_KERNEL_CREATE_THREAD && service!=PSP_HLE_KERNEL_START_THREAD &&
       service!=PSP_HLE_MODULE_ID_BY_ADDRESS &&
-      service!=PSP_HLE_INTR_SUSPEND && service!=PSP_HLE_INTR_RESUME)) return -1;
+      service!=PSP_HLE_INTR_SUSPEND && service!=PSP_HLE_INTR_RESUME && service!=PSP_HLE_PART_ALLOC &&
+      service!=PSP_HLE_PART_HEAD && service!=PSP_HLE_PART_FREE)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -46,6 +47,44 @@ static int guest_ptr(PspCpu *cpu,uint32_t addr,size_t n,size_t *off) {
 static void write_u32le(uint8_t *p,uint32_t v) {
  for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(v>>(8*i));
 }
+#define PART_BLOCK_COUNT 16u
+static uint32_t alloc_partition(PspHle *hle, PspCpu *cpu) {
+ uint32_t size=cpu->gpr[7], align=cpu->gpr[8], mode=cpu->gpr[6];
+ size_t offset;
+ if (cpu->gpr[4]!=2 || (mode!=0 && mode!=3) || !size ||
+     !cpu->gpr[5] || guest_ptr(cpu,cpu->gpr[5],1,&offset)!=0 ||
+     hle->partition_high<=hle->partition_low ||
+     guest_ptr(cpu,hle->partition_low,hle->partition_high-hle->partition_low,&offset)!=0)
+  return 0x800200d9u;
+ if (mode==0) align=256;
+ if (!align || (align&(align-1))) return 0x800200d9u;
+ if (align<256) align=256;
+ unsigned slot=0;
+ while (slot<PART_BLOCK_COUNT && hle->partition_blocks[slot].uid) ++slot;
+ if (slot==PART_BLOCK_COUNT || hle->partition_next_uid>=0x7fffdfffu)
+  return 0x800200d9u;
+ uint64_t cursor=hle->partition_low;
+ uint64_t length=((uint64_t)size+255u)&~UINT64_C(255);
+ while (cursor<hle->partition_high) {
+  cursor=(cursor+align-1)&~((uint64_t)align-1);
+  if (cursor+length>hle->partition_high) break;
+  uint64_t next=cursor;
+  for (unsigned i=0;i<PART_BLOCK_COUNT;i++) {
+   uint64_t start=hle->partition_blocks[i].address;
+   uint64_t end=start+hle->partition_blocks[i].size;
+   if (hle->partition_blocks[i].uid && start<cursor+length && end>next)
+    next=end;
+  }
+  if (next==cursor) {
+   hle->partition_blocks[slot].address=(uint32_t)cursor;
+   hle->partition_blocks[slot].size=(uint32_t)length;
+   return hle->partition_blocks[slot].uid=0x2000u+(++hle->partition_next_uid);
+  }
+  cursor=next;
+ }
+ return 0x800200d9u;
+}
+
 int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  if(!hle || !cpu)return -2;
  int status=psp_cpu_step(cpu);
@@ -63,6 +102,19 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_PART_ALLOC:v0=alloc_partition(hle,cpu);break;
+ case PSP_HLE_PART_HEAD:
+ case PSP_HLE_PART_FREE:
+   v0=binding->service==PSP_HLE_PART_FREE ? 0x800200cbu : 0;
+   for (unsigned i=0;i<PART_BLOCK_COUNT;i++) {
+    if (!cpu->gpr[4] || hle->partition_blocks[i].uid!=cpu->gpr[4]) continue;
+    if (binding->service==PSP_HLE_PART_FREE) {
+     hle->partition_blocks[i].uid=0;
+     v0=0;
+    } else v0=hle->partition_blocks[i].address;
+    break;
+   }
+   break;
  case PSP_HLE_INTR_SUSPEND:
    v0=(uint32_t)!hle->interrupts_suspended;
    hle->interrupts_suspended=1;
