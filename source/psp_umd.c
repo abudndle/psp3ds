@@ -10,6 +10,7 @@ void psp_umd_unmount(PspUmd *d){
  if(d->kind==PSP_UMD_CSO)psp_cso_close(&d->cso);
  if(d->kind==PSP_UMD_ISO)psp_iso_close(&d->iso);
  d->kind=PSP_UMD_NONE;
+ d->generation++;
  psp_perf_media_changed(&d->cache);
 }
 static int disk_reader(void *ctx,uint32_t lba,uint8_t *out){
