@@ -748,3 +748,27 @@ path, not a complete PSP PRX loader. It does not rebase executable
 entry addresses or section headers, load `ET_REL`/`ET_SCE_PRX`
 modules at arbitrary locations, decrypt firmware/retail EBOOTs,
 implement PSP kernel services or run commercial PSP games.
+
+## Nintendo DS Slot-2 expansion RAM diagnostic (2026-11-13)
+
+The DS/DS Lite research homebrew now uses BlocksDS's supported
+`peripheralSlot2Init(SLOT2_PERIPHERAL_EXTRAM)`,
+`peripheralSlot2Open()`, `peripheralSlot2RamStart()`,
+`peripheralSlot2RamSize()`, and `peripheralSlot2RamBanks()` APIs to
+report any SDK-detected external RAM, such as the official Nintendo DS
+Browser Memory Expansion Pak. On a single flat RAM bank, the portable
+`psp_slot2_probe()` saves, temporarily writes, checks, and restores
+**two 16-bit locations**; the diagnostic reports either "2 locations
+verified" or "NOT VERIFIED". It does not benchmark or allocate guest
+PSP RAM there. DSi mode explicitly skips the Slot-2 probe.
+
+**Hardware verification is still outstanding.** A passing host fixture
+verifies probe logic only, and an NDS cross-build does not establish that
+a real cartridge is inserted or that its entire RAM is reliable. The
+probe is only called after BlocksDS has identified and opened an
+external-RAM peripheral. Run the native NDS on original DS/DS Lite with
+and without the correct Slot-2 Pak, retain the exact cartridge name and
+reported size, then repeat on DSi to verify the skip path. Never write
+directly to an unconfirmed GBA cartridge address.
+
+Source: https://blocksds.skylyrac.net/tutorial/intermediate/peripherals/
