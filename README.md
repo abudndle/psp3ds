@@ -550,3 +550,30 @@ This is **not** firmware-compatible PSP semaphores, thread switching,
 interrupt dispatch, priority scheduling, or playable PSP game support.
 No new PSP syscall NIDs are bound. Next work requires multi-thread state
 and explicit wait reason/results before integration with real PSP kernel HLE.
+
+## Bounded multi-task scheduler groundwork (2026-11-13)
+
+`psp_threads.h` and `psp_threads.c` introduce an allocation-free pool of up to
+eight portable PSP *task metadata records*. Runnable selection chooses the
+lowest numeric priority, rotating fairly by stable task ID within equal
+priorities. Each task can wait on a nonzero signal token with an absolute
+deadline, or sleep until a finite deadline. Signals wake one matching
+waiter in priority/creation order; advancing the scheduler clock clears
+expired waits and records why they woke. Stopped task slots can be reused
+without reusing a live task ID.
+
+`test_threads` checks priority ordering, round-robin ties, unmatched
+signals, wake reasons, independent task timeouts, monotonic clock
+validation, capacity limits and slot reuse. The standalone module passed
+Linux strict `-Wall -Wextra -Werror -pedantic` testing in an optimized build
+and with UndefinedBehaviorSanitizer.
+
+**Important:** this is the next data-model milestone, not a working
+PSP kernel thread scheduler. The existing interpreter and demand runtime
+still use the prior single-thread path. There is no per-thread saved
+`PspCpu` context, CPU preemption, PSP thread HLE, context-switch cost,
+kernel interrupt routing, or game compatibility from this change.
+A future integration must select a task, preserve/restore its CPU state,
+and coordinate its clock with `PspPerf` before claiming live multi-thread
+execution. A full repository CTest, native 3DS build or emulator launch
+has not yet been verified for this change.
