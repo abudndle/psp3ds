@@ -43,7 +43,7 @@ int psp_features_manifest(PspTarget target,PspFeatureManifest *out){
  out->features[PSP_FEATURE_SYNTHETIC_SCENE].state=PSP_FEATURE_AVAILABLE;
  out->features[PSP_FEATURE_SYNTHETIC_SCENE].backend=
    out->policy.graphics==PSP_GRAPHICS_DS_TILES?
-   PSP_BACKEND_DS_2D:PSP_BACKEND_3DS_FRAMEBUFFER;
+   PSP_BACKEND_DS_2D:PSP_BACKEND_3DS_GPU;
  return 0;
 }
 const char *psp_feature_state_name(PspFeatureState state){
