@@ -17,15 +17,15 @@ static void test_shared_cpu(void){
 }
 static void test_slot2_ram(void){
  if(isDSiMode()){
-  printf("Slot-2: unavailable (DSi)\\n");
+  printf("Slot-2: unavailable (DSi)\n");
   return;
  }
  if(!peripheralSlot2Init(SLOT2_PERIPHERAL_EXTRAM)){
-  printf("Slot-2: no RAM detected\\n");
+  printf("Slot-2: no RAM detected\n");
   return;
  }
  if(!peripheralSlot2Open(SLOT2_PERIPHERAL_EXTRAM)){
-  printf("Slot-2: cannot unlock RAM\\n");
+  printf("Slot-2: cannot unlock RAM\n");
   peripheralSlot2Exit();
   return;
  }
@@ -33,10 +33,10 @@ static void test_slot2_ram(void){
  uint32_t banks=peripheralSlot2RamBanks();
  volatile uint16_t *region=(volatile uint16_t*)peripheralSlot2RamStart();
  PspSlot2Result result=psp_slot2_probe(region,capacity,1,banks==1);
- printf("Slot-2: %s\\n",peripheralSlot2GetName());
- printf("RAM: %lu KiB, banks: %lu\\n",
+ printf("Slot-2: %s\n",peripheralSlot2GetName());
+ printf("RAM: %lu KiB, banks: %lu\n",
         (unsigned long)(capacity/1024u),(unsigned long)banks);
- printf("Read/write: %s\\n",result.status==PSP_SLOT2_RW_VERIFIED?
+ printf("Read/write: %s\n",result.status==PSP_SLOT2_RW_VERIFIED?
         "2 locations verified":"NOT VERIFIED");
  /* Never present RAM as a general C heap. Close it after the probe. */
  peripheralSlot2Close();
