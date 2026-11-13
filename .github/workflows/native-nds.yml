@@ -1,7 +1,7 @@
 name: Native PSP3DS DS/DSi scaffold build
 on:
   push:
-    branches: [main]
+    branches: [main, 'port/ppsspp-interpreter-probe']
   pull_request:
   workflow_dispatch:
 permissions:
