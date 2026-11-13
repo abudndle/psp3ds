@@ -14,6 +14,7 @@ checks=(
     'azahar-emu/azahar/releases/latest',
     'xvfb-run',
     'x11-apps',
+    'libopengl0',
     'scripts/capture_azahar_ci.sh',
     'psp3ds-azahar.png',
     'if: always()',
