@@ -21,7 +21,7 @@ for expected in (
 checker=root/"tests/test_cia_output.py"
 with tempfile.TemporaryDirectory() as directory:
     sample=Path(directory)/"fixture.cia"
-    header=bytearray(0x2020)
+    header=bytearray(0x2040)  # 0x2020 CIA header rounded up to 64 bytes
     struct.pack_into("<IHHIIIIQ",header,0,0x2020,0,0,0x40,0x40,0x40,0,0x80)
     sample.write_bytes(header+b"C"*0x40+b"T"*0x40+b"M"*0x40+b"X"*0x80)
     subprocess.run([sys.executable,str(checker),str(sample)],check=True)

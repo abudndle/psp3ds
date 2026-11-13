@@ -13,7 +13,7 @@ ELF := build/$(NAME).elf
 ROM := $(NAME).nds
 ARCH := -mthumb -mcpu=arm946e-s+nofp
 SPECS := $(BLOCKSDS)/sys/crts/ds_arm9.specs
-CFLAGS := -O2 -std=gnu11 -Wall -Wextra -D__NDS__ -D__BLOCKSDS__ -DARM9 $(ARCH) -specs=$(SPECS) -ffunction-sections -fdata-sections $(foreach d,$(LIBDIRS),-I$(d)/include)
+CFLAGS := -O2 -std=gnu11 -Wall -Wextra -D__NDS__ -D__BLOCKSDS__ -DARM9 $(ARCH) -specs=$(SPECS) -ffunction-sections -fdata-sections $(foreach d,$(LIBDIRS),-I$(d)/include) -I$(CURDIR)/../../include
 LDFLAGS := $(ARCH) -specs=$(SPECS) -Wl,--gc-sections $(foreach d,$(LIBDIRS),-L$(d)/lib) -Wl,--start-group $(LIBS) -Wl,--end-group
 SOURCES_C := $(wildcard source/*.c)
 OBJECTS := $(addprefix $(BUILDDIR)/,$(notdir $(SOURCES_C:.c=.o)))

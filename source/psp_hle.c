@@ -1,5 +1,6 @@
 #include "psp_hle.h"
 #include "psp_io.h"
+#include "psp_thread_cpu.h"
 #include <string.h>
 #include <limits.h>
 void psp_hle_init(PspHle *hle) {
@@ -10,7 +11,9 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
      (service!=PSP_HLE_SYSTEM_TIME_LOW && service!=PSP_HLE_SYSTEM_TIME_WIDE &&
       service!=PSP_HLE_SYSTEM_TIME &&
       service!=PSP_HLE_IO_OPEN && service!=PSP_HLE_IO_READ &&
-      service!=PSP_HLE_IO_LSEEK32 && service!=PSP_HLE_IO_CLOSE)) return -1;
+      service!=PSP_HLE_IO_LSEEK32 && service!=PSP_HLE_IO_CLOSE &&
+      service!=PSP_HLE_THREAD_CREATE && service!=PSP_HLE_THREAD_WAIT &&
+      service!=PSP_HLE_THREAD_SIGNAL && service!=PSP_HLE_THREAD_EXIT)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -19,6 +22,9 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
 }
 void psp_hle_attach_io(PspHle *hle,struct PspIo *io) {
  if(hle)hle->io=io;
+}
+void psp_hle_attach_threads(PspHle *hle,struct PspThreadCpu *threads) {
+ if(hle)hle->threads=threads;
 }
 void psp_hle_advance_time(PspHle *hle,uint64_t delta_us) {
  if(!hle)return;
@@ -92,6 +98,27 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
    break;
  case PSP_HLE_IO_CLOSE:
    v0=(uint32_t)(hle->io?psp_io_close(hle->io,(int32_t)cpu->gpr[4]):-1);
+   break;
+ case PSP_HLE_THREAD_CREATE:
+   if(!hle->threads || hle->threads->live!=cpu || cpu->gpr[6]>255u) v0=(uint32_t)-1;
+   else v0=(uint32_t)psp_thread_cpu_spawn(hle->threads,(uint8_t)cpu->gpr[6],
+                                          cpu->gpr[4],cpu->gpr[5]);
+   break;
+ case PSP_HLE_THREAD_WAIT:
+   if(!hle->threads || hle->threads->live!=cpu || !hle->threads->scheduler || !hle->threads->active_id)
+     v0=(uint32_t)-1;
+   else v0=(uint32_t)psp_threads_wait(hle->threads->scheduler,
+                         hle->threads->active_id,cpu->gpr[4],
+                         (uint64_t)cpu->gpr[5]);
+   break;
+ case PSP_HLE_THREAD_SIGNAL:
+   v0=(uint32_t)(hle->threads && hle->threads->live==cpu && hle->threads->scheduler?
+       psp_threads_signal(hle->threads->scheduler,cpu->gpr[4]):-1);
+   break;
+ case PSP_HLE_THREAD_EXIT:
+   v0=(uint32_t)(hle->threads && hle->threads->live==cpu && hle->threads->scheduler &&
+       hle->threads->active_id?
+       psp_threads_stop(hle->threads->scheduler,hle->threads->active_id):-1);
    break;
  default:return -3;
  }

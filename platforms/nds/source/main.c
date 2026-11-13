@@ -11,14 +11,14 @@ static void test_shared_cpu(void){
  for(unsigned i=0;i<sizeof(instructions);i++)test_ram[i]=instructions[i];
  psp_cpu_init(&cpu,test_ram,sizeof(test_ram),base,base);
  int a=psp_cpu_step(&cpu),b=psp_cpu_step(&cpu);
- iprintf("MIPS CPU demo: %s\n",a==0&&b==0&&cpu.gpr[8]==2?"PASS":"FAILED");
+ printf("MIPS CPU demo: %s\n",a==0&&b==0&&cpu.gpr[8]==2?"PASS":"FAILED");
 }
 int main(void){
  consoleDemoInit();
- iprintf("PSP3DS / DS research\nMode: %s\n",isDSiMode()?"DSi-enhanced":"Nintendo DS");
- iprintf("Shared CPU; NOT PSP games\n\n");
+ printf("PSP3DS / DS research\nMode: %s\n",isDSiMode()?"DSi-enhanced":"Nintendo DS");
+ printf("Shared CPU; NOT PSP games\n\n");
  test_shared_cpu();
- iprintf("START: exit\n");
+ printf("START: exit\n");
  while(1){scanKeys();if(keysDown()&KEY_START)break;swiWaitForVBlank();}
  return 0;
 }
