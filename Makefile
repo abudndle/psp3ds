@@ -5,6 +5,8 @@ $(error DEVKITARM not set: install devkitPro 3DS development toolchain)
 endif
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
+# Link via the ARM compiler driver so -specs and target flags are honored.
+export LD := $(CC)
 
 TARGET := psp3ds
 BUILD := build-3ds
