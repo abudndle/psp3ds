@@ -57,6 +57,19 @@ static int diff_overflow(uint32_t a, uint32_t b, uint32_t out) {
 }
 static void store16(uint8_t *p, uint32_t v) { p[0]=(uint8_t)v; p[1]=(uint8_t)(v>>8); }
 static void store32(uint8_t *p, uint32_t v) { store16(p,v); store16(p+2,v>>16); }
+/* Decode binary32 directly so conversion is independent of host FP modes. */
+static uint32_t trunc_single_to_word(uint32_t bits) {
+ unsigned exponent=(bits>>23)&255u;
+ uint32_t fraction=bits&0x7fffffu;
+ int negative=(bits>>31)!=0;
+ if (exponent==255u && fraction) return 0x7fffffffu;
+ if (exponent<127u) return 0;
+ if (exponent>=158u) return negative ? 0x80000000u : 0x7fffffffu;
+ unsigned shift=exponent-127u;
+ uint32_t significand=fraction|0x800000u;
+ uint32_t magnitude=shift>=23 ? significand<<(shift-23) : significand>>(23-shift);
+ return negative ? 0u-magnitude : magnitude;
+}
 int psp_cpu_step(PspCpu *c) {
   if (!c || !c->ram || c->halted) return -2;
   size_t off;
@@ -149,6 +162,7 @@ int psp_cpu_step(PspCpu *c) {
     }
     case 17: /* COP1 register transfers preserve all 32 bits. */
       if (rs==16 && rt==0 && fn==6) c->fpr[sh]=c->fpr[rd]; /* MOV.S */
+      else if (rs==16 && rt==0 && fn==13) c->fpr[sh]=trunc_single_to_word(c->fpr[rd]);
       else if ((instr & 0x7ffu) != 0) status=-1;
       else if (rs==0) c->gpr[rt]=c->fpr[rd];
       else if (rs==4) c->fpr[rd]=b;

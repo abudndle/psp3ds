@@ -119,4 +119,17 @@ static void test_ll_sc(void) {
  execute(&c,mem,R(0,0,6,0,11)); assert(c.gpr[6]==42);
  execute(&c,mem,R(0,0,6,0,10)); assert(c.gpr[6]==0);
 }
-int main(void){test_conditional_move();test_fcr31();test_ll_sc();test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}
+static void test_trunc_single(void) {
+ uint8_t mem[24]={0};
+ PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ const uint32_t input[]={0x40700000u,0xc0700000u,0x80000001u,
+                         0x4f000000u,0xcf000000u,0x7fc00000u};
+ const uint32_t expected[]={3,0xfffffffdu,0,0x7fffffffu,0x80000000u,0x7fffffffu};
+ for(unsigned i=0;i<sizeof input/sizeof input[0];i++){
+  c.fpr[12]=input[i];
+  execute(&c,mem,(17u<<26)|(16u<<21)|(12u<<11)|(13u<<6)|13u);
+  assert(c.fpr[13]==expected[i]);
+ }
+}
+int main(void){test_trunc_single();test_conditional_move();test_fcr31();test_ll_sc();test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}
