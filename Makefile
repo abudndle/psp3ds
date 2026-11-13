@@ -1,10 +1,11 @@
-# PSP3DS native .3dsx build with devkitARM + libctru + 3ds-zlib.
+# PSP3DS native .3dsx (devkitPro devkitARM + libctru + 3ds-zlib).
 .SUFFIXES:
 ifeq ($(strip $(DEVKITARM)),)
-$(error DEVKITARM not set; install devkitPro 3DS toolchain)
+$(error DEVKITARM not set: install devkitPro 3DS development toolchain)
 endif
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
+
 TARGET := psp3ds
 BUILD := build-3ds
 SOURCES := source
@@ -15,7 +16,7 @@ LDFLAGS = -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 LIBS := -lz -lctru -lm
 LIBDIRS := $(PORTLIBS) $(CTRULIB)
 APP_TITLE := PSP3DS
-APP_DESCRIPTION := PSP emulation research prototype
+APP_DESCRIPTION := PSP emulator research prototype
 APP_AUTHOR := PSP3DS contributors
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
