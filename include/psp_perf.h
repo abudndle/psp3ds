@@ -25,7 +25,7 @@ typedef struct {
  void *sector_context_identity;
  uint8_t sector_valid[PSP_PERF_SECTOR_SLOTS];
  uint8_t sector_data[PSP_PERF_SECTOR_SLOTS][PSP_PERF_SECTOR_SIZE];
- uint8_t frameskip, allow_texture_cache;
+ uint8_t frameskip, allow_texture_cache, profile_cpu;
 } PspPerf;
 typedef int (*PspSectorRead)(void *context, uint32_t lba, uint8_t *out_2048);
 void psp_perf_init(PspPerf *p);
@@ -49,6 +49,8 @@ int psp_perf_subsystem_active(const PspPerf *p,PspSubsystem subsystem);
 int psp_perf_run_demand(PspPerf *p,PspHle *hle,PspCpu *cpu,
                         unsigned budget,uint64_t idle_deadline_us,
                         unsigned *executed,uint32_t *event_token);
+/* Profiling defaults off: do not pay per-instruction cost unless requested. */
+void psp_perf_enable_profiling(PspPerf *p, int enabled);
 /* Profile hot code without modifying guest instruction execution. */
 int psp_perf_record_block(PspPerf *p,uint32_t pc,uint32_t threshold);
 int psp_perf_texture_seen(PspPerf *p,uint32_t key,uint32_t generation);
