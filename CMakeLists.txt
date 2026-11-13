@@ -153,3 +153,7 @@ add_test(NAME slot2_probe COMMAND test_slot2_probe)
 add_executable(test_benchmark tests/test_benchmark.c)
 target_link_libraries(test_benchmark PRIVATE psp_core)
 add_test(NAME benchmark COMMAND test_benchmark)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME melonds_ci COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_melonds_ci.py)
+endif()
