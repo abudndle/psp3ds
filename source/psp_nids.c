@@ -4,6 +4,7 @@
 static const PspExport known_exports[] = {
  {"SysMemUserForUser",0x358ca1bbu,PSP_HLE_SET_COMPILED_SDK},
  {"SysMemUserForUser",0xfc114573u,PSP_HLE_GET_COMPILED_SDK},
+ {"SysMemUserForUser",0xf77d77cbu,PSP_HLE_SET_COMPILER_VERSION},
  {"IoFileMgrForUser",0x109f50bcu,PSP_HLE_IO_OPEN},
  {"IoFileMgrForUser",0x6a638d83u,PSP_HLE_IO_READ},
  {"IoFileMgrForUser",0x68963324u,PSP_HLE_IO_LSEEK32},

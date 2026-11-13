@@ -24,7 +24,8 @@ typedef enum {
  PSP_HLE_THREAD_SIGNAL=10,
  PSP_HLE_THREAD_EXIT=11,
  PSP_HLE_SET_COMPILED_SDK=12,
- PSP_HLE_GET_COMPILED_SDK=13
+ PSP_HLE_GET_COMPILED_SDK=13,
+ PSP_HLE_SET_COMPILER_VERSION=14
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
@@ -35,6 +36,7 @@ typedef struct {
  struct PspThreadCpu *threads; /* optional experimental thread services */
  uint64_t uptime_us;
  uint32_t compiled_sdk_version;
+ uint32_t compiler_version;
  int trace_unresolved_imports; /* Opt in to trapping when an unresolved import is called. */
 } PspHle;
 void psp_hle_init(PspHle *hle);

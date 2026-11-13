@@ -55,8 +55,9 @@ int main(void) {
  assert(psp_hle_step(&hle,&cpu)==-3);
  assert(cpu.last_trap_code==PSP_HLE_UNRESOLVED_BASE+1u);
  const PspImport sdk[]={{"SysMemUserForUser",0x358ca1bbu,BASE+112},
-                        {"SysMemUserForUser",0xfc114573u,BASE+128}};
- assert(psp_imports_link_known(&cpu,&hle,sdk,2)==0);
+                        {"SysMemUserForUser",0xfc114573u,BASE+128},
+                        {"SysMemUserForUser",0xf77d77cbu,BASE+144}};
+ assert(psp_imports_link_known(&cpu,&hle,sdk,3)==0);
  psp_cpu_init(&cpu,memory,sizeof memory,BASE,BASE+112);
  cpu.gpr[4]=0x06060010u;cpu.gpr[31]=BASE+128;
  assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
@@ -64,6 +65,9 @@ int main(void) {
  cpu.gpr[31]=BASE+144;
  assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
  assert(cpu.gpr[2]==0x06060010u);
+ cpu.gpr[4]=0x040300u;cpu.gpr[31]=BASE+160;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ assert(hle.compiler_version==0x040300u && cpu.gpr[2]==0 && cpu.pc==BASE+160);
  puts("PASS: import NID lookup, stub patching, rollback, jr-delay-slot HLE");
  return 0;
 }
