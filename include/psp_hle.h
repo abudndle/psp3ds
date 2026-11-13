@@ -7,6 +7,8 @@ struct PspIo;
 struct PspThreadCpu;
 /* PSP syscall numbers are assigned by module import resolution; no global fixed IDs. */
 #define PSP_HLE_MAX_BINDINGS 64u
+/* Reserved syscall range for diagnostic unresolved imports, indexed by ordinal. */
+#define PSP_HLE_UNRESOLVED_BASE 0xffe00u
 #define PSP_HLE_ERR_INVALID_ARGUMENT UINT32_C(0xffffffff)
 typedef enum {
  PSP_HLE_SYSTEM_TIME_LOW=1,
@@ -30,6 +32,7 @@ typedef struct {
  struct PspIo *io; /* attached read-only disc filesystem */
  struct PspThreadCpu *threads; /* optional experimental thread services */
  uint64_t uptime_us;
+ int trace_unresolved_imports; /* Opt in to trapping when an unresolved import is called. */
 } PspHle;
 void psp_hle_init(PspHle *hle);
 int psp_hle_bind(PspHle *hle,uint32_t syscall_id,PspHleService service);

@@ -45,6 +45,15 @@ int main(void) {
  PspExport ambiguous[]={exports[0],exports[0]};
  assert(psp_imports_link(&cpu,&hle,imports,1,ambiguous,2)==-2);
  assert(hle.count==before);
+ hle.trace_unresolved_imports=1;
+ bad[1].nid=0x99999999u;bad[1].stub_address=BASE+80;
+ assert(psp_imports_link(&cpu,&hle,bad,2,exports,3)==0);
+ assert(hle.count==before+1);
+ assert(rd32(memory+84)==((PSP_HLE_UNRESOLVED_BASE+1u)<<6 | 12u));
+ cpu.pc=BASE+80;cpu.next_pc=BASE+84;cpu.gpr[31]=BASE+100;
+ assert(psp_hle_step(&hle,&cpu)==0);
+ assert(psp_hle_step(&hle,&cpu)==-3);
+ assert(cpu.last_trap_code==PSP_HLE_UNRESOLVED_BASE+1u);
  puts("PASS: import NID lookup, stub patching, rollback, jr-delay-slot HLE");
  return 0;
 }

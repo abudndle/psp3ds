@@ -1,4 +1,4 @@
-#include "psp_imports.h"
+#include "psp_prx.h"
 #include <string.h>
 #define JR_RA 0x03e00008u
 #define SYSCALL_BASE 0x0000000cu
@@ -14,12 +14,13 @@ static int valid_service(PspHleService s) {
 int psp_imports_link(PspCpu *cpu, PspHle *hle, const PspImport *imports,
                      size_t count, const PspExport *exports, size_t export_count) {
  if (!cpu || !hle || !cpu->ram || (count && !imports) ||
-     (export_count && !exports) || count>PSP_HLE_MAX_BINDINGS ||
+     (export_count && !exports) || count>PSP_PRX_MAX_IMPORTS ||
      hle->count>PSP_HLE_MAX_BINDINGS ||
-     count>PSP_HLE_MAX_BINDINGS-hle->count) return -1;
- uint32_t ids[PSP_HLE_MAX_BINDINGS];
- size_t offsets[PSP_HLE_MAX_BINDINGS];
- PspHleService services[PSP_HLE_MAX_BINDINGS];
+     (!hle->trace_unresolved_imports && count>PSP_HLE_MAX_BINDINGS-hle->count)) return -1;
+ uint32_t ids[PSP_PRX_MAX_IMPORTS];
+ size_t offsets[PSP_PRX_MAX_IMPORTS];
+ PspHleService services[PSP_PRX_MAX_IMPORTS];
+ size_t resolved = hle->count;
  /* Validate the entire import batch before changing guest memory or bindings. */
  for (size_t i=0;i<count;i++) {
   const PspImport *in=&imports[i];
@@ -39,10 +40,17 @@ int psp_imports_link(PspCpu *cpu, PspHle *hle, const PspImport *imports,
     services[i]=exports[e].service; found=1;
    }
   }
-  if (!found) return -3; /* Unimplemented imports must not be silently stubbed. */
+  if (!found) {
+   if (!hle->trace_unresolved_imports) return -3;
+   services[i] = 0;
+   ids[i] = PSP_HLE_UNRESOLVED_BASE + (uint32_t)i;
+   continue;
+  }
+  if (resolved == PSP_HLE_MAX_BINDINGS) return -1;
+  ++resolved;
   uint32_t id=0x100u;
   for (;;) {
-   if (id>0xfffffu) return -1;
+   if (id>=PSP_HLE_UNRESOLVED_BASE) return -1;
    int used=0;
    for (size_t b=0;b<hle->count;b++)
     if (hle->entries[b].syscall_id==id) {used=1;break;}
@@ -53,7 +61,7 @@ int psp_imports_link(PspCpu *cpu, PspHle *hle, const PspImport *imports,
   ids[i]=id;
  }
  for (size_t i=0;i<count;i++) {
-  if (psp_hle_bind(hle,ids[i],services[i])!=0) return -4;
+  if (services[i] && psp_hle_bind(hle,ids[i],services[i])!=0) return -4;
   wr32(cpu->ram+offsets[i],JR_RA);
   wr32(cpu->ram+offsets[i]+4,(ids[i]<<6)|SYSCALL_BASE);
  }

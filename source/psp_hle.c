@@ -7,7 +7,7 @@ void psp_hle_init(PspHle *hle) {
  if (hle) memset(hle,0,sizeof(*hle));
 }
 int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
- if (!hle || id>0xfffffu || hle->count>=PSP_HLE_MAX_BINDINGS ||
+ if (!hle || id>=PSP_HLE_UNRESOLVED_BASE || hle->count>=PSP_HLE_MAX_BINDINGS ||
      (service!=PSP_HLE_SYSTEM_TIME_LOW && service!=PSP_HLE_SYSTEM_TIME_WIDE &&
       service!=PSP_HLE_SYSTEM_TIME &&
       service!=PSP_HLE_IO_OPEN && service!=PSP_HLE_IO_READ &&
