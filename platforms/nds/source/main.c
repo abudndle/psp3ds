@@ -4,6 +4,7 @@
 #include <nds/arm9/peripherals/slot2.h>
 #include "psp_slot2_probe.h"
 #include "psp_benchmark.h"
+#include "psp_guest_window.h"
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
@@ -44,6 +45,27 @@ static void test_slot2_ram(void){
   PspSlot2Result sweep=psp_slot2_probe_samples(region,capacity,1,banks==1,32);
   printf("Sweep: %lu/32 %s\n",(unsigned long)sweep.probed_locations,
          sweep.status==PSP_SLOT2_RW_VERIFIED?"PASS":"FAILED");
+  if(sweep.status==PSP_SLOT2_RW_VERIFIED && capacity>=256u){
+   /* Test four 16-bit words only, restoring all original bytes before
+    * closing the peripheral. No PSP CPU executes from this memory. */
+   const uint32_t base=0x08800000u;
+   PspGuestWindow guest;
+   uint16_t saved[4];
+   for(unsigned i=0;i<4;i++) saved[i]=region[i];
+   int ok=psp_guest_window_init(&guest,region,base,256u,1,1)==0;
+   uint32_t value=0;
+   uint16_t halfword=0;
+   if(ok) ok=psp_guest_window_write32(&guest,base,0x12345678u)==0;
+   if(ok) ok=psp_guest_window_read32(&guest,base,&value)==0 && value==0x12345678u;
+   if(ok) ok=psp_guest_window_write8(&guest,base+1u,0xabu)==0;
+   if(ok) ok=psp_guest_window_read32(&guest,base,&value)==0 && value==0x1234ab78u;
+   if(ok) ok=psp_guest_window_write16(&guest,base+6u,0xcdefu)==0;
+   if(ok) ok=psp_guest_window_read16(&guest,base+6u,&halfword)==0 && halfword==0xcdefu;
+   if(ok) ok=psp_guest_window_read32(&guest,base+254u,&value)!=0;
+   for(unsigned i=0;i<4;i++) region[i]=saved[i];
+   for(unsigned i=0;i<4;i++) if(region[i]!=saved[i])ok=0;
+   printf("Guest data I/O: %s\n",ok?"PASS":"FAILED");
+  }
  }
  /* Never present RAM as a general C heap. Close it after the probe. */
  peripheralSlot2Close();
