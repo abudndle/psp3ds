@@ -206,3 +206,25 @@ The source remains centralized in `source/` and `include/`.
 Next substantive work: validate native 3DS/DS builds and start integrating
 virtual PSP UMD access and full kernel scheduling. Hardware-speed claims and
 commercial game compatibility remain unverified.
+
+## Demand-driven performance cutbacks (2026-11-13)
+
+The portable core now exposes `psp_perf_run_demand`: when the guest is
+**waiting**, advance virtual time only as far as the next pending event,
+thread wake or caller deadline, while keeping the HLE virtual clock in sync.
+Return event tokens explicitly to the caller (never discard interrupts).
+When the guest is **runnable**, execute a bounded interpreter slice without
+dropping instructions, faults, delay slots or PSP behavior.
+
+`psp_perf_set_subsystem_active` and `psp_perf_subsystem_active` allow
+future GPU, audio and UMD backends to avoid optional work until activated,
+separate from one-time lazy initialization. No real GPU/audio backend is
+implemented yet, and no hardware performance increase is claimed.
+
+New regression test `demand` checks event order, idle time jumps, wake
+semantics, zero guest instructions while waiting, and subsystem gating.
+All **19/19 Linux host tests and 19/19 ASan/UBSan tests passed locally**.
+
+Next required integration: connect guest kernel wait/signal operations and
+hardware interrupts to the event scheduler, and profile real New 3DS
+workloads. This scheduling API alone cannot run encrypted retail PSP games.
