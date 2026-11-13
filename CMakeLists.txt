@@ -125,3 +125,7 @@ add_test(NAME thread_cpu COMMAND test_thread_cpu)
 add_executable(test_thread_hle tests/test_thread_hle.c)
 target_link_libraries(test_thread_hle PRIVATE psp_core)
 add_test(NAME thread_hle COMMAND test_thread_hle)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME azahar_boot_marker COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_azahar_boot_marker.py)
+endif()
