@@ -37,6 +37,8 @@ int psp_features_manifest(PspTarget target,PspFeatureManifest *out){
  out->features[PSP_FEATURE_GRAPHICS_TRANSLATION].backend=
    out->policy.graphics==PSP_GRAPHICS_DS_TILES?
    PSP_BACKEND_DS_2D:PSP_BACKEND_3DS_GPU;
+ /* Never advertise unimplemented retail boot as a working feature. */
+ out->features[PSP_FEATURE_PSP_GAME_BOOT].state=PSP_FEATURE_PLANNED;
  return 0;
 }
 const char *psp_feature_state_name(PspFeatureState state){
