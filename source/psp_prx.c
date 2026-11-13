@@ -39,7 +39,7 @@ int psp_prx_parse_imports(const PspCpu *cpu,uint32_t start,
    if (!tmp[k]) break;
   }
   if (k==0 || k==PSP_PRX_MAX_NAME) goto malformed;
-  if ((size_t)funcs>PSP_HLE_MAX_BINDINGS-out->count) goto malformed;
+  if ((size_t)funcs>PSP_PRX_MAX_IMPORTS-out->count) goto malformed;
   for (unsigned i=0;i<funcs;i++) {
    size_t idx=out->count++;
    memcpy(out->names[idx],tmp,k+1);

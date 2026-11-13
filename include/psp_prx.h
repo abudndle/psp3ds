@@ -2,9 +2,10 @@
 #define PSP_PRX_H
 #include "psp_imports.h"
 #define PSP_PRX_MAX_NAME 64u
+#define PSP_PRX_MAX_IMPORTS 256u
 typedef struct {
- PspImport imports[PSP_HLE_MAX_BINDINGS];
- char names[PSP_HLE_MAX_BINDINGS][PSP_PRX_MAX_NAME];
+ PspImport imports[PSP_PRX_MAX_IMPORTS];
+ char names[PSP_PRX_MAX_IMPORTS][PSP_PRX_MAX_NAME];
  size_t count;
 } PspPrxImports;
 /* Parse a range of already-loaded little-endian PSP .lib.stub entries.

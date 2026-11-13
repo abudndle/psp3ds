@@ -1,6 +1,7 @@
 #include "psp_module.h"
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 static uint16_t u16(const uint8_t *p) { return (uint16_t)(p[0] | ((uint16_t)p[1]<<8)); }
 static uint32_t u32(const uint8_t *p) {
  return (uint32_t)p[0] | (uint32_t)p[1]<<8 | (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24;
@@ -78,11 +79,14 @@ int psp_module_link_rebased(const uint8_t *elf, size_t elf_size,
  PspModuleInfo info;
  int status=discover(elf,elf_size,cpu,bias,&info);
  if (status) return status;
- PspPrxImports parsed;
- status=psp_module_imports(cpu,&info,&parsed);
+ PspPrxImports *parsed = malloc(sizeof(*parsed));
+ if (!parsed) return -1;
+ status = psp_module_imports(cpu, &info, parsed);
+ if (!status && parsed->count &&
+     psp_imports_link_known(cpu, hle, parsed->imports, parsed->count) != 0)
+  status = -4;
+ free(parsed);
  if (status) return status;
- if (parsed.count && psp_imports_link_known(cpu,hle,parsed.imports,parsed.count)!=0)
-  return -4;
  if (out) *out=info;
  return 0;
 }
