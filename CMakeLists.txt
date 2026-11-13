@@ -89,3 +89,7 @@ endif()
 if(Python3_Interpreter_FOUND)
   add_test(NAME cia_packaging COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_cia_packaging.py)
 endif()
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME emulator_screenshot_ci COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_emulator_screenshot_ci.py)
+endif()
