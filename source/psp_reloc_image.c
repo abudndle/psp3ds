@@ -48,7 +48,7 @@ int psp_reloc_image_apply(const uint8_t *elf,size_t len,PspCpu *cpu,
   }
   if(type!=PT_SCE_PSPREL && type!=PT_SCE_PSPREL2)continue;
   if(++streams>MAX_STREAMS || !filesz || (uint64_t)off+filesz>len ||
-     (type==PT_SCE_PSPREL && (filesz%8 || filesz>65536u*8u)) ||
+     (type==PT_SCE_PSPREL && (filesz%8 || filesz>PSP_RELOC_MAX_RECORDS*8u)) ||
      (type==PT_SCE_PSPREL2 && filesz>524288u))
    return -2;
  }

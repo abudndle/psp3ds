@@ -3,6 +3,7 @@
 #include "psp_core.h"
 #include <stddef.h>
 #include <stdint.h>
+#define PSP_RELOC_MAX_RECORDS 131072u
 /* One mapped PT_LOAD segment. original_vaddr is the link-time address;
  * mapped_vaddr is its location in the emulator guest address space. */
 typedef struct {
