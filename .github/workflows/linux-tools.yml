@@ -21,6 +21,36 @@ concurrency:
   group: psp3ds-toolchains-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  runner-diagnostics:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record Linux runtime, DNS and installed tools
+        shell: bash
+        run: |
+          mkdir -p runner-diagnostics
+          {
+            echo "PSP3DS GitHub Linux environment"
+            date -u
+            uname -a
+            cat /etc/os-release
+            echo "--- DNS resolution ---"
+            getent ahostsv4 github.com || true
+            getent ahostsv4 wonderful.asie.pl || true
+            echo "--- Available commands ---"
+            for tool in gcc cmake make docker flatpak wf-pacman arm-none-eabi-gcc makerom cxitool melonDS azahar; do
+              command -v "$tool" || true
+            done
+          } > runner-diagnostics/host.txt 2>&1
+          cat runner-diagnostics/host.txt
+      - name: Upload Linux diagnostic artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-linux-runner-diagnostics
+          path: runner-diagnostics/host.txt
+          if-no-files-found: warn
   wonderful-blocksds:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
