@@ -137,3 +137,7 @@ add_test(NAME loader_safety COMMAND test_loader_safety)
 add_executable(test_reloc_image tests/test_reloc_image.c)
 target_link_libraries(test_reloc_image PRIVATE psp_core)
 add_test(NAME reloc_image COMMAND test_reloc_image)
+
+add_executable(test_boot_relocated tests/test_boot_relocated.c)
+target_link_libraries(test_boot_relocated PRIVATE psp_core)
+add_test(NAME boot_relocated COMMAND test_boot_relocated)
