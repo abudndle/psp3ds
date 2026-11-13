@@ -978,3 +978,11 @@ vertex-memory fetch, VTYPE decoding, GPU render state, commercial
 PSP gameplay and Jetpack Joyride rendering remain unimplemented**.
 The feature registry labels graphics translation **experimental**,
 not playable. See [GE sprite subset scope](docs/psp-ge-sprite-subset.md).
+
+## Single-precision MIPS FPU (COP1) subset (2026-11-13)
+
+`PspCpu` now carries 32 single-precision FPU registers (`fpr`) and `fcr31`. `psp_cpu_step()` executes `MFC1`, `MTC1`, `CFC1`/`CTC1` (FCSR only; mask `0x0183ffff`), `BC1F/BC1T/BC1FL/BC1TL` with delay-slot and branch-likely handling, `LWC1`/`SWC1` (4-byte aligned, bounds-checked), and single-precision `ADD.S`, `SUB.S`, `MUL.S`, `DIV.S`, `SQRT.S`, `ABS.S`, `MOV.S`, `NEG.S`, `ROUND/TRUNC/CEIL/FLOOR.W.S`, `CVT.W.S` (honors FCSR rounding mode), `CVT.S.W` and the `C.cond.S` compare family (NaN-aware). `SQRT.S` and float-to-integer rounding are implemented without libm, so the DS (`-lc` only) build does not gain a new link dependency.
+
+`test_fpu` covers arithmetic, sign operations, every rounding mode, overflow/NaN conversion, compare-and-branch (including branch-likely annulment), load/store, faults, and a bit-exact `SQRT.S` comparison against host `sqrtf` over 200,000 values. Host CTest: 58/58 pass, normally and under ASan/UBSan.
+
+**Not verified / not implemented:** behavior against a real PSP or PPSSPP reference (NaN payloads, denormal flushing and out-of-range `CVT.W.S` results follow standard IEEE/MIPS behavior and are not hardware-checked), FCSR exception flags and traps, `CFC1` FIR, double-precision and paired formats (rejected as unsupported), and the VFPU. Add/sub/mul/div use host or ARM9 software float, which is slow on the DS.

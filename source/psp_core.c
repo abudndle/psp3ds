@@ -56,6 +56,82 @@ static int diff_overflow(uint32_t a, uint32_t b, uint32_t out) {
 }
 static void store16(uint8_t *p, uint32_t v) { p[0]=(uint8_t)v; p[1]=(uint8_t)(v>>8); }
 static void store32(uint8_t *p, uint32_t v) { store16(p,v); store16(p+2,v>>16); }
+
+/* ---- Single-precision MIPS COP1 (FPU) support. No libm dependency. ---- */
+static float f_of(uint32_t v) { float f; memcpy(&f,&v,4); return f; }
+static uint32_t bits_of(float f) { uint32_t v; memcpy(&v,&f,4); return v; }
+static float f_trunc(float f) {
+  if (!(f>-8388608.0f && f<8388608.0f)) return f; /* already integral, inf or NaN */
+  return (float)(int32_t)f;
+}
+/* mode: 0 nearest-even, 1 toward zero, 2 toward +inf, 3 toward -inf (FCSR RM) */
+static float f_round(float f, int mode) {
+  if (!(f>-8388608.0f && f<8388608.0f)) return f;
+  float t=f_trunc(f), d=f-t;
+  switch (mode) {
+    case 1: return t;
+    case 2: return d>0.0f ? t+1.0f : t;
+    case 3: return d<0.0f ? t-1.0f : t;
+    default:
+      if (d>0.5f  || (d==0.5f  && (((int32_t)t)&1))) return t+1.0f;
+      if (d<-0.5f || (d==-0.5f && (((int32_t)t)&1))) return t-1.0f;
+      return t;
+  }
+}
+static uint32_t f_to_w(float f, int mode) {
+  if (f!=f) return 0x7fffffffu;
+  float r=f_round(f,mode);
+  if (r>=2147483648.0f) return 0x7fffffffu;
+  if (r<-2147483648.0f) return 0x80000000u;
+  return (uint32_t)(int32_t)r;
+}
+/* Correctly rounded (nearest-even) IEEE-754 binary32 square root using integers. */
+static float f_sqrt(float x) {
+  uint32_t b=bits_of(x);
+  if ((b&0x7fffffffu)==0 || (b&0x7fffffffu)>0x7f800000u) return x; /* +-0, NaN */
+  if (b>>31) return f_of(0x7fc00000u);                              /* negative */
+  if (b==0x7f800000u) return x;                                     /* +inf */
+  int e=(int)((b>>23)&255u); uint32_t m=b&0x7fffffu;
+  if (e==0) { e=1; while (!(m&0x800000u)) { m<<=1; e--; } } else m|=0x800000u;
+  int ex=e-127;
+  if (ex&1) { m<<=1; ex--; }
+  uint64_t n=(uint64_t)m<<23, r=0, bit=1ull<<46;
+  while (bit>n) bit>>=2;
+  while (bit) { if (n>=r+bit) { n-=r+bit; r=(r>>1)+bit; } else r>>=1; bit>>=2; }
+  if (n>r) r++;
+  ex/=2;
+  if (r>>24) { r>>=1; ex++; }
+  return f_of(((uint32_t)(ex+127)<<23)|(uint32_t)(r&0x7fffffu));
+}
+static int cop1_single(PspCpu *c, uint32_t fn, uint32_t fs, uint32_t ft, uint32_t fd) {
+  float x=f_of(c->fpr[fs]), y=f_of(c->fpr[ft]);
+  int mode=(int)(c->fcr31&3u);
+  switch (fn) {
+    case 0: c->fpr[fd]=bits_of(x+y); break;
+    case 1: c->fpr[fd]=bits_of(x-y); break;
+    case 2: c->fpr[fd]=bits_of(x*y); break;
+    case 3: c->fpr[fd]=bits_of(x/y); break;
+    case 4: c->fpr[fd]=bits_of(f_sqrt(x)); break;
+    case 5: c->fpr[fd]=c->fpr[fs]&0x7fffffffu; break;
+    case 6: c->fpr[fd]=c->fpr[fs]; break;
+    case 7: c->fpr[fd]=c->fpr[fs]^0x80000000u; break;
+    case 12: c->fpr[fd]=f_to_w(x,0); break;
+    case 13: c->fpr[fd]=f_to_w(x,1); break;
+    case 14: c->fpr[fd]=f_to_w(x,2); break;
+    case 15: c->fpr[fd]=f_to_w(x,3); break;
+    case 36: c->fpr[fd]=f_to_w(x,mode); break;
+    default:
+      if (fn>=48) {
+        int un=(x!=x)||(y!=y), lt=!un&&x<y, eq=!un&&x==y;
+        uint32_t cond=fn&15u;
+        int r=((cond&1u)&&un)||((cond&2u)&&eq)||((cond&4u)&&lt);
+        c->fcr31=(c->fcr31&~0x00800000u)|(r?0x00800000u:0u);
+        break;
+      }
+      return -1;
+  }
+  return 0;
+}
 int psp_cpu_step(PspCpu *c) {
   if (!c || !c->ram || c->halted) return -2;
   size_t off;
@@ -144,6 +220,28 @@ int psp_cpu_step(PspCpu *c) {
       } else status=-1;
       break;
     }
+    case 17: {
+      switch (rs) {
+        case 0: c->gpr[rt]=c->fpr[rd]; break;                       /* MFC1 */
+        case 2: if (rd==31) c->gpr[rt]=c->fcr31; else status=-1; break; /* CFC1 */
+        case 4: c->fpr[rd]=b; break;                                /* MTC1 */
+        case 6: if (rd==31) c->fcr31=b&0x0183ffffu; else status=-1; break; /* CTC1 */
+        case 8:                                                     /* BC1F/T/FL/TL */
+          if (rt>3) { status=-1; break; }
+          taken=(((c->fcr31>>23)&1u)==(rt&1u)); likely=(int)((rt>>1)&1u); branch=target;
+          break;
+        case 16: status=cop1_single(c,fn,rd,rt,sh); break;          /* fmt S */
+        case 20: if (fn==32) c->fpr[sh]=bits_of((float)signed32(c->fpr[rd])); else status=-1; break; /* CVT.S.W */
+        default: status=-1;
+      }
+      break;
+    }
+    case 49: case 57:                                               /* LWC1 / SWC1 */
+      addr=a+(uint32_t)imm;
+      if ((addr&3u) || translate(c,addr,4,&off)) status=-2;
+      else if (op==49) c->fpr[rt]=r32(c->ram+off);
+      else store32(c->ram+off,c->fpr[rt]);
+      break;
     case 32: case 33: case 35: case 36: case 37:
       addr=a+(uint32_t)imm;
       if (((op==33 || op==37) && (addr&1u)) || (op==35 && (addr&3u)) ||
@@ -190,7 +288,7 @@ int psp_cpu_step(PspCpu *c) {
     default: status=-1;
   }
   if (!status && (op==1 || op==2 || op==3 || op==4 || op==5 || op==6 || op==7 ||
-      op==20 || op==21 || op==22 || op==23 || (op==0 && (fn==8 || fn==9))))
+      op==20 || op==21 || op==22 || op==23 || (op==17 && rs==8) || (op==0 && (fn==8 || fn==9))))
     has_delay=1;
   c->gpr[0]=0;
   if (status) {c->fault=status;return status;}
