@@ -38,6 +38,14 @@ static uint32_t boot_u32(const uint8_t *p) {
  return (uint32_t)p[0]|(uint32_t)p[1]<<8|
         (uint32_t)p[2]<<16|(uint32_t)p[3]<<24;
 }
+/* Compare distances to avoid overflow at either range endpoint. */
+static int boot_ranges_overlap(const void *first, size_t first_size,
+                               const void *second, size_t second_size) {
+ uintptr_t a = (uintptr_t)first;
+ uintptr_t b = (uintptr_t)second;
+ return a <= b ? b - a < first_size : a - b < second_size;
+}
+
 int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
                                   PspCpu *cpu, PspHle *hle,
                                   const PspRelocSegment *segments,
@@ -48,8 +56,7 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
  if(!elf || !cpu || !hle || !module || !segments || !cpu->ram ||
     cpu->ram_size==0 || cpu->ram_size>BOOT_MAX_RAM ||
     count==0 || count>128 || elf_size<52 ||
-    (uintptr_t)elf <= (uintptr_t)cpu->ram+cpu->ram_size &&
-    (uintptr_t)cpu->ram < (uintptr_t)elf+elf_size)
+    boot_ranges_overlap(elf, elf_size, cpu->ram, cpu->ram_size))
   return PSP_BOOT_BAD_ARGUMENT;
  /* Restrict to existing fixed-address ELF ET_EXEC subset; PRX ET_REL and
   * unsupported image formats need dedicated mapping and entry handling. */
