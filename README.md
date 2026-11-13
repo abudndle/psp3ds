@@ -920,3 +920,21 @@ all five manifests. Host `shared_scene` regression verifies identical
 semantic scene generation and sampled pixel-raster correctness. PSP GE
 graphics translation, accelerated 3DS sprite batching, commercial game
 loading and Jetpack Joyride gameplay are **not implemented**.
+
+## PICA200 GPU synthetic scene batching (2026-11-13)
+
+The 3DS synthetic-scene renderer now uses **Citro2D on the PICA200
+GPU** instead of the previous CPU-per-pixel BGR8 framebuffer path.
+Press **A** on original or New 3DS homebrew to activate the same
+synthetic scrolling scene used by DS tile/OAM rendering. The 3DS
+renderer submits a **bounded batch of at most 64 rectangles**:
+background layers, sparse ground stripes and an 8×8 moving marker.
+No PSP game assets or copyrighted artwork are included.
+
+The portable `psp_scene_batch` adapter generates and clips GPU-ready
+rectangles independently of hardware. Host `scene_batch` compares
+all 256×192 logical pixels against the existing shared-scene reference
+across ten frames. Native .3dsx/CIA builds verify that the GPU libraries
+link, but they **do not prove that the A-button GPU frame renders
+correctly on actual 3DS hardware**, or that it is faster. PSP GE
+translation and Jetpack Joyride commercial gameplay remain absent.
