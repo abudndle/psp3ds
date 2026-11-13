@@ -43,6 +43,8 @@ int psp_perf_request_subsystem(PspPerf *p,PspSubsystem subsystem);
 int psp_perf_record_block(PspPerf *p,uint32_t pc,uint32_t threshold);
 int psp_perf_texture_seen(PspPerf *p,uint32_t key,uint32_t generation);
 void psp_perf_invalidate_textures(PspPerf *p);
+/* Explicitly reset when a disc is remounted at the same context address. */
+void psp_perf_media_changed(PspPerf *p);
 int psp_perf_read_sector(PspPerf *p,uint32_t lba,PspSectorRead reader,void *context,uint8_t *out);
 void psp_perf_profile(PspPerf *p,const char *disc_id);
 #endif
