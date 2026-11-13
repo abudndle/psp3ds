@@ -577,3 +577,31 @@ A future integration must select a task, preserve/restore its CPU state,
 and coordinate its clock with `PspPerf` before claiming live multi-thread
 execution. A full repository CTest, native 3DS build or emulator launch
 has not yet been verified for this change.
+
+## Cooperative per-thread MIPS CPU contexts (2026-11-13)
+
+`psp_thread_cpu.h` and `source/psp_thread_cpu.c` connect the bounded task
+scheduler to a **single live** `PspCpu` instance. Each created task receives
+an independent initialized snapshot with its own entry PC, stack register,
+general registers, HI/LO, branch delay state, trap/CP0 state and halt/fault
+state. Switching tasks saves the prior live CPU and restores the selected
+task; all tasks deliberately share one mapped guest RAM and HLE dispatcher.
+
+`psp_thread_cpu_step()` selects the next runnable task using the existing
+priority/round-robin model and runs exactly one MIPS/HLE interpreter step.
+The adapter refuses nonrunnable selections, validates the mapped RAM
+identity and disallows misaligned or out-of-bounds entry/stack positions.
+A stopped task's CPU slot can be reused without letting its old live
+context overwrite the replacement. Tests cover cross-thread register
+isolation, branch delay preservation, wait/signal selection and slot reuse.
+
+**Verification:** a strict Linux C11 test build with UndefinedBehaviorSanitizer
+passed against the new adapter and a representative CPU/HLE test harness.
+The full PSP3DS library CTest suite, native `.3dsx` compilation and
+Azahar execution have **not** been verified for this change.
+
+**Limitations:** per-instruction cooperative switching is a host-side
+prototype, **not** PSP kernel task switching. There is no guest-thread
+creation or scheduling HLE, firmware synchronization semantics, PSP
+context-switch timing, interrupt-driven preemption, floating/VFPU register
+state, full system RAM layout or PSP commercial game compatibility.
