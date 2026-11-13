@@ -182,6 +182,14 @@ int psp_cpu_step(PspCpu *c) {
       else if (op==49) c->fpr[rt]=r32(ptr);
       else store32(ptr,c->fpr[rt]);
       break;
+    case 31: /* Allegrex bitfield instructions. */
+      if (fn==0 && sh+rd<32u)
+        c->gpr[rt]=(a>>sh) & (UINT32_MAX>>(31u-rd));
+      else if (fn==4 && rd>=sh) {
+        uint32_t mask=(UINT32_MAX>>(31u-rd)) & (UINT32_MAX<<sh);
+        c->gpr[rt]=(b & ~mask) | ((a<<sh) & mask);
+      } else status=-1;
+      break;
     case 32: case 33: case 35: case 36: case 37:
       addr=a+(uint32_t)imm;
       if (((op==33 || op==37) && (addr&1u)) || (op==35 && (addr&3u)) ||
