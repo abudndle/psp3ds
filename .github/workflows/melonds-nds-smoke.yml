@@ -44,50 +44,24 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y xvfb x11-utils x11-apps xdotool imagemagick python3-pil file libopengl0 libgl1 libegl1 libxkbcommon-x11-0
-      - name: Fetch official current melonDS Linux x64 release archive
+      - name: Download pinned official melonDS 1.1 Linux release
         run: |
+          curl --fail --location --retry 3 --retry-delay 2 \
+            'https://github.com/melonDS-emu/melonDS/releases/download/1.1/melonDS-1.1-appimage-x86_64.zip' \
+            --output melonds-release.zip
           python3 - <<'PY'
-          import json, pathlib, urllib.request, zipfile, os
-          headers={'User-Agent':'psp3ds-ci'}
-          req=urllib.request.Request(
-              'https://api.github.com/repos/melonDS-emu/melonDS/releases/latest',
-              headers=headers)
-          with urllib.request.urlopen(req,timeout=30) as response:
-              release=json.load(response)
-          assets=release.get('assets',[])
-          names=[a['name'] for a in assets]
-          print('melonDS release:',release.get('tag_name'), 'assets:', names)
-          candidates=[
-              a for a in assets if 'x86_64' in a['name'].lower() and
-              ('appimage' in a['name'].lower()) and a['name'].lower().endswith('.zip')
-          ]
-          if not candidates:
-              candidates=[
-                  a for a in assets if 'ubuntu-x86_64' in a['name'].lower()
-                  and a['name'].lower().endswith('.zip')
-              ]
-          if len(candidates)!=1:
-              raise SystemExit('No unique official x86_64 Linux asset ZIP available')
-          url=candidates[0]['browser_download_url']
-          req=urllib.request.Request(url,headers=headers)
-          with urllib.request.urlopen(req,timeout=120) as response:
-              pathlib.Path('melonds-release.zip').write_bytes(response.read())
+          import pathlib, zipfile, os
           with zipfile.ZipFile('melonds-release.zip') as z:
-              members=[m for m in z.infolist() if not m.is_dir()]
-              apps=[m for m in members if pathlib.PurePosixPath(m.filename).name.endswith('.AppImage')]
-              bins=[m for m in members if pathlib.PurePosixPath(m.filename).name=='melonDS']
-              chosen=(apps or bins)
-              if len(chosen)!=1:
-                  raise SystemExit('Expected one melonDS executable, found '+str([x.filename for x in members]))
-              executable=pathlib.Path('melonDS.AppImage' if apps else 'melonDS')
-              executable.write_bytes(z.read(chosen[0]))
+              apps=[m for m in z.infolist() if not m.is_dir() and m.filename.endswith('.AppImage')]
+              if len(apps)!=1:
+                  raise SystemExit('Pinned release ZIP lacks one Linux AppImage')
+              executable=pathlib.Path('melonDS.AppImage')
+              executable.write_bytes(z.read(apps[0]))
           executable.chmod(0o755)
           with open(os.environ['GITHUB_ENV'],'a') as f:
               f.write('MELONDS_EXE='+str(executable.resolve())+'\n')
-          print('Extracted official melonDS executable:', executable)
           PY
-          test -s "${MELONDS_EXE:-melonDS.AppImage}" || test -s melonDS
-        continue-on-error: false
+          test -s melonDS.AppImage
       - name: Launch NDS in actual melonDS and capture visible window
         env:
           QT_QPA_PLATFORM: xcb
