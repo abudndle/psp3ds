@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <nds/arm9/peripherals/slot2.h>
 #include "psp_slot2_probe.h"
+#include "psp_benchmark.h"
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
@@ -42,11 +43,27 @@ static void test_slot2_ram(void){
  peripheralSlot2Close();
  peripheralSlot2Exit();
 }
+/* TIMER0 counts at approximately 32768Hz (ARM9 ~33.51 MHz/1024).
+ * This is a local device-timer measurement only, never commercial PSP FPS. */
+static void benchmark_shared_mips(void){
+ PspBenchResult result;
+ TIMER0_CR=0;
+ TIMER0_DATA=0;
+ TIMER0_CR=TIMER_ENABLE|TIMER_DIV_1024;
+ int status=psp_benchmark_run(16,&result);
+ uint16_t ticks=TIMER0_DATA;
+ TIMER0_CR=0;
+ printf("MIPS %lu insns: %s\n",(unsigned long)result.executed_instructions,
+        status==0?"PASS":"FAILED");
+ printf("TIMER0 /1024: %u ticks\n",(unsigned)ticks);
+ printf("Synthetic CPU test only\n");
+}
 int main(void){
  consoleDemoInit();
  printf("PSP3DS / DS research\nMode: %s\n",isDSiMode()?"DSi-enhanced":"Nintendo DS");
  printf("Shared CPU; NOT PSP games\n\n");
  test_shared_cpu();
+ benchmark_shared_mips();
  test_slot2_ram();
  printf("START: exit\n");
  while(1){scanKeys();if(keysDown()&KEY_START)break;swiWaitForVBlank();}
