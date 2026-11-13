@@ -14,7 +14,7 @@ static uint8_t test_ram[64];
 static void test_shared_cpu(void){
  uint32_t value=0;
  int pass=psp_feature_run(PSP_FEATURE_CPU_SMOKE,&value)==0 && value==2u;
- printf("MIPS CPU demo: %s\\n",pass?"PASS":"FAILED");
+ printf("MIPS CPU demo: %s\n",pass?"PASS":"FAILED");
 }
 static void test_slot2_ram(void){
  if(isDSiMode()){
@@ -122,8 +122,8 @@ int main(void){
          (unsigned long)(policy.hot_ram_budget/1024u));
  PspFeatureManifest features;
  if(psp_features_manifest(target,&features)==0){
-  printf("Features: %u same IDs\\n",(unsigned)PSP_FEATURE_COUNT);
-  printf("PSP game: %s\\n",
+  printf("Features: %u same IDs\n",(unsigned)PSP_FEATURE_COUNT);
+  printf("PSP game: %s\n",
          psp_feature_state_name(features.features[PSP_FEATURE_PSP_GAME_BOOT].state));
  }
 
