@@ -656,3 +656,28 @@ segments. The existing `loader` and `boot` suites also run in CI.
 This is strict validation of the supported **plain ELF32/MIPS ET_EXEC**
 subset, not PSP encrypted `EBOOT.BIN` decryption, PRX relocation,
 firmware-compatible executable loading, or commercial PSP gameplay.
+
+## PRX ELF relocation stream discovery (2026-11-13)
+
+`psp_reloc_image_apply()` now finds PSP program-header relocation
+sections in an **already mapped**, unencrypted ELF32/MIPS module. It
+recognizes `PT_SCE_PSPREL` (0x700000A0; uncompressed eight-byte
+records) and `PT_SCE_PSPREL2` (0x700000A1; the existing restricted
+compressed decoder). The caller supplies one mapping record per ELF
+program header so segment selectors remain stable. The helper checks
+program-header/file bounds and matching PT_LOAD memory mappings
+before applying relocations.
+
+Applying multiple relocation sections is transactional at the guest-RAM
+level: a failure in a later section rolls back earlier changes. Working
+memory is bounded to one guest-RAM snapshot (maximum 32 MiB) plus
+the existing decoder buffers. The `reloc_image` CTest exercises both
+relocation formats, combined success, late failure/rollback, malformed
+headers, missing streams, invalid mapping, and running an unaffected
+MIPS instruction after applying relocations.
+
+This is an **opt-in relocation application stage**, not an automatic
+PRX boot path. The module has to be mapped into RAM before calling it;
+it does not allocate segments, relocate module metadata, handle PSP
+encrypted executables, support full PSPREL2 modes, or implement actual
+PSP game boot. Repeatedly relocating the same image is not supported.
