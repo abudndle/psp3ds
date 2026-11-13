@@ -5,10 +5,14 @@ on:
       - 'port/ppsspp-interpreter-probe'
     paths:
       - 'ports/ppsspp-3ds/**'
+      - 'include/psp_mips_probe_fixture.h'
+      - 'source/psp_features.c'
       - '.github/workflows/ppsspp-3ds-probe.yml'
   pull_request:
     paths:
       - 'ports/ppsspp-3ds/**'
+      - 'include/psp_mips_probe_fixture.h'
+      - 'source/psp_features.c'
       - '.github/workflows/ppsspp-3ds-probe.yml'
   workflow_dispatch:
 permissions:
@@ -32,7 +36,7 @@ jobs:
           mkdir -p out
           "$DEVKITARM/bin/arm-none-eabi-g++" -std=gnu++20 -O2 -DNDEBUG -ffunction-sections -fdata-sections -Wl,--gc-sections \
             -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft \
-            -D__3DS__ -specs=3dsx.specs -Iupstream-ppsspp -Iupstream-ppsspp/ext \
+            -D__3DS__ -specs=3dsx.specs -Iinclude -Iupstream-ppsspp -Iupstream-ppsspp/ext \
             -I"$DEVKITPRO/libctru/include" -L"$DEVKITPRO/libctru/lib" \
             ports/ppsspp-3ds/abi_probe.cpp ports/ppsspp-3ds/upstream_probe.cpp \
             upstream-ppsspp/Core/MIPS/Interpreter.cpp upstream-ppsspp/Core/MIPS/MIPS.cpp -lctru -lm -o out/ppsspp-abi-probe.elf
