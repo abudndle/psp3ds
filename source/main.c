@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "psp_core.h"
+#include "psp_catalog.h"
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
 }
@@ -11,7 +12,17 @@ int main(void) {
  printf("PSP3DS | research prototype\n");
  printf("PSP file inspection + basic MIPS interpreter\n");
  printf("Not a playable PSP emulator yet.\n\n");
- printf("Checking sdmc:/psp3ds/EBOOT.PBP\n");
+ /* Scan ROM names without loading or executing their contents. */
+ static PspCatalogItem games[12];
+ size_t count=0;
+ int found=psp_catalog_scan("sdmc:/psp/roms",games,12,&count);
+ if(found==-1)printf("No SD /psp/roms directory found.\\n");
+ else {
+  printf("ROM images: %lu%s\\n",(unsigned long)count,found==-2?"+":"");
+  for(size_t i=0;i<count&&i<6;i++)printf("%s\\n",games[i].filename);
+  printf("ROM execution is not yet supported.\\n");
+ }
+ printf("Checking legacy sdmc:/psp3ds/EBOOT.PBP\\n");
  FILE *f=fopen("sdmc:/psp3ds/EBOOT.PBP","rb");
  if(f) {
   if(fseek(f,0,SEEK_END)==0) {
