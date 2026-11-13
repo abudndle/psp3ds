@@ -1,0 +1,24 @@
+name: PSP3DS host regression tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build-host -DCMAKE_BUILD_TYPE=Debug
+      - name: Build
+        run: cmake --build build-host --parallel
+      - name: Tests
+        run: ctest --test-dir build-host --output-on-failure
