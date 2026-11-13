@@ -58,12 +58,14 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
     count==0 || count>128 || elf_size<52 ||
     boot_ranges_overlap(elf, elf_size, cpu->ram, cpu->ram_size))
   return PSP_BOOT_BAD_ARGUMENT;
- /* Restrict to existing fixed-address ELF ET_EXEC subset; PRX ET_REL and
-  * unsupported image formats need dedicated mapping and entry handling. */
+ uint16_t type = boot_u16(elf+16);
  if(memcmp(elf,"\177ELF",4) || elf[4]!=1 || elf[5]!=1 ||
-    elf[6]!=1 || boot_u16(elf+16)!=2 || boot_u16(elf+18)!=8)
+    elf[6]!=1 || (type!=2 && type!=0xffa0u) || boot_u16(elf+18)!=8)
   return PSP_BOOT_ELF_FAILED;
+ uint32_t bias = type == 0xffa0u ? cpu->ram_base : 0;
  uint32_t entry=boot_u32(elf+24);
+ if (entry > UINT32_MAX - bias) return PSP_BOOT_ELF_FAILED;
+ entry += bias;
  uint32_t phoff=boot_u32(elf+28);
  uint16_t entsize=boot_u16(elf+42),phnum=boot_u16(elf+44);
  if((entry&3u) || entsize<32 || phnum!=count ||
@@ -77,7 +79,8 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
   uint32_t memsz=boot_u32(ph+20),flags=boot_u32(ph+24);
   uint64_t mapped=segments[i].mapped_vaddr;
   if(segments[i].original_vaddr!=original || segments[i].mem_size!=memsz ||
-     filesz>memsz || mapped<cpu->ram_base ||
+     filesz>memsz || (type == 0xffa0u && mapped != (uint64_t)original + bias) ||
+     mapped<cpu->ram_base ||
      mapped-cpu->ram_base>cpu->ram_size ||
      memsz>cpu->ram_size-(size_t)(mapped-cpu->ram_base))
    return PSP_BOOT_ELF_FAILED;
@@ -95,7 +98,7 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
  if(psp_reloc_image_apply(elf,elf_size,&candidate,segments,count,&streams))
   goto rollback;
  PspModuleInfo staged_module;
- if(psp_module_link_known(elf,elf_size,&candidate,&staged_hle,
+ if(psp_module_link_rebased(elf,elf_size,&candidate,&staged_hle,bias,
                           &staged_module)){
   status=PSP_BOOT_IMPORT_FAILED;
   goto rollback;

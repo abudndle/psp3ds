@@ -45,9 +45,13 @@ int psp_boot_auto_mapped_elf(const uint8_t *elf,size_t length,
     length<52 || alias(elf,length,cpu->ram,cpu->ram_size))
   return PSP_BOOT_BAD_ARGUMENT;
  if(memcmp(elf,"\177ELF",4) || elf[4]!=1 || elf[5]!=1 || elf[6]!=1 ||
-    get16(elf+16)!=2 || get16(elf+18)!=8 || get16(elf+40)<52)
+    (get16(elf+16)!=2 && get16(elf+16)!=0xffa0u) || get16(elf+18)!=8 || get16(elf+40)<52)
   return PSP_BOOT_ELF_FAILED;
  uint32_t phoff=get32(elf+28),entry=get32(elf+24);
+ int prx = get16(elf+16) == 0xffa0u;
+ if (prx && entry > UINT32_MAX - cpu->ram_base)
+  return PSP_BOOT_MAPPING_FAILED;
+ if (prx) entry += cpu->ram_base;
  size_t entsize=get16(elf+42),count=get16(elf+44);
  if(!count || count>AUTO_MAX_HEADERS || entsize<32 ||
     (uint64_t)phoff+(uint64_t)entsize*count>length || (entry & 3u))
@@ -66,7 +70,12 @@ int psp_boot_auto_mapped_elf(const uint8_t *elf,size_t length,
   if(!memsz || memsz<filesz || (uint64_t)offset+filesz>length)
    return PSP_BOOT_MAPPING_FAILED;
   uint64_t addr=original;
-  if(first==SIZE_MAX) {
+  if (prx) {
+   if (!in_ram(cpu, (uint64_t)cpu->ram_base + original, memsz))
+    return PSP_BOOT_MAPPING_FAILED;
+   addr = (uint64_t)cpu->ram_base + original;
+   if (first == SIZE_MAX) first = i;
+  } else if(first==SIZE_MAX) {
    first=i;
    /* No entry rebasing or section-table fixups in this first increment. */
    if(!in_ram(cpu,addr,memsz) ||
