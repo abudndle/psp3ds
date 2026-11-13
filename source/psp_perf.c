@@ -9,6 +9,35 @@ int psp_perf_schedule(PspPerf *p,uint64_t deadline,uint32_t token){
  while(i && p->pending[i-1].deadline>deadline){p->pending[i]=p->pending[i-1];i--;}
  p->pending[i]=(PspEvent){deadline,token};return 0;
 }
+
+/* Preserve chronological order. Equal deadlines retain their prior order,
+ * with a rescheduled token inserted after events already at that deadline. */
+int psp_perf_cancel_event(PspPerf *p,uint32_t token){
+ if(!p || !token)return -1;
+ for(size_t i=0;i<p->count;i++){
+  if(p->pending[i].token!=token)continue;
+  memmove(p->pending+i,p->pending+i+1,(p->count-i-1)*sizeof(PspEvent));
+  p->count--;
+  return 0;
+ }
+ return -1;
+}
+int psp_perf_reschedule_event(PspPerf *p,uint32_t token,uint64_t deadline){
+ if(!p || !token || deadline<p->now_us)return -1;
+ size_t old=0;
+ while(old<p->count && p->pending[old].token!=token)old++;
+ if(old==p->count)return -1;
+ /* All validations precede mutation; count is unchanged. */
+ memmove(p->pending+old,p->pending+old+1,(p->count-old-1)*sizeof(PspEvent));
+ p->count--;
+ size_t i=p->count++;
+ while(i && p->pending[i-1].deadline>deadline){
+  p->pending[i]=p->pending[i-1];
+  i--;
+ }
+ p->pending[i]=(PspEvent){deadline,token};
+ return 0;
+}
 void psp_perf_wait_until(PspPerf *p,uint64_t wake){
  if(p && wake>p->now_us){p->thread_state=PSP_THREAD_WAITING;p->wake_us=wake;}
 }
