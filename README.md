@@ -420,3 +420,30 @@ it does not make Jetpack Joyride playable.
 Next milestone: safely integrate this operation into the supported
 plain-ELF loading path and extend verified kernel/thread HLE operations.
 Native .3dsx/.nds/.cia and emulator launches remain unverified.
+
+## Integrated plain-ELF boot and import-link milestone (2026-11-13)
+
+`psp_boot_plain_elf()` in `source/psp_boot.c` now connects the existing
+plain, unencrypted ELF32/MIPS ET_EXEC segment loader to loaded-module
+metadata discovery and supported PSP import NID linking.
+
+- A syntactically valid executable must map into bounded guest RAM.
+- Its `.rodata.sceModuleInfo` and PRX `.lib.stub` function imports must be
+  present, valid, and supported by the known NID table.
+- Import failures leave the CPU's register state untouched, clear the
+  reported outputs, and do not partially patch PSP HLE bindings or stubs.
+  **ELF segments may already be loaded into RAM when import linking fails**:
+  callers must discard/reset guest RAM before another boot attempt.
+- Only after successful validation does the CPU start at the ELF entry point.
+  This prototype does **not** implement PRX relocations, encrypted EBOOT
+  decryption, kernel initialization, or an executable launcher UI.
+
+The synthetic `test_boot` fixture verifies ELF program-header loading,
+PSP module-info discovery, two real IoFileMgr NIDs, MIPS execution through
+the imported syscall stub, unsupported-import refusal, and invalid-memory
+load rejection.
+
+**Local Linux verification:** 28/28 host tests and 28/28 ASan/UBSan
+regression tests passed. No successful native 3DS/DS build, melonDS/Azahar
+launch, or Jetpack Joyride gameplay is claimed. This API is an
+integration milestone, not a finished PSP emulator.
