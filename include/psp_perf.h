@@ -19,6 +19,9 @@ typedef struct {
  uint32_t texture_key[PSP_PERF_TEXTURE_SLOTS], texture_generation[PSP_PERF_TEXTURE_SLOTS];
  uint8_t texture_valid[PSP_PERF_TEXTURE_SLOTS];
  uint32_t sector_lba[PSP_PERF_SECTOR_SLOTS], sector_age[PSP_PERF_SECTOR_SLOTS], tick;
+ /* A cache is bound to the mounted media reader and its context. */
+ int (*sector_reader_identity)(void *, uint32_t, uint8_t *);
+ void *sector_context_identity;
  uint8_t sector_valid[PSP_PERF_SECTOR_SLOTS];
  uint8_t sector_data[PSP_PERF_SECTOR_SLOTS][PSP_PERF_SECTOR_SIZE];
  uint8_t frameskip, allow_texture_cache;
