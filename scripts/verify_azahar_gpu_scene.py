@@ -31,33 +31,65 @@ def detect(path):
             w, h = im.size
             if w < 350 or h < 240:
                 return False, "Emulator window too small", {}
-            # Downsampled visual evidence is sufficient for this synthetic
-            # palette diagnostic, independent of the emulator window size.
-            points = {"sky": [], "ground": [], "actor": []}
-            for y in range(0,h,2):
-                for x in range(0,w,2):
+
+            # Find a long *contiguous* horizontal sky run. Looking at total
+            # pixel colors across the window would also include Azahar's
+            # menus, console text and status bar, creating false negatives.
+            best = (0, 0, 0, 0)  # run length in sampled pixels, x0, x1, y
+            for y in range(0, h, 2):
+                start = None
+                for x in range(0, w + 2, 2):
+                    sky = x < w and tag(im.getpixel((x, y))) == "sky"
+                    if sky and start is None:
+                        start = x
+                    elif not sky and start is not None:
+                        length = (x - start) // 2
+                        if length > best[0]:
+                            best = (length, start, min(x - 2, w - 1), y)
+                        start = None
+            if best[0] < 60:
+                return False, "No broad contiguous synthetic sky layer", {
+                    "longest_sky_run_samples": best[0]}
+            _, x0, x1, _ = best
+            # Identify sky rows from the same X interval, allowing one
+            # small moving marker to interrupt the blue pixel streak.
+            sky_rows = []
+            for y in range(0, h, 2):
+                sky_samples = sum(
+                    tag(im.getpixel((x, y))) == "sky"
+                    for x in range(x0, x1 + 1, 2)
+                )
+                if sky_samples >= (x1 - x0) // 4:
+                    sky_rows.append(y)
+            if len(sky_rows) < 28:
+                return False, "Sky layer too short for a 3DS screen", {
+                    "sky_rows": len(sky_rows)}
+            top, sky_bottom = min(sky_rows), max(sky_rows)
+            if sky_bottom - top < 90:
+                return False, "Sky layer lacks expected height", {
+                    "sky_top": top, "sky_bottom": sky_bottom}
+            ground = 0
+            actor = []
+            for y in range(top, min(h, sky_bottom + 110), 2):
+                for x in range(x0, x1 + 1, 2):
                     kind = tag(im.getpixel((x,y)))
-                    if kind:
-                        points[kind].append((x,y))
-            counts = {k:len(v) for k,v in points.items()}
-            if counts["sky"] < 1100 or counts["ground"] < 150 or not 3 <= counts["actor"] <= 7000:
-                return False, "Scene sky/ground/actor colors missing", {"sample_counts": counts}
-            bounds = {k:(
-                min(p[0] for p in values), min(p[1] for p in values),
-                max(p[0] for p in values), max(p[1] for p in values)
-            ) for k,values in points.items()}
-            sx0,sy0,sx1,sy1=bounds["sky"]
-            gx0,gy0,gx1,gy1=bounds["ground"]
-            ax0,ay0,ax1,ay1=bounds["actor"]
-            if sx1-sx0 < 90 or gx1-gx0 < 85 or sx1-sx0 > w*0.9:
-                return False, "Sky/ground not broad enough for the synthetic LCD scene", {"bounds": bounds}
-            if not (sy0 < ay0 < gy0 and sy1 < gy1 and
-                    sx0 <= ax0 <= sx1 and ax1 <= sx1 and
-                    gx0 <= sx1 and gx1 >= sx0):
-                return False, "Scene layers/marker not in expected positions", {"bounds":bounds}
-            return True,"Original PSP3DS synthetic scene spatial colors visible",{
-                "sample_counts":counts,"bounds":bounds,"width":w,"height":h
-            }
+                    if kind == "ground" and y > sky_bottom:
+                        ground += 1
+                    if kind == "actor" and top < y < sky_bottom - 2:
+                        actor.append((x,y))
+            if ground < 150 or not 3 <= len(actor) <= 500:
+                return False, "Ground or upper-screen actor not present", {
+                    "ground_samples": ground, "actor_samples": len(actor),
+                    "scene_x": [x0,x1], "sky_y": [top,sky_bottom]}
+            ax = [v[0] for v in actor]
+            ay = [v[1] for v in actor]
+            if max(ax) - min(ax) > 50 or max(ay) - min(ay) > 50:
+                return False, "Moving marker is not compact", {
+                    "actor_bounds": [min(ax),min(ay),max(ax),max(ay)]}
+            return True, "Original PSP3DS synthetic scene pixels visible", {
+                "sky_x": [x0,x1], "sky_y": [top,sky_bottom],
+                "actor_bounds": [min(ax),min(ay),max(ax),max(ay)],
+                "ground_samples": ground, "width": w, "height": h}
     except (OSError,ValueError,UnidentifiedImageError) as exc:
         return False,f"Missing/invalid capture: {exc}",{}
 
