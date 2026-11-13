@@ -12,7 +12,9 @@ mkdir -p "$(dirname "$OUTPUT")"
 : "${MELONDS_EXE:?Set MELONDS_EXE to the downloaded official melonDS AppImage}"
 if [[ ! -s "$MELONDS_EXE" ]]; then echo "Missing melonDS binary" >&2; exit 2; fi
 # Prevent crash prompts or Qt trying to access a real graphics session.
-QT_X11_NO_MITSHM=1 LIBGL_ALWAYS_SOFTWARE=1   "$MELONDS_EXE" --appimage-extract-and-run "$ROM"   >"$(dirname "$OUTPUT")/melonds-stdout.log" 2>"$(dirname "$OUTPUT")/melonds-stderr.log" &
+extra_args=()
+if [[ "$MELONDS_EXE" == *.AppImage ]]; then extra_args+=(--appimage-extract-and-run); fi
+QT_X11_NO_MITSHM=1 LIBGL_ALWAYS_SOFTWARE=1   "$MELONDS_EXE" "${extra_args[@]}" "$ROM"   >"$(dirname "$OUTPUT")/melonds-stdout.log" 2>"$(dirname "$OUTPUT")/melonds-stderr.log" &
 emulator_pid=$!
 trap 'kill "$emulator_pid" 2>/dev/null || true; wait "$emulator_pid" 2>/dev/null || true' EXIT
 window=""
