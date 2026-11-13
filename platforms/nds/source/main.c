@@ -8,6 +8,9 @@
 #include "psp_guest_bus.h"
 #include "psp_platform_budget.h"
 #include "psp_features.h"
+#include "psp_scene.h"
+int psp_nds_scene_init(void);
+void psp_nds_scene_update(uint32_t frame);
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
@@ -113,6 +116,7 @@ static void benchmark_shared_mips(void){
 }
 int main(void){
  consoleDemoInit();
+ int scene_ok=psp_nds_scene_init()==0;
  printf("PSP3DS / DS research\nMode: %s\n",isDSiMode()?"DSi-enhanced":"Nintendo DS");
  printf("Shared CPU; NOT PSP games\n\n");
  PspPlatformBudget policy;
@@ -131,7 +135,13 @@ int main(void){
  test_shared_cpu();
  benchmark_shared_mips();
  test_slot2_ram();
+ printf("Scene BG/OAM: %s\n",scene_ok?"PASS":"FAILED");
  printf("START: exit\n");
- while(1){scanKeys();if(keysDown()&KEY_START)break;swiWaitForVBlank();}
+ uint32_t frame=0;
+ while(1){
+  scanKeys();if(keysDown()&KEY_START)break;
+  swiWaitForVBlank();
+  if(scene_ok)psp_nds_scene_update(frame++);
+ }
  return 0;
 }
