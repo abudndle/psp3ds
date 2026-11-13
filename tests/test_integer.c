@@ -75,7 +75,9 @@ static void test_cop1_transfer(void) {
  wr(mem+12,(17u<<26)|(6u<<16)|(13u<<11));
  for(int i=0;i<4;i++) assert(psp_cpu_step(&c)==0);
  assert(c.gpr[6]==0x7fc12345u);
- wr(mem+16,I(49,5,13,1));
+ wr(mem+16,(17u<<26)|(16u<<21)|(13u<<11)|(14u<<6)|6u);
+ assert(psp_cpu_step(&c)==0 && c.fpr[14]==0x7fc12345u);
+ wr(mem+20,I(49,5,13,1));
  assert(psp_cpu_step(&c)==-2 && c.fpr[13]==0x7fc12345u);
 }
 int main(void){test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}

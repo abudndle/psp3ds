@@ -145,7 +145,8 @@ int psp_cpu_step(PspCpu *c) {
       break;
     }
     case 17: /* COP1 register transfers preserve all 32 bits. */
-      if ((instr & 0x7ffu) != 0) status=-1;
+      if (rs==16 && rt==0 && fn==6) c->fpr[sh]=c->fpr[rd]; /* MOV.S */
+      else if ((instr & 0x7ffu) != 0) status=-1;
       else if (rs==0) c->gpr[rt]=c->fpr[rd];
       else if (rs==4) c->fpr[rd]=b;
       else status=-1;
