@@ -7,6 +7,7 @@ int main(void) {
  consoleDemoInit();
  printf("PSP3DS / DS research port\n");
  printf("Shared CPU core demo\n\n");
+ printf("Detected mode: %s\n",isDSiMode()?"DSi":"DS");
  uint8_t ram[16]={0x01,0x00,0x08,0x24};
  PspCpu cpu;
  psp_cpu_init(&cpu,ram,sizeof ram,0x08800000u,0x08800000u);
