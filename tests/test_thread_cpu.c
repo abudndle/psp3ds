@@ -68,6 +68,27 @@ int main(void) {
  assert(psp_thread_cpu_step(&runtime)==2);
  assert(psp_thread_cpu_switch(&runtime,(uint32_t)b)==-1);
  assert(psp_thread_cpu_switch(NULL,(uint32_t)a)==-1);
+ uint8_t guest[1024]={0};
+ psp_cpu_init(&live,guest,sizeof guest,BASE,BASE);
+ psp_threads_init(&tasks);
+ assert(psp_thread_cpu_init(&runtime,&tasks,&live,&hle)==0);
+ assert(psp_thread_cpu_set_stack_arena(&runtime,BASE+512,BASE+1024)==0);
+ int32_t dormant=psp_thread_cpu_create(&runtime,32,BASE,512);
+ assert(dormant>0 && psp_thread_cpu_step(&runtime)==2);
+ assert(psp_thread_cpu_create(&runtime,32,BASE,256)<0);
+ guest[32]=0x7b;
+ assert(psp_thread_cpu_start(&runtime,(uint32_t)dormant,1,BASE+32)==0);
+ assert(psp_thread_cpu_start(&runtime,(uint32_t)dormant,0,0)<0);
+ assert(psp_thread_cpu_switch(&runtime,(uint32_t)dormant)==0);
+ assert(live.gpr[4]==1 && guest[live.gpr[5]-BASE]==0x7b);
+ assert(live.gpr[26]==BASE+768 && live.gpr[29]<live.gpr[26]);
+ assert(guest[768+0xc0]==(uint8_t)dormant && guest[768+0xfc]==0xff);
+ write32(guest,0x03e00008u); /* jr ra */
+ write32(guest+4,0x2402002au); /* return value in the delay slot */
+ assert(psp_thread_cpu_step(&runtime)==0);
+ assert(psp_thread_cpu_step(&runtime)==0 && live.gpr[2]==42);
+ assert(psp_threads_get(&tasks,(uint32_t)dormant)->state==PSP_TASK_STOPPED);
+ assert(psp_thread_cpu_step(&runtime)==2);
  puts("PASS: cooperative CPU registers, branch-delay state, runnable gating and retired-slot reuse");
  return 0;
 }

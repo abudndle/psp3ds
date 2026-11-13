@@ -11,19 +11,31 @@ static void write32(uint8_t *p,uint32_t v) {
 }
 typedef struct { size_t offset; uint32_t value; } Write;
 typedef struct { size_t offset; unsigned addr_base; uint32_t old; } PendingHi;
-static int duplicate(const Write *writes,size_t used,size_t offset) {
- for(size_t i=0;i<used;i++)if(writes[i].offset==offset)return 1;
- return 0;
-}
-int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
-                    const PspRelocSegment *segments,size_t n) {
+int psp_reloc_apply_with_base_mode(PspCpu *cpu, const uint8_t *records, size_t record_len,
+                    const PspRelocSegment *segments,size_t n, int segment_relative) {
  if (!cpu || !cpu->ram || (!records && record_len) || !segments || n==0 || n>256 ||
-     record_len%8 || record_len/8>65536) return -1;
+     record_len%8 || record_len/8>PSP_RELOC_MAX_RECORDS) return -1;
  size_t count=record_len/8;
  if(count && (count>SIZE_MAX/sizeof(Write) || count>SIZE_MAX/sizeof(PendingHi)))return -1;
  Write *writes=count?(Write *)calloc(count,sizeof(Write)):NULL;
  PendingHi *pending=count?(PendingHi *)calloc(count,sizeof(PendingHi)):NULL;
- if(count && (!writes || !pending)){free(writes);free(pending);return -1;}
+ /* One bit per guest word in the largest relocation target range. */
+ size_t target_end = 0;
+ for (size_t i = 0; i < n; ++i) {
+  if (!segments[i].mem_size || segments[i].mapped_vaddr < cpu->ram_base)
+   continue;
+  uint64_t end = (uint64_t)(segments[i].mapped_vaddr - cpu->ram_base) +
+                 segments[i].mem_size;
+  if (end <= cpu->ram_size && end > target_end) target_end = (size_t)end;
+ }
+ size_t bitmap_size = target_end / 32u + (target_end % 32u != 0);
+ uint8_t *seen = count && bitmap_size ? calloc(bitmap_size, 1) : NULL;
+ if (count && (!writes || !pending || (bitmap_size && !seen))) {
+  free(writes);
+  free(pending);
+  free(seen);
+  return -1;
+ }
  int status=-2;size_t used=0,hi_count=0;
  for(size_t i=0;i<count;i++) {
   uint32_t rel_off=read32(records+i*8), info=read32(records+i*8+4);
@@ -37,11 +49,15 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
   if (guest_addr>UINT32_MAX || guest_addr<cpu->ram_base)goto cleanup;
   uint64_t off=guest_addr-cpu->ram_base;
   if(off>cpu->ram_size || cpu->ram_size-(size_t)off<4)goto cleanup;
-  /* No duplicate targets: staged or waiting for a LO16. */
-  if(duplicate(writes,used,(size_t)off))goto cleanup;
-  for(size_t j=0;j<hi_count;j++)if(pending[j].offset==(size_t)off)goto cleanup;
+  /* Guest relocation targets must be aligned and unique. */
+  if ((off & 3u) || off >= target_end) goto cleanup;
+  size_t slot = (size_t)off / 4u;
+  uint8_t mask = (uint8_t)(1u << (slot % 8u));
+  if (seen[slot / 8u] & mask) goto cleanup;
+  seen[slot / 8u] |= mask;
   uint32_t old=read32(cpu->ram+(size_t)off);
-  uint32_t delta=source->mapped_vaddr-source->original_vaddr;
+  uint32_t delta=source->mapped_vaddr;
+  if (!segment_relative) delta-=source->original_vaddr;
   uint32_t value;
   if(type==5) {
    /* HI16 carries are determined by the sign-extended LO16 addend. */
@@ -53,9 +69,12 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
    continue;
   }
   if(type==6) {
-   /* Paired low halves must sign-extend; ORI is allowed standalone only. */
+   /* Load/store offsets sign-extend just like ADDIU. */
    unsigned opcode=old>>26;
-   if(opcode!=9 && (opcode!=13 || hi_count))goto cleanup; /* ADDIU, or standalone ORI */
+   int load_store = (opcode >= 0x20 && opcode <= 0x26) ||
+                    (opcode >= 0x28 && opcode <= 0x2e) ||
+                    opcode == 0x31 || opcode == 0x39; /* LWC1, SWC1 */
+   if (!load_store && opcode != 9 && (opcode != 13 || hi_count)) goto cleanup;
    int32_t low=(int32_t)(int16_t)(old&0xffffu);
    for(size_t j=0;j<hi_count;j++) {
     if(pending[j].addr_base!=addr_base || used>=count)goto cleanup;
@@ -83,6 +102,12 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
  for(size_t i=0;i<used;i++)write32(cpu->ram+writes[i].offset,writes[i].value);
  status=0;
 cleanup:
- free(writes);free(pending);
+ free(writes);free(pending);free(seen);
  return status;
+}
+
+
+int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
+                    const PspRelocSegment *segments, size_t count) {
+ return psp_reloc_apply_with_base_mode(cpu,records,record_len,segments,count,0);
 }

@@ -20,11 +20,17 @@ int psp_inspect(const uint8_t *d, size_t n, PspFileInfo *o) {
   if (n>=0x8006 && memcmp(d+0x8001,"CD001",5)==0) { o->type=PSP_FILE_ISO; return 0; }
   return -3;
 }
-static int translate(PspCpu *c,uint32_t addr, size_t bytes,size_t *off) {
-  if (addr<c->ram_base) return -1;
-  uint64_t x=(uint64_t)addr-c->ram_base;
-  if (x>c->ram_size || bytes>c->ram_size-(size_t)x) return -1;
-  *off=(size_t)x;return 0;
+static uint8_t *translate(PspCpu *c,uint32_t addr,size_t bytes) {
+  if (c->edram && addr>=PSP_GE_EDRAM_BASE && addr-PSP_GE_EDRAM_BASE<PSP_GE_EDRAM_SIZE) {
+    size_t offset=addr-PSP_GE_EDRAM_BASE;
+    size_t size=c->edram_size<PSP_GE_EDRAM_SIZE ? c->edram_size : PSP_GE_EDRAM_SIZE;
+    if (offset<=size && bytes<=size-offset) return c->edram+offset;
+    return NULL;
+  }
+  if (addr<c->ram_base) return NULL;
+  uint64_t offset=(uint64_t)addr-c->ram_base;
+  if (offset>c->ram_size || bytes>c->ram_size-(size_t)offset) return NULL;
+  return c->ram+(size_t)offset;
 }
 void psp_cpu_init(PspCpu *c,uint8_t *ram,size_t ram_size,uint32_t base,uint32_t start) {
   memset(c,0,sizeof(*c));c->ram=ram;c->ram_size=ram_size;c->ram_base=base;c->pc=start;c->next_pc=start+4;
@@ -40,6 +46,7 @@ static int64_t signed32(uint32_t v) {
   return v < 0x80000000u ? (int64_t)v : (int64_t)v - 4294967296LL;
 }
 static int trap(PspCpu *c, unsigned code, uint32_t info) {
+  c->ll_valid=0;
   c->last_trap_code=info;
   c->cp0_epc=c->delay_slot ? c->pc-4u : c->pc;
   c->cp0_cause=(c->cp0_cause & ~0x8000007cu) | ((code & 31u)<<2)
@@ -56,11 +63,24 @@ static int diff_overflow(uint32_t a, uint32_t b, uint32_t out) {
 }
 static void store16(uint8_t *p, uint32_t v) { p[0]=(uint8_t)v; p[1]=(uint8_t)(v>>8); }
 static void store32(uint8_t *p, uint32_t v) { store16(p,v); store16(p+2,v>>16); }
+/* Decode binary32 directly so conversion is independent of host FP modes. */
+static uint32_t trunc_single_to_word(uint32_t bits) {
+ unsigned exponent=(bits>>23)&255u;
+ uint32_t fraction=bits&0x7fffffu;
+ int negative=(bits>>31)!=0;
+ if (exponent==255u && fraction) return 0x7fffffffu;
+ if (exponent<127u) return 0;
+ if (exponent>=158u) return negative ? 0x80000000u : 0x7fffffffu;
+ unsigned shift=exponent-127u;
+ uint32_t significand=fraction|0x800000u;
+ uint32_t magnitude=shift>=23 ? significand<<(shift-23) : significand>>(23-shift);
+ return negative ? 0u-magnitude : magnitude;
+}
 int psp_cpu_step(PspCpu *c) {
   if (!c || !c->ram || c->halted) return -2;
-  size_t off;
-  if ((c->pc & 3u) || translate(c,c->pc,4,&off)) { c->fault=-2; return -2; }
-  uint32_t instr=r32(c->ram+off),op=instr>>26,rs=(instr>>21)&31,rt=(instr>>16)&31;
+  uint8_t *ptr;
+  if ((c->pc & 3u) || !(ptr=translate(c,c->pc,4))) { c->fault=-2; return -2; }
+  uint32_t instr=r32(ptr),op=instr>>26,rs=(instr>>21)&31,rt=(instr>>16)&31;
   uint32_t rd=(instr>>11)&31,sh=(instr>>6)&31,fn=instr&63;
   uint32_t uimm=instr&65535u;
   int32_t imm=(int32_t)signed16((uint16_t)uimm);
@@ -76,6 +96,8 @@ int psp_cpu_step(PspCpu *c) {
         case 4: c->gpr[rd]=b<<(a&31u); break;
         case 6: c->gpr[rd]=b>>(a&31u); break;
         case 7: c->gpr[rd]=asr32(b,a&31u); break;
+        case 10: if (!b) c->gpr[rd]=a; break; /* MOVZ */
+        case 11: if (b) c->gpr[rd]=a; break; /* MOVN */
         case 12: return trap(c,8,(instr>>6)&0xfffffu);
         case 13: return trap(c,9,(instr>>6)&0xfffffu);
         case 32: {uint32_t value=a+b; if (sum_overflow(a,b,value)) return trap(c,12,0); c->gpr[rd]=value;break;}
@@ -144,14 +166,38 @@ int psp_cpu_step(PspCpu *c) {
       } else status=-1;
       break;
     }
+    case 17: /* COP1 register transfers preserve all 32 bits. */
+      if (rs==16 && rt==0 && fn==6) c->fpr[sh]=c->fpr[rd]; /* MOV.S */
+      else if (rs==16 && rt==0 && fn==13) c->fpr[sh]=trunc_single_to_word(c->fpr[rd]);
+      else if ((instr & 0x7ffu) != 0) status=-1;
+      else if (rs==0) c->gpr[rt]=c->fpr[rd];
+      else if (rs==4) c->fpr[rd]=b;
+      else if (rs==2 && rd==31) c->gpr[rt]=c->fcr31;
+      else if (rs==6 && rd==31) c->fcr31=b & 0x0181ffffu;
+      else status=-1;
+      break;
+    case 49: case 57: /* LWC1 / SWC1 */
+      addr=a+(uint32_t)imm;
+      if ((addr&3u) || !(ptr=translate(c,addr,4))) status=-2;
+      else if (op==49) c->fpr[rt]=r32(ptr);
+      else store32(ptr,c->fpr[rt]);
+      break;
+    case 31: /* Allegrex bitfield instructions. */
+      if (fn==0 && sh+rd<32u)
+        c->gpr[rt]=(a>>sh) & (UINT32_MAX>>(31u-rd));
+      else if (fn==4 && rd>=sh) {
+        uint32_t mask=(UINT32_MAX>>(31u-rd)) & (UINT32_MAX<<sh);
+        c->gpr[rt]=(b & ~mask) | ((a<<sh) & mask);
+      } else status=-1;
+      break;
     case 32: case 33: case 35: case 36: case 37:
       addr=a+(uint32_t)imm;
       if (((op==33 || op==37) && (addr&1u)) || (op==35 && (addr&3u)) ||
-          translate(c,addr,op==35?4:((op==33 || op==37)?2:1),&off)) status=-2;
-      else if(op==32) c->gpr[rt]=(uint32_t)(int32_t)(int8_t)c->ram[off];
-      else if(op==36) c->gpr[rt]=c->ram[off];
-      else if(op==35) c->gpr[rt]=r32(c->ram+off);
-      else {uint16_t val=r16(c->ram+off);c->gpr[rt]=(op==33)?(uint32_t)(int32_t)signed16(val):val;}
+          !(ptr=translate(c,addr,op==35?4:((op==33 || op==37)?2:1)))) status=-2;
+      else if(op==32) c->gpr[rt]=(uint32_t)(int32_t)(int8_t)*ptr;
+      else if(op==36) c->gpr[rt]=*ptr;
+      else if(op==35) c->gpr[rt]=r32(ptr);
+      else {uint16_t val=r16(ptr);c->gpr[rt]=(op==33)?(uint32_t)(int32_t)signed16(val):val;}
       break;
     case 34: case 38:
       addr=a+(uint32_t)imm;
@@ -159,39 +205,60 @@ int psp_cpu_step(PspCpu *c) {
         uint32_t aligned=addr&~3u, k=addr&3u;
         uint32_t merged=b;
         unsigned first=(op==34)?0:k, last=(op==34)?k:3;
-        if (translate(c,aligned+first,last-first+1,&off)) {status=-2;break;}
+        if (!(ptr=translate(c,aligned+first,last-first+1))) {status=-2;break;}
         for (unsigned i=first;i<=last;i++) {
           unsigned dest=(op==34)?(3-k+i):(i-k);
-          merged=(merged&~(0xffu<<(8*dest))) | ((uint32_t)c->ram[off+i-first]<<(8*dest));
+          merged=(merged&~(0xffu<<(8*dest))) | ((uint32_t)ptr[i-first]<<(8*dest));
         }
         c->gpr[rt]=merged;
       }
+      break;
+    case 48: /* LL */
+      addr=a+(uint32_t)imm;
+      if ((addr&3u) || !(ptr=translate(c,addr,4))) status=-2;
+      else {
+        c->gpr[rt]=r32(ptr);
+        c->ll_address=addr;
+        c->ll_valid=1;
+      }
+      break;
+    case 56: /* SC */
+      addr=a+(uint32_t)imm;
+      if ((addr&3u) || !(ptr=translate(c,addr,4))) status=-2;
+      else {
+        int success=c->ll_valid && c->ll_address==addr;
+        if (success) store32(ptr,b);
+        c->gpr[rt]=(uint32_t)success;
+      }
+      c->ll_valid=0;
       break;
     case 42: case 46:
       addr=a+(uint32_t)imm;
       {
         uint32_t aligned=addr&~3u, k=addr&3u;
         unsigned first=(op==42)?0:k, last=(op==42)?k:3;
-        if (translate(c,aligned+first,last-first+1,&off)) {status=-2;break;}
+        if (!(ptr=translate(c,aligned+first,last-first+1))) {status=-2;break;}
         for (unsigned i=first;i<=last;i++) {
           unsigned src=(op==42)?(3-k+i):(i-k);
-          c->ram[off+i-first]=(uint8_t)(b>>(8*src));
+          ptr[i-first]=(uint8_t)(b>>(8*src));
         }
       }
       break;
     case 40: case 41: case 43:
       addr=a+(uint32_t)imm;
       if (((op==41) && (addr&1u)) || (op==43 && (addr&3u)) ||
-          translate(c,addr,op==43?4:(op==41?2:1),&off)) status=-2;
-      else if(op==40) c->ram[off]=(uint8_t)b;
-      else if(op==41) store16(c->ram+off,b);
-      else store32(c->ram+off,b);
+          !(ptr=translate(c,addr,op==43?4:(op==41?2:1)))) status=-2;
+      else if(op==40) *ptr=(uint8_t)b;
+      else if(op==41) store16(ptr,b);
+      else store32(ptr,b);
       break;
     default: status=-1;
   }
   if (!status && (op==1 || op==2 || op==3 || op==4 || op==5 || op==6 || op==7 ||
       op==20 || op==21 || op==22 || op==23 || (op==0 && (fn==8 || fn==9))))
     has_delay=1;
+  if (!status && (op==40 || op==41 || op==42 || op==43 || op==46 || op==57) &&
+      (addr&~3u)==c->ll_address) c->ll_valid=0;
   c->gpr[0]=0;
   if (status) {c->fault=status;return status;}
   if (likely && !taken) {

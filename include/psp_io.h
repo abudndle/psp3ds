@@ -28,6 +28,7 @@ int32_t psp_io_open(PspIo *io, const char *guest_path, uint32_t flags);
 int32_t psp_io_read(PspIo *io, int32_t fd, void *dst, uint32_t size);
 /* SEEK_SET/CUR/END (0/1/2); accepts offsets through EOF. */
 int32_t psp_io_seek32(PspIo *io, int32_t fd, int32_t offset, uint32_t whence);
+int64_t psp_io_seek64(PspIo *io, int32_t fd, int64_t offset, uint32_t whence);
 /* Returns 0 or -1. */
 int32_t psp_io_close(PspIo *io, int32_t fd);
 #endif

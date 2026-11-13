@@ -33,5 +33,18 @@ int main(void){
  wr32(ram,BASE+128);
  assert(psp_prx_parse_imports(&cpu,BASE+1,BASE+20,&result)==-1);
  assert(psp_prx_parse_imports(&cpu,BASE+20,BASE,&result)==-1);
+ /* Import discovery has its own capacity, independent of HLE bindings. */
+ uint8_t large_ram[4096]={0};
+ psp_cpu_init(&cpu,large_ram,sizeof large_ram,BASE,BASE);
+ memcpy(large_ram+32,"UtilsForUser",13);
+ wr32(large_ram,BASE+32);large_ram[8]=5;
+ wr32(large_ram+12,BASE+64);wr32(large_ram+16,BASE+1200);
+ wr16(large_ram+10,PSP_PRX_MAX_IMPORTS);
+ assert(psp_prx_parse_imports(&cpu,BASE,BASE+20,&result)==0);
+ assert(result.count==PSP_PRX_MAX_IMPORTS);
+ assert(result.imports[result.count-1].stub_address==
+        BASE+1200+8*(PSP_PRX_MAX_IMPORTS-1));
+ wr16(large_ram+10,PSP_PRX_MAX_IMPORTS+1);
+ assert(psp_prx_parse_imports(&cpu,BASE,BASE+20,&result)==-2 && result.count==0);
  puts("PASS: 20/24-byte PSP import tables, NIDs, bounds and linker integration");return 0;
 }

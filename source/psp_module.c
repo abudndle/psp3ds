@@ -1,6 +1,7 @@
 #include "psp_module.h"
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 static uint16_t u16(const uint8_t *p) { return (uint16_t)(p[0] | ((uint16_t)p[1]<<8)); }
 static uint32_t u32(const uint8_t *p) {
  return (uint32_t)p[0] | (uint32_t)p[1]<<8 | (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24;
@@ -12,8 +13,8 @@ static const uint8_t *guest(const PspCpu *cpu, uint32_t addr, size_t len) {
  return cpu->ram+(size_t)off;
 }
 static int range(size_t n,uint64_t off,uint64_t bytes){return off<=n && bytes<=n-off;}
-int psp_module_discover(const uint8_t *elf,size_t size,
-                        const PspCpu *cpu,PspModuleInfo *out) {
+static int discover(const uint8_t *elf,size_t size,
+                        const PspCpu *cpu,uint32_t bias,PspModuleInfo *out) {
  if (!out) return -1;
  memset(out,0,sizeof(*out));
  if (!elf || !cpu || size<52 || memcmp(elf,"\177ELF",4)!=0 ||
@@ -37,6 +38,8 @@ int psp_module_discover(const uint8_t *elf,size_t size,
   if (!end) return -2;
   if ((size_t)(end-name)==21 && memcmp(name,".rodata.sceModuleInfo",21)==0) {
    /* The PSP SceModuleInfo structure occupies 52 bytes. */
+   if (a > UINT32_MAX - bias) return -2;
+   a += bias;
    if (found || sectlen<52 || !guest(cpu,a,52)) return -2;
    found=1;address=a;
   }
@@ -58,24 +61,38 @@ int psp_module_discover(const uint8_t *elf,size_t size,
  }
  return 0;
 }
+int psp_module_discover(const uint8_t *elf, size_t size,
+                        const PspCpu *cpu, PspModuleInfo *out) {
+ return discover(elf, size, cpu, 0, out);
+}
+
 int psp_module_imports(const PspCpu *cpu,const PspModuleInfo *module,
                        PspPrxImports *out) {
  if (!module || !out) return -1;
  return psp_prx_parse_imports(cpu,module->import_top,module->import_end,out);
 }
 
-int psp_module_link_known(const uint8_t *elf, size_t elf_size,
-                          PspCpu *cpu, PspHle *hle, PspModuleInfo *out) {
+int psp_module_link_rebased(const uint8_t *elf, size_t elf_size,
+                          PspCpu *cpu, PspHle *hle, uint32_t bias, PspModuleInfo *out) {
  if (out) memset(out,0,sizeof(*out));
  if (!cpu || !hle) return -1;
  PspModuleInfo info;
- int status=psp_module_discover(elf,elf_size,cpu,&info);
+ int status=discover(elf,elf_size,cpu,bias,&info);
  if (status) return status;
- PspPrxImports parsed;
- status=psp_module_imports(cpu,&info,&parsed);
+ PspPrxImports *parsed = malloc(sizeof(*parsed));
+ if (!parsed) return -1;
+ status = psp_module_imports(cpu, &info, parsed);
+ if (!status && parsed->count &&
+     psp_imports_link_known(cpu, hle, parsed->imports, parsed->count) != 0)
+  status = -4;
+ free(parsed);
  if (status) return status;
- if (parsed.count && psp_imports_link_known(cpu,hle,parsed.imports,parsed.count)!=0)
-  return -4;
  if (out) *out=info;
  return 0;
+}
+
+
+int psp_module_link_known(const uint8_t *elf, size_t elf_size,
+                          PspCpu *cpu, PspHle *hle, PspModuleInfo *out) {
+ return psp_module_link_rebased(elf, elf_size, cpu, hle, 0, out);
 }

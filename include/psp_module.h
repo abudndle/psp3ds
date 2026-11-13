@@ -28,4 +28,8 @@ int psp_module_imports(const PspCpu *cpu, const PspModuleInfo *module,
  */
 int psp_module_link_known(const uint8_t *elf, size_t elf_size,
                           PspCpu *cpu, PspHle *hle, PspModuleInfo *out);
+/* Resolve the module section at its relocated address. */
+int psp_module_link_rebased(const uint8_t *elf, size_t elf_size,
+                            PspCpu *cpu, PspHle *hle, uint32_t bias,
+                            PspModuleInfo *out);
 #endif

@@ -67,6 +67,29 @@ int main(void){
  for(int i=432;i<448;i++) assert(ram[i]==0); /* BSS zero-filled */
  assert(rd32(ram+208)==0x03e00008u && rd32(ram+216)==0x03e00008u);
  assert(psp_cpu_step(&cpu)==0 && cpu.gpr[8]==1);
+ /* PRX uses relative addresses, including the module section and entry. */
+ fixture(elf);
+ w16(elf+16,0xffa0);w32(elf+24,0);
+ w32(elf+60,0);w32(elf+64,64);w32(elf+92,400);
+ w32(elf+476,64);
+ const unsigned fields[]={96,100,104,108,112,128,140,144};
+ for(size_t i=0;i<sizeof fields/sizeof fields[0];i++){
+  unsigned field=fields[i];
+  w32(elf+512+field,rd32(elf+512+field)-BASE);
+ }
+ w32(elf+132,72);w32(elf+136,72);
+ /* The expanded synthetic relocation table lives beyond the original ELF. */
+ uint8_t prx[1072];
+ memcpy(prx,elf,1000);
+ for(size_t i=0;i<sizeof fields/sizeof fields[0];i++){
+  w32(prx+1000+i*8,fields[i]);w32(prx+1004+i*8,2);
+ }
+ setup(ram,&cpu,&hle);
+ assert(psp_boot_auto_mapped_elf(prx,sizeof prx,&cpu,&hle,&mod,&streams)==PSP_BOOT_OK);
+ assert(cpu.pc==BASE && mod.module_address==BASE+64 && hle.count==2);
+ assert(hle.module_base==BASE && hle.module_size==448 && hle.module_id!=0);
+ assert(rd32(ram+16)==BASE+400+0x20 && ram[400]==0x31 && ram[447]==0);
+ assert(psp_cpu_step(&cpu)==0 && cpu.gpr[8]==1);
  /* Without a p_paddr hint, select the first aligned gap after code. */
  fixture(elf);w32(elf+96,0);setup(ram,&cpu,&hle);
  assert(psp_boot_auto_mapped_elf(elf,sizeof elf,&cpu,&hle,&mod,&streams)==PSP_BOOT_OK);

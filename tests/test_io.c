@@ -45,6 +45,9 @@ int main(void){
  assert(psp_io_read(&io,3,buffer,4)==4 && !memcmp(buffer,"1234",4));
  assert(psp_io_read(&io,4,buffer,3)==3 && !memcmp(buffer,"123",3));
  assert(psp_io_seek32(&io,3,-2,1)==2);
+ assert(psp_io_seek64(&io,3,INT64_MAX,1)==-1);
+ assert(psp_io_seek64(&io,3,INT64_MIN,1)==-1);
+ assert(psp_io_seek64(&io,3,0,1)==2);
  assert(psp_io_read(&io,3,buffer,15)==8 && !memcmp(buffer,"3456789A",8));
  assert(psp_io_read(&io,3,buffer,1)==0);
  assert(psp_io_seek32(&io,3,-1,2)==9);

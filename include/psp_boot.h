@@ -31,15 +31,15 @@ int psp_boot_plain_elf(const uint8_t *elf, size_t elf_size,
  * and outputs are zero. Input ELF and RAM must be separate buffers.
  *
  * This does NOT allocate/map PT_LOAD sections or decrypt PSP executables.
- * Section addresses in the ELF must already match the mapped metadata
- * addresses. Supports <= 32 MiB mapped RAM and <= 128 program headers. */
+ * ET_EXEC section addresses must match mapped metadata addresses.
+ * ET_SCE_PRX entry, segment and section addresses are relative to ram_base. Supports <= 32 MiB mapped RAM and <= 128 program headers. */
 int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
                                   PspCpu *cpu, PspHle *hle,
                                   const PspRelocSegment *segments,
                                   size_t segment_count,
                                   PspModuleInfo *module,
                                   size_t *relocation_streams);
-/* Derive PT_LOAD placements directly from a plain ELF32/MIPS ET_EXEC.
+/* Derive PT_LOAD placements directly from a plain ELF32/MIPS ET_EXEC or relocatable ET_SCE_PRX.
  * The entry's file-backed executable segment must remain linked at its
  * original guest virtual address. Other PT_LOADs use a nonzero p_paddr
  * placement hint, their original vaddr if free, or first available aligned
@@ -47,9 +47,8 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
  * This maps, relocates, links imports and initializes CPU transactionally:
  * on failure guest RAM, CPU and HLE stay unchanged; outputs are zero.
  *
- * Not a general PSP ET_REL or ET_SCE_PRX loader: relocatable entry
- * rebasing, section-table rebasing, encrypted EBOOT and firmware setup
- * are explicitly unsupported. Requires at least one PSP relocation stream.
+ * PRX segments are mapped at ram_base plus p_vaddr. Encrypted EBOOT and
+ * firmware setup are unsupported. Requires a supported PSP relocation stream.
  */
 int psp_boot_auto_mapped_elf(const uint8_t *elf, size_t elf_size,
                              PspCpu *cpu, PspHle *hle,

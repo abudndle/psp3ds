@@ -7,6 +7,8 @@ struct PspIo;
 struct PspThreadCpu;
 /* PSP syscall numbers are assigned by module import resolution; no global fixed IDs. */
 #define PSP_HLE_MAX_BINDINGS 64u
+/* Reserved syscall range for diagnostic unresolved imports, indexed by ordinal. */
+#define PSP_HLE_UNRESOLVED_BASE 0xffe00u
 #define PSP_HLE_ERR_INVALID_ARGUMENT UINT32_C(0xffffffff)
 typedef enum {
  PSP_HLE_SYSTEM_TIME_LOW=1,
@@ -20,7 +22,17 @@ typedef enum {
  PSP_HLE_THREAD_CREATE=8,
  PSP_HLE_THREAD_WAIT=9,
  PSP_HLE_THREAD_SIGNAL=10,
- PSP_HLE_THREAD_EXIT=11
+ PSP_HLE_THREAD_EXIT=11,
+ PSP_HLE_SET_COMPILED_SDK=12,
+ PSP_HLE_GET_COMPILED_SDK=13,
+ PSP_HLE_SET_COMPILER_VERSION=14,
+ PSP_HLE_KERNEL_CREATE_THREAD=15,
+ PSP_HLE_KERNEL_START_THREAD=16,
+ PSP_HLE_MODULE_ID_BY_ADDRESS=17,
+ PSP_HLE_INTR_SUSPEND=18,
+ PSP_HLE_INTR_RESUME=19,
+ PSP_HLE_PART_ALLOC=20, PSP_HLE_PART_HEAD=21, PSP_HLE_PART_FREE=22,
+ PSP_HLE_STDIN=23, PSP_HLE_STDOUT=24, PSP_HLE_STDERR=25, PSP_HLE_IO_WRITE=26, PSP_HLE_SET_GPO=27, PSP_HLE_IMPOSE_LANGUAGE=28, PSP_HLE_CREATE_CALLBACK=29, PSP_HLE_REGISTER_EXIT_CALLBACK=30, PSP_HLE_POWER_REGISTER=31, PSP_HLE_UMD_REGISTER=32, PSP_HLE_UMD_CHECK=33, PSP_HLE_UMD_ACTIVATE=34, PSP_HLE_UMD_WAIT=35, PSP_HLE_RTC_CLOCK=36, PSP_HLE_IO_LSEEK64=37, PSP_HLE_CTRL_SET_MODE=38, PSP_HLE_CTRL_SET_CYCLE=39, PSP_HLE_GE_EDRAM_ADDR=40, PSP_HLE_EVENT_CREATE=41, PSP_HLE_GE_CALLBACK=42, PSP_HLE_GE_ENQUEUE=43, PSP_HLE_GE_DRAW_SYNC=44, PSP_HLE_GE_LIST_SYNC=45
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
@@ -28,8 +40,28 @@ typedef struct {
  size_t count;
  size_t last_binding_index; /* verified cache hint for repeated PSP HLE calls */
  struct PspIo *io; /* attached read-only disc filesystem */
+ void (*stdio_write)(int fd, const uint8_t *bytes, size_t size);
  struct PspThreadCpu *threads; /* optional experimental thread services */
  uint64_t uptime_us;
+ uint32_t compiled_sdk_version;
+ uint32_t compiler_version;
+ uint32_t guest_debug_output;
+ uint32_t ge_registers[256], ge_completed_id;
+ uint32_t ctrl_mode, ctrl_cycle;
+ struct { uint32_t bits, attributes; int used; } event_flags[16];
+ struct { uint8_t data[16]; int used; } ge_callbacks[16];
+ uint32_t impose_language, impose_button;
+ uint32_t exit_callback_uid;
+ uint32_t umd_callback_uid;
+ uint32_t umd_active_generation;
+ uint32_t power_callbacks[16];
+ struct { uint32_t owner, entry, argument; } callbacks[8];
+ /* Caller reserves this guest arena outside module and stack mappings. */
+ uint32_t partition_low, partition_high, partition_next_uid;
+ struct { uint32_t address, size, uid; } partition_blocks[16];
+ int interrupts_suspended;
+ uint32_t module_base, module_size, module_id;
+ int trace_unresolved_imports; /* Opt in to trapping when an unresolved import is called. */
 } PspHle;
 void psp_hle_init(PspHle *hle);
 int psp_hle_bind(PspHle *hle,uint32_t syscall_id,PspHleService service);

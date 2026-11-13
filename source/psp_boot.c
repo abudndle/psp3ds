@@ -58,18 +58,22 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
     count==0 || count>128 || elf_size<52 ||
     boot_ranges_overlap(elf, elf_size, cpu->ram, cpu->ram_size))
   return PSP_BOOT_BAD_ARGUMENT;
- /* Restrict to existing fixed-address ELF ET_EXEC subset; PRX ET_REL and
-  * unsupported image formats need dedicated mapping and entry handling. */
+ uint16_t type = boot_u16(elf+16);
  if(memcmp(elf,"\177ELF",4) || elf[4]!=1 || elf[5]!=1 ||
-    elf[6]!=1 || boot_u16(elf+16)!=2 || boot_u16(elf+18)!=8)
+    elf[6]!=1 || (type!=2 && type!=0xffa0u) || boot_u16(elf+18)!=8)
   return PSP_BOOT_ELF_FAILED;
+ uint32_t bias = type == 0xffa0u ? cpu->ram_base : 0;
  uint32_t entry=boot_u32(elf+24);
+ if (entry > UINT32_MAX - bias) return PSP_BOOT_ELF_FAILED;
+ entry += bias;
  uint32_t phoff=boot_u32(elf+28);
  uint16_t entsize=boot_u16(elf+42),phnum=boot_u16(elf+44);
  if((entry&3u) || entsize<32 || phnum!=count ||
     (uint64_t)phoff+(uint64_t)entsize*count>elf_size)
   return PSP_BOOT_ELF_FAILED;
  int executable=0;
+ uint32_t module_base=UINT32_MAX;
+ uint64_t module_end=0;
  for(size_t i=0;i<count;i++){
   const uint8_t *ph=elf+phoff+i*entsize;
   if(boot_u32(ph)!=1u)continue;
@@ -77,10 +81,14 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
   uint32_t memsz=boot_u32(ph+20),flags=boot_u32(ph+24);
   uint64_t mapped=segments[i].mapped_vaddr;
   if(segments[i].original_vaddr!=original || segments[i].mem_size!=memsz ||
-     filesz>memsz || mapped<cpu->ram_base ||
+     filesz>memsz || (type == 0xffa0u && mapped != (uint64_t)original + bias) ||
+     mapped<cpu->ram_base ||
      mapped-cpu->ram_base>cpu->ram_size ||
      memsz>cpu->ram_size-(size_t)(mapped-cpu->ram_base))
    return PSP_BOOT_ELF_FAILED;
+  if(mapped+memsz>UINT64_C(0x100000000))return PSP_BOOT_ELF_FAILED;
+  if(mapped<module_base)module_base=(uint32_t)mapped;
+  if(mapped+memsz>module_end)module_end=mapped+memsz;
   if((flags&1u) && entry>=mapped &&
      (uint64_t)entry+4u<=mapped+filesz) executable=1;
  }
@@ -95,13 +103,16 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
  if(psp_reloc_image_apply(elf,elf_size,&candidate,segments,count,&streams))
   goto rollback;
  PspModuleInfo staged_module;
- if(psp_module_link_known(elf,elf_size,&candidate,&staged_hle,
+ if(psp_module_link_rebased(elf,elf_size,&candidate,&staged_hle,bias,
                           &staged_module)){
   status=PSP_BOOT_IMPORT_FAILED;
   goto rollback;
  }
  psp_cpu_init(&candidate,cpu->ram,cpu->ram_size,cpu->ram_base,entry);
  *cpu=candidate;
+ staged_hle.module_base=module_base;
+ staged_hle.module_size=(uint32_t)(module_end-module_base);
+ staged_hle.module_id=0x1000u; /* Single boot module UID. */
  *hle=staged_hle;
  *module=staged_module;
  if(relocation_streams)*relocation_streams=streams;

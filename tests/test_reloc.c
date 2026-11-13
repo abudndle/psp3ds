@@ -2,12 +2,34 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #define BASE 0x08800000u
 static void wr(uint8_t *p,uint32_t v){for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(v>>(i*8));}
 static uint32_t rd(const uint8_t *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
 static void rec(uint8_t *p,uint32_t off,unsigned ofs,unsigned addr,unsigned type){wr(p,off);wr(p+4,(addr<<16)|(ofs<<8)|type);}
+static void large_stream(void) {
+ const size_t count = 83187;
+ uint8_t *ram = calloc(count, 4);
+ uint8_t *records = malloc(count * 8);
+ assert(ram && records);
+ PspCpu cpu;
+ psp_cpu_init(&cpu, ram, count * 4, BASE, BASE);
+ PspRelocSegment segment = {0, BASE, (uint32_t)(count * 4)};
+ for (size_t i = 0; i < count; ++i)
+  rec(records + i * 8, (uint32_t)(i * 4), 0, 0, 2);
+ assert(psp_reloc_apply(&cpu, records, count * 8, &segment, 1) == 0);
+ assert(rd(ram) == BASE && rd(ram + (count - 1) * 4) == BASE);
+
+ rec(records + (count - 1) * 8, 0, 0, 0, 2);
+ assert(psp_reloc_apply(&cpu, records, count * 8, &segment, 1) < 0);
+ for (size_t i = 0; i < count; ++i) assert(rd(ram + i * 4) == BASE);
+ free(records);
+ free(ram);
+}
+
 int main(void){
+ large_stream();
  uint8_t ram[256]={0},rels[32]={0},snapshot[256];PspCpu cpu;
  psp_cpu_init(&cpu,ram,sizeof ram,BASE,BASE);
  PspRelocSegment seg[2]={{0,BASE,128},{0x08000000u,BASE+128,128}};

@@ -12,4 +12,7 @@
 int psp_reloc2_apply(PspCpu *cpu, const uint8_t *bytes, size_t length,
                      const PspRelocSegment *segments, size_t segment_count,
                      unsigned rel_segment_index);
+ int psp_reloc2_apply_with_base_mode(PspCpu *cpu, const uint8_t *bytes, size_t length,
+                                     const PspRelocSegment *segments, size_t count,
+                                     unsigned rel_segment_index, int segment_relative);
 #endif

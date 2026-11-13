@@ -63,4 +63,93 @@ static void test_regimm_branch(void) {
   psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
   wr(mem,I(1,8,4,2));assert(psp_cpu_step(&c)==-1);
 }
-int main(void){test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}
+static void test_cop1_transfer(void) {
+ uint8_t mem[32]={0};
+ PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.gpr[4]=0x7fc12345u;
+ c.gpr[5]=BASE+24;
+ wr(mem, (17u<<26)|(4u<<21)|(4u<<16)|(12u<<11));
+ wr(mem+4,I(57,5,12,0));
+ wr(mem+8,I(49,5,13,0));
+ wr(mem+12,(17u<<26)|(6u<<16)|(13u<<11));
+ for(int i=0;i<4;i++) assert(psp_cpu_step(&c)==0);
+ assert(c.gpr[6]==0x7fc12345u);
+ wr(mem+16,(17u<<26)|(16u<<21)|(13u<<11)|(14u<<6)|6u);
+ assert(psp_cpu_step(&c)==0 && c.fpr[14]==0x7fc12345u);
+ wr(mem+20,I(49,5,13,1));
+ assert(psp_cpu_step(&c)==-2 && c.fpr[13]==0x7fc12345u);
+}
+static void test_ll_sc(void) {
+ uint8_t mem[48]={0};
+ PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.gpr[4]=BASE+40;
+ wr(mem,I(48,4,5,0));
+ wr(mem+4,I(9,5,5,1));
+ wr(mem+8,I(56,4,5,0));
+ wr(mem+12,I(56,4,5,0));
+ wr(mem+16,I(48,4,5,0));
+ wr(mem+20,I(43,4,0,0));
+ wr(mem+24,I(56,4,5,0));
+ wr(mem+28,I(48,4,5,1));
+ wr(mem+40,7);
+ for(int i=0;i<3;i++) assert(psp_cpu_step(&c)==0);
+ assert(c.gpr[5]==1 && mem[40]==8);
+ assert(psp_cpu_step(&c)==0 && c.gpr[5]==0 && mem[40]==8);
+ for(int i=0;i<3;i++) assert(psp_cpu_step(&c)==0);
+ assert(c.gpr[5]==0 && mem[40]==0);
+ assert(psp_cpu_step(&c)==-2);
+}
+ static void test_fcr31(void) {
+ uint8_t mem[8]={0}; PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.gpr[4]=0xffffffffu;
+ wr(mem,(17u<<26)|(6u<<21)|(4u<<16)|(31u<<11));
+ wr(mem+4,(17u<<26)|(2u<<21)|(5u<<16)|(31u<<11));
+ assert(psp_cpu_step(&c)==0 && psp_cpu_step(&c)==0);
+ assert(c.gpr[5]==0x0181ffffu);
+}
+ static void test_conditional_move(void) {
+ uint8_t mem[16]={0}; PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.gpr[4]=42;c.gpr[5]=1;
+ execute(&c,mem,R(4,5,6,0,10)); assert(c.gpr[6]==0);
+ execute(&c,mem,R(4,5,6,0,11)); assert(c.gpr[6]==42);
+ execute(&c,mem,R(0,0,6,0,11)); assert(c.gpr[6]==42);
+ execute(&c,mem,R(0,0,6,0,10)); assert(c.gpr[6]==0);
+}
+static void test_trunc_single(void) {
+ uint8_t mem[24]={0};
+ PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ const uint32_t input[]={0x40700000u,0xc0700000u,0x80000001u,
+                         0x4f000000u,0xcf000000u,0x7fc00000u};
+ const uint32_t expected[]={3,0xfffffffdu,0,0x7fffffffu,0x80000000u,0x7fffffffu};
+ for(unsigned i=0;i<sizeof input/sizeof input[0];i++){
+  c.fpr[12]=input[i];
+  execute(&c,mem,(17u<<26)|(16u<<21)|(12u<<11)|(13u<<6)|13u);
+  assert(c.fpr[13]==expected[i]);
+ }
+}
+ static void test_edram(void) {
+ uint8_t mem[12]={0}, edram[4]={0}; PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.edram=edram;c.edram_size=sizeof edram;
+ c.gpr[4]=PSP_GE_EDRAM_BASE;c.gpr[5]=0x12345678u;
+ execute(&c,mem,I(43,4,5,0));execute(&c,mem,I(35,4,6,0));
+ assert(c.gpr[6]==0x12345678u && edram[0]==0x78);
+ wr(mem+8,I(35,4,6,4));assert(psp_cpu_step(&c)==-2);
+}
+ static void test_bitfield(void) {
+ uint8_t mem[12]={0}; PspCpu c;
+ psp_cpu_init(&c,mem,sizeof mem,BASE,BASE);
+ c.gpr[4]=0x12345678u;c.gpr[5]=UINT32_MAX;
+ execute(&c,mem,(31u<<26)|R(4,5,15,8,4));
+ assert(c.gpr[5]==0xffff78ffu);
+ execute(&c,mem,(31u<<26)|R(5,6,7,8,0));
+ assert(c.gpr[6]==0x78u);
+ execute(&c,mem,(31u<<26)|R(4,6,31,0,0));
+ assert(c.gpr[6]==c.gpr[4]);
+}
+int main(void){test_bitfield();test_edram();test_trunc_single();test_conditional_move();test_fcr31();test_ll_sc();test_cop1_transfer();test_memory();test_arithmetic();test_regimm_branch();puts("PASS: expanded MIPS integer, memory, branch and HI/LO instruction tests");return 0;}

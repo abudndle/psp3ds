@@ -19,9 +19,9 @@ static int32_t sign_bits(uint32_t n,unsigned bits) {
  n &=mask;
  return (int32_t)((n^sign)-sign);
 }
-int psp_reloc2_apply(PspCpu *cpu,const uint8_t *bytes,size_t length,
+int psp_reloc2_apply_with_base_mode(PspCpu *cpu,const uint8_t *bytes,size_t length,
                      const PspRelocSegment *segments,size_t segment_count,
-                     unsigned rel_segment_index) {
+                     unsigned rel_segment_index, int segment_relative) {
  if(!cpu || !bytes || !segments || !segment_count || segment_count>256 ||
     length<6 || length>524288 || rel_segment_index==0 || rel_segment_index>256) return -1;
  unsigned segbits=1;
@@ -90,8 +90,14 @@ int psp_reloc2_apply(PspCpu *cpu,const uint8_t *bytes,size_t length,
   wr32(decoded+produced*8+4,(seg<<16)|(offseg<<8)|type);
   produced++;
  }
- status=psp_reloc_apply(cpu,decoded,produced*8,segments,segment_count);
+ status=psp_reloc_apply_with_base_mode(cpu,decoded,produced*8,segments,segment_count,segment_relative);
 done:
  free(decoded);
  return status;
+}
+
+int psp_reloc2_apply(PspCpu *cpu, const uint8_t *bytes, size_t length,
+                     const PspRelocSegment *segments, size_t count,
+                     unsigned rel_segment_index) {
+ return psp_reloc2_apply_with_base_mode(cpu,bytes,length,segments,count,rel_segment_index,0);
 }
