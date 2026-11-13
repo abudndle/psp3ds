@@ -6,7 +6,7 @@
 /* Host-side cooperative MIPS context switching: not PSP firmware threads.
  * All guest threads share the same mapped RAM and HLE dispatcher.
  * The caller owns PspThreads, the live CPU and the underlying guest RAM. */
-typedef struct {
+typedef struct PspThreadCpu {
  PspThreads *scheduler;
  PspCpu *live;
  PspHle *hle;
