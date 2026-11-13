@@ -1,6 +1,8 @@
 #include "psp_thread_cpu.h"
 #include <limits.h>
 #include <string.h>
+ /* An unmapped, unaligned return target reserved for created threads. */
+#define PSP_THREAD_RETURN_PC UINT32_MAX
 
 static int slot_for(const PspThreadCpu *r, uint32_t id) {
  if (!r || !id) return -1;
@@ -92,6 +94,7 @@ int psp_thread_cpu_start(PspThreadCpu *r, uint32_t id,
  cpu->gpr[29]=arg_address-16u;
  cpu->gpr[4]=size;
  cpu->gpr[5]=size ? arg_address : 0;
+ cpu->gpr[31]=PSP_THREAD_RETURN_PC;
  return psp_threads_start(r->scheduler,id);
 }
 int psp_thread_cpu_flush(PspThreadCpu *r) {
@@ -118,5 +121,10 @@ int psp_thread_cpu_step(PspThreadCpu *r) {
  if (selected<0) return -2;
  if (!selected) return 2;
  if (psp_thread_cpu_switch(r,(uint32_t)selected)!=0) return -2;
- return psp_hle_step(r->hle,r->live);
+ int status=psp_hle_step(r->hle,r->live);
+ int index=slot_for(r,r->active_id);
+ if (status>=0 && index>=0 && r->stack_sizes[index] &&
+     r->live->pc==PSP_THREAD_RETURN_PC)
+  return psp_threads_stop(r->scheduler,r->active_id)==0 ? status : -2;
+ return status;
 }
