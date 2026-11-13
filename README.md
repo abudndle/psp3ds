@@ -981,8 +981,16 @@ not playable. See [GE sprite subset scope](docs/psp-ge-sprite-subset.md).
 
 ## Single-precision MIPS FPU (COP1) subset (2026-11-13)
 
-`PspCpu` now carries 32 single-precision FPU registers (`fpr`) and `fcr31`. `psp_cpu_step()` executes `MFC1`, `MTC1`, `CFC1`/`CTC1` (FCSR only; mask `0x0183ffff`), `BC1F/BC1T/BC1FL/BC1TL` with delay-slot and branch-likely handling, `LWC1`/`SWC1` (4-byte aligned, bounds-checked), and single-precision `ADD.S`, `SUB.S`, `MUL.S`, `DIV.S`, `SQRT.S`, `ABS.S`, `MOV.S`, `NEG.S`, `ROUND/TRUNC/CEIL/FLOOR.W.S`, `CVT.W.S` (honors FCSR rounding mode), `CVT.S.W` and the `C.cond.S` compare family (NaN-aware). `SQRT.S` and float-to-integer rounding are implemented without libm, so the DS (`-lc` only) build does not gain a new link dependency.
+`PspCpu` now carries 32 single-precision FPU registers (`fpr`) and `fcr31`. `psp_cpu_step()` executes `MFC1`, `MTC1`, `CFC1`/`CTC1`, `BC1F/BC1T/BC1FL/BC1TL` (delay-slot and branch-likely handling), `LWC1`/`SWC1` (4-byte aligned, bounds-checked), and single-precision `ADD.S`, `SUB.S`, `MUL.S`, `DIV.S`, `SQRT.S`, `ABS.S`, `MOV.S`, `NEG.S`, `ROUND/TRUNC/CEIL/FLOOR.W.S`, `CVT.W.S`, `CVT.S.W` and the `C.cond.S` compare family.
 
-`test_fpu` covers arithmetic, sign operations, every rounding mode, overflow/NaN conversion, compare-and-branch (including branch-likely annulment), load/store, faults, and a bit-exact `SQRT.S` comparison against host `sqrtf` over 200,000 values. Host CTest: 58/58 pass, normally and under ASan/UBSan.
+- **Rounding mode (fcr31 bits 1:0)** applies to `ADD/SUB/MUL/DIV/SQRT.S`, `CVT.W.S` and `CVT.S.W`. Arithmetic is computed in host round-to-nearest and corrected by one ulp using the exactly computed error term, so it does not depend on host FPU state or `fenv`. Exact cancellation gives -0 under round-toward-minus-infinity.
+- **NaNs:** an operation that creates a NaN from non-NaN inputs (`0/0`, `inf-inf`, `0*inf`, `inf/inf`) returns the positive quiet NaN `0x7fc00000`, as observed in `pspautotests/tests/cpu/fpu/fpu_nan`, not the host's sign.
+- **Float-to-int** saturates: NaN and positive overflow give `0x7fffffff`, negative overflow gives `0x80000000`.
+- **`CFC1`:** FIR (`fcr0`) reads `0x00003351`; `fcr25`-`fcr28` read 0; other registers are rejected. `CTC1` to `fcr31` keeps only the defined bits (`0x0183ffff`).
+- `SQRT.S` and conversions use integer code, so the DS (`-lc` only) build gains no libm dependency.
 
-**Not verified / not implemented:** behavior against a real PSP or PPSSPP reference (NaN payloads, denormal flushing and out-of-range `CVT.W.S` results follow standard IEEE/MIPS behavior and are not hardware-checked), FCSR exception flags and traps, `CFC1` FIR, double-precision and paired formats (rejected as unsupported), and the VFPU. Add/sub/mul/div use host or ARM9 software float, which is slow on the DS.
+`test_fpu` covers arithmetic, every rounding mode, saturation, NaN/inf cases, compare-and-branch (including branch-likely annulment), load/store, faults, and a randomized check of add/sub/mul/div/sqrt/cvt.s.w in all four rounding modes against the host FPU (240,000 operand/mode pairs, with the emulator itself running in the host's default mode).
+
+The behaviors above were cross-checked against the *expected output* files of [pspautotests](https://github.com/hrydgard/pspautotests). Those files have no stated license, so none are copied into this repository; running the `.prx` tests needs PRX loading and printf HLE that do not exist here yet.
+
+**Not verified / not implemented:** direct comparison with a real PSP or the `.prx` suite, flush-to-zero (`FCSR` FS bit) and denormal handling, FCSR flag and cause bits and exceptions (writes are stored but never set by operations), the power-on `fcr31` value (`0x00000e00` on hardware; this core starts at 0), double and paired formats (rejected as unsupported), and the VFPU. Add/sub/mul/div use host or ARM9 software float, which is slow on the DS.

@@ -12,7 +12,8 @@ foreach(name core loader integer allegrex4 exceptions hle imports prx module rel
   add_test(NAME ${name} COMMAND test_${name})
 endforeach()
 if(UNIX)
-  target_link_libraries(test_fpu PRIVATE m) # test cross-checks against host sqrtf
+  target_link_libraries(test_fpu PRIVATE m) # test cross-checks against host FPU
+  target_compile_options(test_fpu PRIVATE -frounding-math -ffp-contract=off)
 endif()
 
 add_executable(test_reloc_hilo tests/test_reloc_hilo.c)

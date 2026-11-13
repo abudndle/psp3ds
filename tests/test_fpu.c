@@ -1,5 +1,6 @@
 #include "psp_core.h"
 #include <assert.h>
+#include <fenv.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,6 +27,70 @@ static void load(const unsigned *prog, int n) {
   psp_cpu_init(&cpu,mem,sizeof mem,BASE,BASE);
 }
 static void run(int n) { for (int i=0;i<n;i++) assert(psp_cpu_step(&cpu)==0); }
+
+static const int host_rm[4] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
+
+static unsigned run_op(unsigned fn, unsigned a, unsigned b, unsigned rm) {
+  unsigned p[] = { MTC1(8,0), MTC1(9,1), CTC1(10), S(1,0,2,fn), MFC1(11,2) };
+  load(p,5); cpu.gpr[8]=a; cpu.gpr[9]=b; cpu.gpr[10]=rm; run(5);
+  return cpu.gpr[11];
+}
+static unsigned next_rand(unsigned *x) { *x^=*x<<13; *x^=*x>>17; *x^=*x<<5; return *x; }
+
+/* Compare directed-rounding arithmetic against the host FPU under every rounding mode. */
+static void test_rounding_vs_host(void) {
+  unsigned x=0x2545F491u;
+  for (int i=0;i<60000;i++) {
+    unsigned a=next_rand(&x), b=next_rand(&x);
+    if (i%4==0) { b=(a&0x807fffffu)|((b&0x0300000u)<<0); }          /* close magnitudes */
+    if (i%7==0) { a&=0x80ffffffu; b&=0x80ffffffu; }                  /* tiny/denormal range */
+    if (((a>>23)&255)==255 || ((b>>23)&255)==255) continue;           /* no inf/NaN here */
+    for (unsigned rm=0; rm<4; rm++) {
+      volatile float va=bf(a), vb=bf(b), r;
+      volatile int vi=(int)a;
+      unsigned w_add, w_sub, w_mul, w_div=0, w_sqrt=0, w_cvt;
+      /* Expected values come from the host FPU in the directed mode... */
+      fesetround(host_rm[rm]);
+      r=va+vb; w_add=fb(r);
+      r=va-vb; w_sub=fb(r);
+      r=va*vb; w_mul=fb(r);
+      if ((b&0x7fffffffu)!=0) { r=va/vb; w_div=fb(r); }
+      if (!(a>>31)) { r=sqrtf(va); w_sqrt=fb(r); }
+      r=(float)vi; w_cvt=fb(r);
+      /* ...while the emulator itself runs under the default host mode, so its own
+         correction logic (not the host's rounding) is what gets tested. */
+      fesetround(FE_TONEAREST);
+      unsigned got;
+      got=run_op(0,a,b,rm); if (got!=w_add) { printf("add %08x %08x rm%u got %08x want %08x\n",a,b,rm,got,w_add); assert(0); }
+      got=run_op(1,a,b,rm); if (got!=w_sub) { printf("sub %08x %08x rm%u got %08x want %08x\n",a,b,rm,got,w_sub); assert(0); }
+      got=run_op(2,a,b,rm); if (got!=w_mul) { printf("mul %08x %08x rm%u got %08x want %08x\n",a,b,rm,got,w_mul); assert(0); }
+      if ((b&0x7fffffffu)!=0) { got=run_op(3,a,b,rm); if (got!=w_div) { printf("div %08x %08x rm%u got %08x want %08x\n",a,b,rm,got,w_div); assert(0); } }
+      if (!(a>>31)) { got=run_op(4,a,a,rm); if (got!=w_sqrt) { printf("sqrt %08x rm%u got %08x want %08x\n",a,rm,got,w_sqrt); assert(0); } }
+      { unsigned q[] = { MTC1(8,0), CTC1(9), cop1(20,0,0,1,32), MFC1(10,1) };
+        load(q,4); cpu.gpr[8]=a; cpu.gpr[9]=rm; run(4); got=cpu.gpr[10];
+        if (got!=w_cvt) { printf("cvt.s.w %08x rm%u got %08x want %08x\n",a,rm,got,w_cvt); assert(0); } }
+    }
+  }
+}
+
+/* NaNs the FPU makes from scratch are the positive quiet NaN; inputs' NaNs propagate. */
+static void test_nan_and_fir(void) {
+  static const struct { unsigned a, b, fn, want; } t[] = {
+    {0x00000000,0x00000000,3,0x7fc00000},  /* 0/0 */
+    {0x7f800000,0x7f800000,1,0x7fc00000},  /* inf-inf */
+    {0xff800000,0x7f800000,0,0x7fc00000},  /* -inf+inf */
+    {0x7f800000,0x00000000,2,0x7fc00000},  /* inf*0 */
+    {0xff800000,0x7f800000,3,0x7fc00000},  /* -inf/inf: positive NaN */
+    {0x00000000,0xff800000,3,0x80000000},  /* 0/-inf = -0 */
+    {0x80000000,0x00000000,1,0x80000000},  /* -0 - 0 = -0 */
+    {0x7fc00000,0x3f800000,0,0x7fc00000},  /* NaN propagates */
+  };
+  for (unsigned i=0;i<sizeof t/sizeof *t;i++) assert(run_op(t[i].fn,t[i].a,t[i].b,0)==t[i].want);
+  unsigned p[] = { cop1(2,8,0,0,0), cop1(2,9,25,0,0), cop1(2,10,28,0,0), cop1(2,11,3,0,0) };
+  load(p,4); run(3);
+  assert(cpu.gpr[8]==0x00003351u && cpu.gpr[9]==0 && cpu.gpr[10]==0);
+  assert(psp_cpu_step(&cpu)==-1);                                             /* other FCRs fail closed */
+}
 
 static void test_arith(void) {
   unsigned p[] = { MTC1(8,0), MTC1(9,1),
@@ -134,14 +199,12 @@ static void test_memory_and_faults(void) {
   load(oob,1); cpu.gpr[2]=BASE+0x10000u; assert(psp_cpu_step(&cpu)==-2);
   unsigned dbl[] = { cop1(17,0,0,0,0) };                                      /* double: unsupported, fail closed */
   load(dbl,1); assert(psp_cpu_step(&cpu)==-1);
-  unsigned cfc[] = { cop1(2,8,0,0,0) };                                       /* CFC1 FIR: unsupported */
-  load(cfc,1); assert(psp_cpu_step(&cpu)==-1);
   unsigned mov0[] = { MTC1(8,0), MFC1(0,0) };                                 /* writes to r0 are ignored */
   load(mov0,2); cpu.gpr[8]=123; run(2); assert(cpu.gpr[0]==0);
 }
 
 int main(void) {
-  test_arith(); test_sqrt(); test_convert(); test_compare_branch(); test_memory_and_faults();
+  test_arith(); test_nan_and_fir(); test_rounding_vs_host(); test_sqrt(); test_convert(); test_compare_branch(); test_memory_and_faults();
   puts("PASS: PSP COP1 single-precision FPU tests");
   return 0;
 }

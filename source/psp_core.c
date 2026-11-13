@@ -57,14 +57,16 @@ static int diff_overflow(uint32_t a, uint32_t b, uint32_t out) {
 static void store16(uint8_t *p, uint32_t v) { p[0]=(uint8_t)v; p[1]=(uint8_t)(v>>8); }
 static void store32(uint8_t *p, uint32_t v) { store16(p,v); store16(p+2,v>>16); }
 
-/* ---- Single-precision MIPS COP1 (FPU) support. No libm dependency. ---- */
+/* ---- Single-precision MIPS COP1 (FPU) support. No libm or fenv dependency. ----
+ * Rounding mode (fcr31 bits 1:0): 0 nearest-even, 1 toward zero, 2 toward +inf, 3 toward -inf.
+ * Arithmetic is computed in host round-to-nearest and then corrected by one ulp using the
+ * exactly computed error term, so directed modes do not depend on host FPU state. */
 static float f_of(uint32_t v) { float f; memcpy(&f,&v,4); return f; }
 static uint32_t bits_of(float f) { uint32_t v; memcpy(&v,&f,4); return v; }
 static float f_trunc(float f) {
   if (!(f>-8388608.0f && f<8388608.0f)) return f; /* already integral, inf or NaN */
   return (float)(int32_t)f;
 }
-/* mode: 0 nearest-even, 1 toward zero, 2 toward +inf, 3 toward -inf (FCSR RM) */
 static float f_round(float f, int mode) {
   if (!(f>-8388608.0f && f<8388608.0f)) return f;
   float t=f_trunc(f), d=f-t;
@@ -85,12 +87,52 @@ static uint32_t f_to_w(float f, int mode) {
   if (r<-2147483648.0f) return 0x80000000u;
   return (uint32_t)(int32_t)r;
 }
-/* Correctly rounded (nearest-even) IEEE-754 binary32 square root using integers. */
-static float f_sqrt(float x) {
+/* rb = round-to-nearest result bits; dir = sign of (exact - r). Returns the result for `mode`. */
+static uint32_t round_adjust(uint32_t rb, int dir, int mode) {
+  if (mode==0 || dir==0) return rb;
+  int neg=(int)(rb>>31);
+  int want_up = (mode==2) ? 1 : (mode==3) ? 0 : neg;
+  if (want_up && dir>0)  return neg ? rb-1u : rb+1u;   /* next value up   */
+  if (!want_up && dir<0) return neg ? rb+1u : rb-1u;   /* next value down */
+  return rb;
+}
+/* Result when a finite operation overflowed to infinity under a directed mode. */
+static uint32_t overflow_bits(uint32_t rb, int mode) {
+  int neg=(int)(rb>>31);
+  if (mode==1 || (mode==2 && neg) || (mode==3 && !neg)) return (rb&0x80000000u)|0x7f7fffffu;
+  return rb;
+}
+static int isnanf_(float f) { return f!=f; }
+static int isinff_(float f) { return (bits_of(f)&0x7fffffffu)==0x7f800000u; }
+/* Finish a binary op: result r (host nearest), exact-error sign dir. */
+static uint32_t finish2(float r, float x, float y, int dir, int mode) {
+  if (isnanf_(r)) return (isnanf_(x)||isnanf_(y)) ? bits_of(r) : 0x7fc00000u; /* PSP makes +qNaN */
+  if (isinff_(r) && !isinff_(x) && !isinff_(y)) return overflow_bits(bits_of(r),mode);
+  return round_adjust(bits_of(r),dir,mode);
+}
+static int sgn_d(double d) { return d>0.0 ? 1 : (d<0.0 ? -1 : 0); }
+static uint32_t f_add(float x, float y, int mode) {
+  float s=x+y, bb=s-x, e=(x-(s-bb))+(y-bb);
+  /* Exact cancellation of opposite signs is +0, but -0 when rounding toward -inf. */
+  if (s==0.0f && ((bits_of(x)^bits_of(y))>>31)) return mode==3 ? 0x80000000u : 0u;
+  return finish2(s,x,y,(e>0.0f)-(e<0.0f),mode);
+}
+static uint32_t f_mul(float x, float y, int mode) {
+  float p=x*y;
+  return finish2(p,x,y,sgn_d((double)x*(double)y-(double)p),mode);
+}
+static uint32_t f_div(float x, float y, int mode) {
+  float q=x/y;
+  double rem=(double)x-(double)q*(double)y;
+  int dir=sgn_d(rem)*((bits_of(y)>>31)?-1:1);
+  return finish2(q,x,y,dir,mode);
+}
+/* IEEE-754 binary32 square root with the given rounding mode, using integers. */
+static uint32_t f_sqrt(float x, int mode) {
   uint32_t b=bits_of(x);
-  if ((b&0x7fffffffu)==0 || (b&0x7fffffffu)>0x7f800000u) return x; /* +-0, NaN */
-  if (b>>31) return f_of(0x7fc00000u);                              /* negative */
-  if (b==0x7f800000u) return x;                                     /* +inf */
+  if ((b&0x7fffffffu)==0 || (b&0x7fffffffu)>0x7f800000u) return b; /* +-0, NaN */
+  if (b>>31) return 0x7fc00000u;                                    /* negative */
+  if (b==0x7f800000u) return b;                                     /* +inf */
   int e=(int)((b>>23)&255u); uint32_t m=b&0x7fffffu;
   if (e==0) { e=1; while (!(m&0x800000u)) { m<<=1; e--; } } else m|=0x800000u;
   int ex=e-127;
@@ -98,20 +140,40 @@ static float f_sqrt(float x) {
   uint64_t n=(uint64_t)m<<23, r=0, bit=1ull<<46;
   while (bit>n) bit>>=2;
   while (bit) { if (n>=r+bit) { n-=r+bit; r=(r>>1)+bit; } else r>>=1; bit>>=2; }
-  if (n>r) r++;
+  if (mode==0 ? (n>r) : (mode==2 && n)) r++;
   ex/=2;
   if (r>>24) { r>>=1; ex++; }
-  return f_of(((uint32_t)(ex+127)<<23)|(uint32_t)(r&0x7fffffu));
+  return ((uint32_t)(ex+127)<<23)|(uint32_t)(r&0x7fffffu);
+}
+/* int32 -> float honoring the rounding mode. */
+static uint32_t w_to_f(uint32_t w, int mode) {
+  int neg=(int)(w>>31);
+  uint32_t u=neg ? 0u-w : w;
+  if (!u) return 0;
+  int hb=31; while (!((u>>hb)&1u)) hb--;
+  int E=hb;                      /* exponent of the leading bit */
+  uint32_t m;
+  if (hb<=23) m=u<<(23-hb);      /* exact */
+  else {
+    int sh=hb-23;
+    uint32_t low=u&((1u<<sh)-1u), half=1u<<(sh-1);
+    m=u>>sh;
+    int up = mode==0 ? (low>half || (low==half && (m&1u)))
+           : mode==2 ? (!neg && low!=0) : mode==3 ? (neg && low!=0) : 0;
+    if (up) m++;
+    if (m>>24) { m>>=1; E++; }
+  }
+  return ((uint32_t)neg<<31) | ((uint32_t)(127+E)<<23) | (m&0x7fffffu);
 }
 static int cop1_single(PspCpu *c, uint32_t fn, uint32_t fs, uint32_t ft, uint32_t fd) {
   float x=f_of(c->fpr[fs]), y=f_of(c->fpr[ft]);
   int mode=(int)(c->fcr31&3u);
   switch (fn) {
-    case 0: c->fpr[fd]=bits_of(x+y); break;
-    case 1: c->fpr[fd]=bits_of(x-y); break;
-    case 2: c->fpr[fd]=bits_of(x*y); break;
-    case 3: c->fpr[fd]=bits_of(x/y); break;
-    case 4: c->fpr[fd]=bits_of(f_sqrt(x)); break;
+    case 0: c->fpr[fd]=f_add(x,y,mode); break;
+    case 1: c->fpr[fd]=f_add(x,-y,mode); break;
+    case 2: c->fpr[fd]=f_mul(x,y,mode); break;
+    case 3: c->fpr[fd]=f_div(x,y,mode); break;
+    case 4: c->fpr[fd]=f_sqrt(x,mode); break;
     case 5: c->fpr[fd]=c->fpr[fs]&0x7fffffffu; break;
     case 6: c->fpr[fd]=c->fpr[fs]; break;
     case 7: c->fpr[fd]=c->fpr[fs]^0x80000000u; break;
@@ -223,7 +285,12 @@ int psp_cpu_step(PspCpu *c) {
     case 17: {
       switch (rs) {
         case 0: c->gpr[rt]=c->fpr[rd]; break;                       /* MFC1 */
-        case 2: if (rd==31) c->gpr[rt]=c->fcr31; else status=-1; break; /* CFC1 */
+        case 2:                                                     /* CFC1 */
+          if (rd==31) c->gpr[rt]=c->fcr31;
+          else if (rd==0) c->gpr[rt]=0x00003351u;                   /* FIR (PSP FPU revision) */
+          else if (rd>=25 && rd<=28) c->gpr[rt]=0;
+          else status=-1;
+          break;
         case 4: c->fpr[rd]=b; break;                                /* MTC1 */
         case 6: if (rd==31) c->fcr31=b&0x0183ffffu; else status=-1; break; /* CTC1 */
         case 8:                                                     /* BC1F/T/FL/TL */
@@ -231,7 +298,7 @@ int psp_cpu_step(PspCpu *c) {
           taken=(((c->fcr31>>23)&1u)==(rt&1u)); likely=(int)((rt>>1)&1u); branch=target;
           break;
         case 16: status=cop1_single(c,fn,rd,rt,sh); break;          /* fmt S */
-        case 20: if (fn==32) c->fpr[sh]=bits_of((float)signed32(c->fpr[rd])); else status=-1; break; /* CVT.S.W */
+        case 20: if (fn==32) c->fpr[sh]=w_to_f(c->fpr[rd],(int)(c->fcr31&3u)); else status=-1; break; /* CVT.S.W */
         default: status=-1;
       }
       break;
