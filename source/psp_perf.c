@@ -106,3 +106,30 @@ void psp_perf_profile(PspPerf *p,const char *disc_id){
  /* Unknown titles retain safe defaults. No unverified game-specific hacks. */
  (void)disc_id;
 }
+
+int psp_perf_set_subsystem_active(PspPerf *p,PspSubsystem sub,int active){
+ if(!p || (unsigned)sub>=PSP_SUBSYSTEM_COUNT)return -1;
+ unsigned flag=1u<<(unsigned)sub;
+ if(active){p->initialized_mask|=flag;p->active_mask|=flag;}
+ else p->active_mask&=~flag;
+ return 0;
+}
+int psp_perf_subsystem_active(const PspPerf *p,PspSubsystem sub){
+ if(!p || (unsigned)sub>=PSP_SUBSYSTEM_COUNT)return -1;
+ return (p->active_mask&(1u<<(unsigned)sub))?1:0;
+}
+int psp_perf_run_demand(PspPerf *p,PspHle *hle,PspCpu *cpu,
+                        unsigned budget,uint64_t deadline,
+                        unsigned *executed,uint32_t *event_token){
+ if(executed)*executed=0;
+ if(event_token)*event_token=0;
+ if(!p || !hle || !cpu || !executed || !event_token || budget==0 || budget>65536)
+  return -2;
+ if(p->thread_state==PSP_THREAD_WAITING){
+  if(deadline<p->now_us)return -2;
+  uint32_t event=psp_perf_idle_hle(p,hle,deadline);
+  if(event){*event_token=event;return 1;}
+  return p->thread_state==PSP_THREAD_RUNNABLE?3:2;
+ }
+ return psp_perf_run_slice(p,hle,cpu,budget,executed);
+}
