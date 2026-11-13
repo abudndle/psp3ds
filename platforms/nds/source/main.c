@@ -6,6 +6,7 @@
 #include "psp_benchmark.h"
 #include "psp_guest_window.h"
 #include "psp_guest_bus.h"
+#include "psp_platform_budget.h"
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
@@ -46,6 +47,12 @@ static void test_slot2_ram(void){
   PspSlot2Result sweep=psp_slot2_probe_samples(region,capacity,1,banks==1,32);
   printf("Sweep: %lu/32 %s\n",(unsigned long)sweep.probed_locations,
          sweep.status==PSP_SLOT2_RW_VERIFIED?"PASS":"FAILED");
+  if(sweep.status==PSP_SLOT2_RW_VERIFIED){
+   PspPlatformBudget expansion_policy;
+   if(psp_platform_budget_choose(PSP_TARGET_DS_SLOT2,&expansion_policy)==0)
+    printf("Pak cold cap: %luK\n",
+           (unsigned long)(expansion_policy.cold_data_budget/1024u));
+  }
   if(sweep.status==PSP_SLOT2_RW_VERIFIED && capacity>=256u){
    /* Test four 16-bit words only, restoring all original bytes before
     * closing the peripheral. No PSP CPU executes from this memory. */
@@ -111,6 +118,12 @@ int main(void){
  consoleDemoInit();
  printf("PSP3DS / DS research\nMode: %s\n",isDSiMode()?"DSi-enhanced":"Nintendo DS");
  printf("Shared CPU; NOT PSP games\n\n");
+ PspPlatformBudget policy;
+ PspTarget target=isDSiMode()?PSP_TARGET_DSI:PSP_TARGET_DS;
+ if(psp_platform_budget_choose(target,&policy)==0)
+  printf("Policy: %s; hot %luK\n",policy.name,
+         (unsigned long)(policy.hot_ram_budget/1024u));
+
  test_shared_cpu();
  benchmark_shared_mips();
  test_slot2_ram();

@@ -867,3 +867,21 @@ performance still require testing.
 
 The low-RAM/GPU engineering priorities are in
 [DS/DSi constrained-memory and graphics strategy](docs/ds-memory-graphics-strategy.md).
+
+## Per-hardware RAM/GPU policies (2026-11-13)
+
+All five Jetpack Joyride research targets now have separately validated
+**provisional memory and graphics policy profiles** via
+`psp_platform_budget`: original DS, DS + verified Slot-2 expansion,
+DSi, original 3DS, and New 3DS. The policies cap future guest hot
+RAM, optional cold data and caches; they calculate framebuffer byte
+requirements and reject invalid hardware-flag combinations.
+The DS build selects its DSi policy based on SDK mode and only reports
+the Slot-2 cold-data policy after the existing RAM validation passes.
+The 3DS homebrew uses libctru hardware detection rather than assuming
+that all 3DS systems have New 3DS performance.
+
+These policies are **not allocated RAM**, speed improvements, or PSP
+graphics compatibility. For concrete tile/OAM/GPU batching priorities
+and real-device validation gates see
+[all-system memory/GPU optimization plan](docs/all-platform-memory-gpu-budget.md).
