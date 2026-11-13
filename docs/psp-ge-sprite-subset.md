@@ -1,9 +1,8 @@
 # Experimental PSP GE sprite-command subset
 
-**Scope:** This is a deliberately narrow, fail-closed translation layer
-for a *synthetic fixture* of predecoded, opaque, untextured rectangles.
-It is not a PSP GE emulator, real game display-list decoder, generic
-vertex fetcher, or evidence that Jetpack Joyride graphics can render.
+The portable decoder translates opaque, untextured sprite pairs from
+a caller-supplied PSP memory window into the shared rectangle batch.
+The DS validation and 3DS scrolling scene use synthetic fixtures.
 
 The PSP Graphics Engine uses 32-bit command words (8-bit opcode and
 24-bit argument). The implemented subset recognizes precisely:
@@ -15,34 +14,23 @@ The PSP Graphics Engine uses 32-bit command words (8-bit opcode and
 | 0x0F | FINISH | Zero argument, once, after any sprites |
 | 0x0C | END | Zero argument, once, last command after FINISH |
 
-The translator takes a **caller-supplied synthetic array** of
-`PspGeDecodedSprite` rectangles. Each sprite is 2D BGR555 with positive
-width/height wholly inside 256×192. These inputs are NOT decoded from
-real PSP `VADDR`, `VTYPE`, `BASE`, or guest RAM. The decoder requires
-at least one primitive; inputs are capped at 128 command words and
-64 sprites. Unsupported commands (including memory addressing,
-texture setup, matrix state, blending, JUMP/CALL/RET, vertices,
-triangles and display-list branches) return an error. Invalid inputs
-leave the public result empty, preventing partial output.
+The memory path also accepts BASE (0x10), VADDR (0x01) and one VTYPE
+(0x12) value, 0x800114. Each vertex stores little-endian ABGR5551
+followed by 16-bit through-mode X, Y and Z. Each sprite consumes two
+vertices, advancing the current vertex address by 16 bytes. The pair
+must have matching opaque colors and Z values and define a positive
+rectangle wholly inside 256×192. The decoder checks alignment and
+bounds on every fetch. Unsupported GPU state or malformed input
+leaves the output empty. The predecoded fixture API remains available.
 
-**Target integration:**
-- DS/DS Lite, DS+Pak and DSi compile the same portable decoder and
-  execute a one-sprite synthetic validation, while keeping their native
-  hardware scrolling background and OAM sprite path.
-- Original and New 3DS build the exact synthetic scrolling scene,
-  encode it as synthetic PSP-style PRIM sprite words with explicitly
-  predecoded rectangles, decode them, and then submit the *decoded*
-  bounded rectangle batch through Citro2D/PICA200.
-- Host regression tests check the decoded output against every logical
-  pixel of the original scene across eight frames; unsupported PSP
-  instructions and truncated/invalid sequences must fail closed.
+DS and DSi run a packed-vertex decoder check alongside the native
+BG/OAM scene. Original and New 3DS encode the synthetic scrolling
+scene using this layout and submit the decoded batch through Citro2D.
+Host tests cover consecutive vertex fetches, truncated memory,
+misalignment, unsupported VTYPE and legacy fixture pixel parity.
 
-**Next required milestone:** genuine PSP VTYPE, VADDR and vertex-memory
-decoding, a small set of PSP vertex formats and GPU state, texture
-decoding and proper display list semantics. Real PSP program rendering
-must not be claimed until verified guest display lists are translated.
-There is no memory, performance, or commercial gameplay breakthrough
-from this test fixture alone.
+Texture sampling, additional vertex formats and guest display-list
+execution are future work. Commercial-game rendering remains unverified.
 
 Documentation references:
 - https://www.ppsspp.org/docs/psp-hardware/gpu/display-lists/

@@ -5,12 +5,11 @@
 #include "psp_scene_batch.h"
 #include "psp_ge_subset.h"
 /* Citro2D submits bounded rectangle primitives to the PICA200 GPU on
- * both original and New 3DS. This is an ORIGINAL synthetic scene and
- * is neither PSP GE translation nor commercial game rendering. */
+ * both original and New 3DS using an original synthetic scene. */
 static PspScene scene;
 static PspSceneBatch batch;
 static PspGeSubsetResult ge_result;
-static PspGeDecodedSprite decoded[PSP_SCENE_MAX_RECTS];
+static uint8_t vertices[PSP_SCENE_MAX_RECTS * 16u];
 static uint32_t ge_words[PSP_GE_SUBSET_MAX_COMMANDS];
 static C3D_RenderTarget *target;
 static int initialized;
@@ -35,20 +34,28 @@ int psp_3ds_scene_init(void){
 int psp_3ds_scene_draw(uint32_t frame){
  if(!initialized || !target || psp_scene_build(&scene,frame)!=0 ||
     psp_scene_batch_build(&scene,&batch)!=0)return -1;
- /* Bridge a strictly synthetic predecoded-vertex GE sprite fixture into
-  * the same bounded GPU rectangle list. PSP vertex formats, textures,
-  * framebuffer state and genuine guest display lists are NOT supported. */
- if(batch.count>PSP_GE_SUBSET_MAX_SPRITES ||
-    batch.count+2u>PSP_GE_SUBSET_MAX_COMMANDS)return -1;
- for(unsigned i=0;i<batch.count;i++){
-  const PspSceneRect *r=&batch.rects[i];
-  decoded[i]=(PspGeDecodedSprite){r->x,r->y,r->w,r->h,r->bgr555};
-  ge_words[i]=UINT32_C(0x04060002);
+ /* Encode the synthetic scene using the supported PSP vertex layout. */
+ if (batch.count > PSP_GE_SUBSET_MAX_SPRITES ||
+     batch.count + 5u > PSP_GE_SUBSET_MAX_COMMANDS) return -1;
+ ge_words[0] = 0x10080000u; /* BASE for PSP RAM at 0x08000000. */
+ ge_words[1] = 0x01000000u;
+ ge_words[2] = 0x12800114u;
+ for (unsigned i = 0; i < batch.count; i++) {
+  const PspSceneRect *r = &batch.rects[i];
+  const uint16_t color = r->bgr555 | 0x8000u;
+  const uint16_t pair[] = {color, r->x, r->y, 0,
+                           color, r->x + r->w, r->y + r->h, 0};
+  for (unsigned field = 0; field < 8; field++) {
+   vertices[i * 16u + field * 2u] = (uint8_t)pair[field];
+   vertices[i * 16u + field * 2u + 1u] = (uint8_t)(pair[field] >> 8);
+  }
+  ge_words[3u + i] = 0x04060002u;
  }
- ge_words[batch.count]=UINT32_C(0x0f000000);
- ge_words[batch.count+1u]=UINT32_C(0x0c000000);
- if(psp_ge_subset_translate(ge_words,batch.count+2u,decoded,
-                            batch.count,&ge_result)!=PSP_GE_SUBSET_OK)return -1;
+ ge_words[batch.count + 3u] = 0x0f000000u;
+ ge_words[batch.count + 4u] = 0x0c000000u;
+ if (psp_ge_subset_translate_memory(ge_words, batch.count + 5u, vertices,
+                                    batch.count * 16u, 0x08000000u,
+                                    &ge_result) != PSP_GE_SUBSET_OK) return -1;
  /* DS scene logical coordinates are 256x192; bottom 3DS LCD is 320x240.
   * Integer ratio 5/4 keeps the whole scene visible without cropping. */
  C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
