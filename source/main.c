@@ -6,6 +6,7 @@ static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
 }
 int main(void) {
+ osSetSpeedupEnable(true); /* Request New 3DS high-speed mode; old models unaffected. */
  gfxInitDefault();consoleInit(GFX_TOP,NULL);
  printf("PSP3DS | research prototype\n");
  printf("PSP file inspection + basic MIPS interpreter\n");
@@ -24,5 +25,5 @@ int main(void) {
  } else printf("No EBOOT.PBP found.\n");
  printf("\nSTART: exit\n");
  while(aptMainLoop()){hidScanInput();if(hidKeysDown()&KEY_START)break;gspWaitForVBlank();}
- gfxExit();return 0;
+ gfxExit();osSetSpeedupEnable(false);return 0;
 }
