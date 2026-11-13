@@ -92,8 +92,18 @@ jobs:
             bash scripts/capture_azahar_ci.sh \
               "$PWD/azahar-test/psp3ds.3dsx" \
               screenshots/psp3ds-azahar.png
+            screenshots/evidence.json
           test -s screenshots/psp3ds-azahar.png
           file screenshots/psp3ds-azahar.png
+      - name: Record screenshot authenticity and executable checksum
+        if: always()
+        shell: bash
+        run: |
+          python3 scripts/verify_emulator_capture.py \
+            --emulator azahar \
+            --executable azahar-test/psp3ds.3dsx \
+            --screenshot screenshots/psp3ds-azahar.png \
+            --manifest screenshots/evidence.json || true
       - name: Upload actual Azahar screenshot or failure logs
         if: always()
         uses: actions/upload-artifact@v4
