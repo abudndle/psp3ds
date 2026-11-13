@@ -2,7 +2,10 @@
 
 **Project priority:** Jetpack Joyride is the **first commercial PSP title** PSP3DS
 will investigate, boot-test, and optimize for on **New Nintendo 3DS** hardware.
-**Nintendo DS and DSi are also requested targets**, tracked in a separate,
+**Original Nintendo 3DS and 3DS XL** are also explicitly targeted, with
+separate device-memory and CPU-performance acceptance measurements.
+**Nintendo DS, DS Lite with a Slot-2 Memory Expansion Pak, and DSi** are
+also requested targets, tracked in a separate,
 high-risk feasibility path below. A native DS/DSi demake would be a different
 implementation from running the PSP executable. These are *targets*, not claims
 that the game currently boots or is playable.
@@ -42,6 +45,35 @@ should use **original synthetic/homebrew test fixtures**, not commercial files.
 | J8: First interactive run | Start a run, control ascent/descent, score distance, restart after collision | Input-driven gameplay capture and crash-free repeatability |
 | J9: Device viability | Evaluate actual New 3DS memory, frame rate, input latency and stability | Measured hardware logs and reproducible performance report |
 
+## Original Nintendo 3DS / 3DS XL compatibility track
+
+**Goal:** Run the same PSP minis Jetpack Joyride edition through PSP3DS on
+original Nintendo 3DS and original 3DS XL, not just the New 3DS family.
+These systems have less processing headroom and memory than New 3DS hardware;
+a New 3DS success must not be reported as original-3DS compatibility.
+
+- Approximate original 3DS platform specifications are 128 MiB FCRAM and
+  dual-core ARM11 at about 268 MHz, compared with New 3DS's increased CPU
+  capacity. Available memory to a homebrew process is lower than total FCRAM
+  and must be measured, not assumed.
+- Validate the same `.3dsx`/homebrew code path on original 3DS and 3DS XL,
+  including ordinary (non-New3DS-only) CPU configurations.
+- Run genuine PSP interpreter, translation, memory, audio, graphics and
+  input benchmarks on hardware; publish measured frame time and RAM usage.
+- If performance or allocated memory is insufficient, mark this target
+  `blocked_by_hardware` rather than claiming playable because a New 3DS
+  build exists.
+
+| Checkpoint | Original 3DS objective | Evidence required |
+| --- | --- | --- |
+| O0: Hardware boot | Compile and launch native homebrew on original 3DS/3DS XL | Exact hardware model, actual executable image, logs |
+| O1: Resource budget | Profile CPU interpreter speed, usable RAM and guest-memory allocations | Device-specific measured values, no inferred FPS |
+| O2: Video/audio and controls | Validate translated PSP display, input latency and audio | Hardware recordings, synchronization statistics |
+| O3: Jetpack Joyride boot | Execute an authorized PSP minis copy to its own UI | Game-specific trace and authenticated gameplay image |
+| O4: Interactive playability | Control a run, observe score, collision and restart at usable speed | Repeatable hardware runs and performance measurements |
+
+**Original 3DS status: not_tested; not playable.**
+
 ## Nintendo DS / DSi secondary compatibility track
 
 **Goal:** Investigate running the PSP minis Jetpack Joyride edition on both
@@ -53,17 +85,29 @@ must be assessed independently.
 - **Original DS / DS Lite:** approximately 4 MiB main RAM and a 67 MHz
   ARM9; a full PSP software emulator would face severe RAM, instruction
   translation, rendering, and sound constraints.
+- **Original DS / DS Lite with Slot-2 Memory Expansion Pak:** the official
+  Nintendo DS Browser Memory Expansion Pak contains approximately **8 MiB
+  additional RAM** accessed through the Game Boy Advance cartridge slot,
+  making about 12 MiB total across **separate memory regions** rather than
+  a single contiguous heap. The accessory adds **no CPU acceleration**.
+  Homebrew must explicitly identify, probe and map the memory; successful
+  detection and read/write tests are required before treating it as usable.
+  An original-DS-shaped Pak works in the original DS and DS Lite; the
+  shorter DS-Lite-shaped Pak does **not** fit the original DS.
 - **DSi / DSi XL:** approximately 16 MiB RAM and a faster 133 MHz ARM9
   when using DSi features; this helps but does not establish feasibility
   of a retail PSP minis executable.
-- Both have 256×192 screens versus the PSP's 480×272 output; any faithful
+- **DSi cannot use the Slot-2 memory pack** because it lacks the GBA
+  cartridge slot. The 3DS family likewise has no compatible Slot-2 port.
+- Both DS and DSi have 256×192 screens versus the PSP's 480×272 output; any faithful
   adaptation needs explicit display scaling/cropping/layout decisions.
 - The existing `.nds` GitHub artifact is a synthetic demonstration,
   **not** Jetpack Joyride running on either DS model.
 
 | Checkpoint | DS / DSi objective | Evidence required |
 | --- | --- | --- |
-| D0: Hardware feasibility | Profile memory, CPU budget, display and input constraints separately on DS and DSi | Real-device or accurate emulator measurements, no invented FPS |
+| D0: Hardware feasibility | Profile memory, CPU budget, display and input constraints separately on DS, DS+Expansion Pak, and DSi | Real-device or accurate emulator measurements, no invented FPS |
+| D0a: Expansion Pak detection | Identify official Slot-2 RAM, probe the correct 8 MiB address region and validate safe reads/writes | Actual DS/DS Lite hardware with named compatible Pak, measured effective memory; no automatic heap assumptions |
 | D1: Minimal PSP runtime | Benchmark synthetic PSP MIPS execution and memory translation on both device classes | Deterministic .nds instrumentation and correctness tests |
 | D2: Graphics and audio feasibility | Benchmark PSP-style 2D/texture compositing, scaling and audio within DS limits | Measured rendering/audio performance |
 | D3: Authorized game boot attempt | Determine whether the real PSP minis package can progress beyond loading | Verified game-specific execution trace; avoid false boot claims |
@@ -77,8 +121,9 @@ PSP executable. A DS-native demake/port requires appropriate rights to the
 game assets/code, must be clearly labeled as a separate deliverable, and
 cannot be claimed to be commercial PSP binary compatibility.
 
-Evidence for the two device classes is recorded separately:
-`new3ds: not_tested`, `ds: not_tested`, `dsi: not_tested`.
+Evidence for the targets is recorded separately:
+`new3ds: not_tested`, `old3ds: not_tested`, `ds: not_tested`,
+`ds_slot2_ram: not_tested`, `dsi: not_tested`.
 The next DS engineering checkpoint is **D0**, not a gameplay claim.
 
 ### Public milestone completion rules
@@ -99,7 +144,7 @@ The next DS engineering checkpoint is **D0**, not a gameplay claim.
 
 ## Current status (2026-11-13)
 
-**Jetpack Joyride: New 3DS, original DS and DSi all not tested / not playable.**
+**Jetpack Joyride: New 3DS, original 3DS/3DS XL, original DS/DS Lite, DS with Slot-2 RAM expansion, and DSi are all not tested / not playable.**
 
 The PSP3DS repository contains experimental MIPS execution, limited ELF/PRX
 relocation, a synthetic thread-service prototype, and verified homebrew
@@ -110,3 +155,12 @@ PSP GE rendering, full firmware imports, retail boot, or commercial gameplay.
 package-type probe and public synthetic fixtures to distinguish supported
 ELF/PRX structures from containers or encryption the loader cannot handle.
 No proprietary game file is required for that public CI work.
+
+### Hardware reference notes
+
+- Nintendo DS Memory Expansion Pak variants and compatible DS models:
+  https://en-americas-support.nintendo.com/app/answers/detail/a_id/7619/
+- Nintendo DSi operations manual (Slot-2 expansion accessories unsupported):
+  https://assets.nintendo.eu/image/upload/v1635390257/NAL/Support/DSiOperationsManual.pdf
+- Original 3DS hardware/CPU specifications:
+  https://www.3dbrew.org/wiki/Hardware
