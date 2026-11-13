@@ -30,6 +30,35 @@ the public repository, issues, pull requests, logs and CI artifacts.
 Never bypass copy protection to generate a public test fixture. Public CI
 should use **original synthetic/homebrew test fixtures**, not commercial files.
 
+## Game-driven emulation scope
+
+The first playable target is a repeatable Jetpack Joyride run on New 3DS,
+from cold boot through title, input, graphics, audio, collision and restart.
+Start with one known-good local game revision and input format. Preserve
+the other devices' smoke tests and evaluate gameplay on each separately.
+
+For each boot or gameplay checkpoint, capture the first unsupported guest
+operation locally. Record the checkpoint, guest PC, operation category
+and identifier (instruction word, import library/NID, or GE opcode),
+plus the expected observable behavior. Reproduce that behavior in a small
+synthetic fixture, implement the required PSP semantics in the shared
+runtime, then rerun the game to confirm progress. Keep game bytes and raw
+dumps private. Treat an unobserved feature as deferred and an observed
+feature with uncertain semantics as a blocker.
+
+| Area | Implementation scope |
+| --- | --- |
+| CPU and kernel | Execute the Allegrex instructions the game reaches and implement the PSP imports it calls. Preserve return values, memory effects and wake-up ordering. |
+| Graphics | Translate the display lists, vertex layouts, texture formats and state the game uses. Submit through the existing native backend. |
+| Storage and input | Serve the asset, directory and controller operations exercised by the selected game revision. |
+| Audio | Implement the sample formats, codecs and buffer timing the game exercises, using native output. |
+
+Defer PSP firmware boot, the PSP system menu, peripheral emulation,
+additional media formats and compatibility work for other titles until a
+target needs them. Preserve working shared functionality. Unsupported
+operations must report a diagnostic and stop safely. Optimize measured
+frame-time or memory bottlenecks on New 3DS before tuning other devices.
+
 ## Compatibility checkpoints (in dependency order)
 
 | Checkpoint | Objective | Evidence required |
