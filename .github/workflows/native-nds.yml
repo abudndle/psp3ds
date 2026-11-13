@@ -1,0 +1,29 @@
+name: Native PSP3DS DS/DSi scaffold build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-nds-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  nds:
+    runs-on: ubuntu-latest
+    container:
+      image: skylyrac/blocksds:slim-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile shared-core DS-compatible demonstration
+        run: bash scripts/build_nds.sh
+      - name: Verify native NDS binary
+        run: |
+          find build-nds -maxdepth 1 -name '*.nds' -size +0c -print | grep -q .
+      - name: Upload NDS homebrew demonstration
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-nds-homebrew-scaffold
+          path: build-nds/*.nds
+          if-no-files-found: error
