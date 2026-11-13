@@ -93,6 +93,10 @@ int main(void) {
  printf("\nA: synthetic scene | START: exit\n");
  int show_scene=0;
  int gpu_ready=0;
+#ifdef PSP3DS_SCENE_AUTOSTART
+ gpu_ready=psp_3ds_scene_init()==0;
+ show_scene=gpu_ready;
+#endif
  uint32_t scene_frame=0;
  while(aptMainLoop()){
   hidScanInput();
