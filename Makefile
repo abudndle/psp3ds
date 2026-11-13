@@ -13,7 +13,7 @@ BUILD := build-3ds
 SOURCES := source
 INCLUDES := include
 ARCH := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
-CFLAGS := -O2 -g -Wall -Wextra -std=gnu11 -mword-relocations -ffunction-sections $(ARCH) $(INCLUDE) -D__3DS__
+CFLAGS := -O2 -g -Wall -Wextra -std=gnu11 -mword-relocations -ffunction-sections $(ARCH) $(INCLUDE) -D__3DS__ $(if $(PSP3DS_SCENE_AUTOSTART),-DPSP3DS_SCENE_AUTOSTART=1,)
 LDFLAGS = -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 LIBS := -lz -lcitro2d -lcitro3d -lctru -lm
 LIBDIRS := $(PORTLIBS) $(CTRULIB)
