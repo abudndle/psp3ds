@@ -2,6 +2,8 @@
 /* PSP IoFileMgrForUser NIDs confirmed against PSP library documentation.
  * Unknown calls are not treated as successfully implemented. */
 static const PspExport known_exports[] = {
+ {"sceGe_user",0xa4fc06a4u,PSP_HLE_GE_CALLBACK},
+ {"ThreadManForUser",0x55c20a00u,PSP_HLE_EVENT_CREATE},
  {"sceGe_user",0xe47e40e4u,PSP_HLE_GE_EDRAM_ADDR},
  {"sceCtrl",0x1f4011e6u,PSP_HLE_CTRL_SET_MODE},
  {"sceCtrl",0x6a2774f3u,PSP_HLE_CTRL_SET_CYCLE},

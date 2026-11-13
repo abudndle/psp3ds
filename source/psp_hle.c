@@ -24,7 +24,7 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_STDIN && service!=PSP_HLE_STDOUT && service!=PSP_HLE_STDERR && service!=PSP_HLE_IO_WRITE &&
       service!=PSP_HLE_SET_GPO && service!=PSP_HLE_IMPOSE_LANGUAGE &&
       service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK && service!=PSP_HLE_POWER_REGISTER && service!=PSP_HLE_UMD_REGISTER && service!=PSP_HLE_UMD_CHECK && service!=PSP_HLE_UMD_ACTIVATE && service!=PSP_HLE_UMD_WAIT && service!=PSP_HLE_RTC_CLOCK && service!=PSP_HLE_IO_LSEEK64 &&
-      service!=PSP_HLE_CTRL_SET_MODE && service!=PSP_HLE_CTRL_SET_CYCLE && service!=PSP_HLE_GE_EDRAM_ADDR)) return -1;
+      service!=PSP_HLE_CTRL_SET_MODE && service!=PSP_HLE_CTRL_SET_CYCLE && service!=PSP_HLE_GE_EDRAM_ADDR && service!=PSP_HLE_EVENT_CREATE && service!=PSP_HLE_GE_CALLBACK)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -107,6 +107,32 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_GE_CALLBACK:{
+   size_t off;
+   v0=0x800200d3u;
+   if (guest_ptr(cpu,cpu->gpr[4],16,&off)!=0) break;
+   v0=0x80020190u;
+   for (unsigned i=0;i<sizeof hle->ge_callbacks/sizeof hle->ge_callbacks[0];i++) {
+    if (hle->ge_callbacks[i].used) continue;
+    memcpy(hle->ge_callbacks[i].data,cpu->ram+off,16);
+    hle->ge_callbacks[i].used=1;v0=i;break;
+   }
+   break;
+ }
+ case PSP_HLE_EVENT_CREATE:{
+   size_t off;
+   v0=0x800200d9u;
+   if (guest_ptr(cpu,cpu->gpr[4],1,&off)!=0) {v0=0x800200d3u;break;}
+   for (unsigned i=0;i<sizeof hle->event_flags/sizeof hle->event_flags[0];i++) {
+    if (hle->event_flags[i].used) continue;
+    hle->event_flags[i].used=1;
+    hle->event_flags[i].attributes=cpu->gpr[5];
+    hle->event_flags[i].bits=cpu->gpr[6];
+    v0=0x4000u+i;
+    break;
+   }
+   break;
+ }
  case PSP_HLE_GE_EDRAM_ADDR:v0=PSP_GE_EDRAM_BASE;break;
  case PSP_HLE_CTRL_SET_MODE:
    if (cpu->gpr[4]>1) v0=0x80000107u;
