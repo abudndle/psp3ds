@@ -506,3 +506,25 @@ A plausible CIA header does not guarantee installation or hardware execution.
 **Verification status:** A successful GitHub Actions native CIA build is
 not yet confirmed. Local Linux tests cannot verify an actual 3DS CIA without
 the native toolchain and a runnable cxitool/makerom installation.
+
+## Emulator screenshot evidence milestone (2026-11-13)
+
+Both GitHub screenshot workflows now invoke `scripts/verify_emulator_capture.py`
+in an always-run step after attempting the actual emulator capture. This
+generates `screenshots/evidence.json` even if no screenshot was produced.
+The manifest contains the GitHub commit SHA, emulator name, verified
+source-executable SHA-256 digest (when available), and PNG SHA-256 plus
+dimensions when a nonblank, readable screenshot exists.
+
+Capture status is either `captured` (a valid real-window image was saved)
+or `not_captured` with a reason. The manifest explicitly says
+`game_boot_verified: false`: showing a working emulator window is not
+evidence of playable PSP gameplay. Real images and diagnostics remain
+available from the existing Azahar and melonDS GitHub Actions artifact
+upload jobs.
+
+The portable `tests/test_capture_manifest.py` checks missing, uniform,
+valid and corrupt PNG inputs and protects the fail-closed evidence format.
+The updated local PSP3DS source tree passed **30/30 CTest tests**, including
+this new test. No successful native screenshot artifact is asserted until
+the GitHub runner output is obtained and inspected.
