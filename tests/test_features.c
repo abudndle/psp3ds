@@ -13,7 +13,7 @@ int main(void){
    assert(feature->id==(PspFeatureId)i);
    assert(feature->name && feature->name[0]!=0);
    assert(feature->state<=PSP_FEATURE_PLANNED);
-   assert(feature->backend<=PSP_BACKEND_3DS_GPU);
+   assert(feature->backend<=PSP_BACKEND_3DS_FRAMEBUFFER);
    assert(!strcmp(feature->name,model[0].features[i].name));
    assert(feature->state==model[0].features[i].state);
   }
