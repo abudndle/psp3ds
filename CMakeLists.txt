@@ -157,3 +157,7 @@ add_test(NAME benchmark COMMAND test_benchmark)
 if(Python3_Interpreter_FOUND)
   add_test(NAME melonds_ci COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_melonds_ci.py)
 endif()
+
+add_executable(test_slot2_sweep tests/test_slot2_sweep.c)
+target_link_libraries(test_slot2_sweep PRIVATE psp_core)
+add_test(NAME slot2_sweep COMMAND test_slot2_sweep)

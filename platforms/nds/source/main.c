@@ -39,6 +39,12 @@ static void test_slot2_ram(void){
         (unsigned long)(capacity/1024u),(unsigned long)banks);
  printf("Read/write: %s\n",result.status==PSP_SLOT2_RW_VERIFIED?
         "2 locations verified":"NOT VERIFIED");
+ if(result.status==PSP_SLOT2_RW_VERIFIED) {
+  /* Sparse read/write sampling, NOT full RAM coverage or guest allocation. */
+  PspSlot2Result sweep=psp_slot2_probe_samples(region,capacity,1,banks==1,32);
+  printf("Sweep: %lu/32 %s\n",(unsigned long)sweep.probed_locations,
+         sweep.status==PSP_SLOT2_RW_VERIFIED?"PASS":"FAILED");
+ }
  /* Never present RAM as a general C heap. Close it after the probe. */
  peripheralSlot2Close();
  peripheralSlot2Exit();
