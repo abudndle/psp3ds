@@ -7,10 +7,12 @@
 - Bounds-checked loader for plain, unencrypted, fixed-address ELF32/MIPS ET_EXEC segments, including BSS and executable entry-point validation; no encrypted retail executable support, PRX relocation or PSP firmware APIs.
 - MIPS/Allegrex integer interpreter subset including arithmetic, branches, delay slots, branch-likely annulment, unaligned memory access, HI/LO, basic CP0 diagnostic state and syscall/break/overflow traps.
 - Minimal native 3DS Homebrew Launcher entry point (reads and inspects sdmc:/psp3ds/EBOOT.PBP up to 8MiB).
-- Seven portable host regression test suites, exercised via GitHub Actions.
+- Eight portable host regression test suites, exercised via GitHub Actions.
 - Initial HLE syscall dispatcher with explicitly bound 20-bit syscall IDs and deterministic system-time services (`sceKernelGetSystemTimeLow`, `sceKernelGetSystemTimeWide`, `sceKernelGetSystemTime` equivalents). Tests cover unknown syscalls, invalid guest pointers and delay-slot resumption. This is NOT PSP firmware compatibility.
 
 - Prototype import linker for loader-supplied PSP module-library names and function NIDs. It validates and patches guest JR RA/SYSCALL stubs, rejects unsupported imports, and avoids partial writes for invalid batches. Current tests use illustrative NIDs, **not verified PSP firmware NIDs**. Real PRX import-table parsing and PSP thread scheduling remain unimplemented.
+
+- PSP PRX import table parser for already-loaded 20-byte and 24-byte `.lib.stub` records, extracting library names, function NIDs and addresses of import stubs with checked guest-memory bounds. Variable imports, executable relocation and decryption are deliberately unsupported. Synthetic tests integrate parser output with the existing HLE import linker; this is not yet a complete real-world PRX loader.
 
 ## Host validation
 ```sh
@@ -23,7 +25,7 @@ ctest --test-dir build-host --output-on-failure
 Install devkitPro 3DS toolchain, devkitARM and libctru, then run `make`. This build path has **not been verified** with actual toolchain or hardware.
 
 ## Important limitations
-Most PSP kernel HLE, real PRX module import parsing, threads, VFPU/FPU, GPU, audio and commercial-game support are NOT implemented. The syscall binding table is generated from loader-provided synthetic import records in tests, not from actual PSP game import tables. Source-level host tests do not demonstrate a playable emulator.
+Most PSP kernel HLE, PRX module-info discovery and variable-import handling, threads, VFPU/FPU, GPU, audio and commercial-game support are NOT implemented. The syscall binding table can be generated from parsed loaded-image function import entries, but the program loader does not yet discover or relocate real PSP PRX modules. Source-level host tests do not demonstrate a playable emulator.
 
 ## Milestones
 1. [x] Header identification
@@ -32,7 +34,7 @@ Most PSP kernel HLE, real PRX module import parsing, threads, VFPU/FPU, GPU, aud
 4. [x] Unaligned memory and branch-likely subset
 5. [x] CPU exception and CP0 diagnostic groundwork
 6. [x] Initial syscall dispatcher and basic guest pointer translation (limited time services only)
-7. [~] Import-linker groundwork completed for synthetic import records; real PRX import parsing, NID catalog, threads, filesystem and module HLE remain pending
+7. [~] Import linker and loaded-image function import-table parsing implemented for 20/24-byte entries; module-info discovery, relocation, variable imports, real NID catalog, threads and filesystem remain pending
 8. [ ] GPU, audio and controls
 9. [ ] Commercial game execution and hardware optimization
 
