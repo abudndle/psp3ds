@@ -34,7 +34,37 @@ static void raster_match(uint32_t frame){
   assert(a==b);
  }
 }
+static void guest_memory(void) {
+ const uint8_t vertices[] = {
+  0x1f, 0xfc, 3, 0, 4, 0, 0, 0, 0x1f, 0xfc, 11, 0, 12, 0, 0, 0,
+  0xe0, 0x83, 20, 0, 21, 0, 0, 0, 0xe0, 0x83, 27, 0, 30, 0, 0, 0
+ };
+ uint32_t words[] = {0x10080000u, 0x01000020u, 0x12800114u,
+                     SPRITE_CMD, SPRITE_CMD, FINISH, END};
+ PspGeSubsetResult result;
+ assert(psp_ge_subset_translate_memory(words, 7, vertices, sizeof vertices,
+                                       0x08000020u, &result) == 0);
+ assert(result.batch.count == 2 && result.consumed_commands == 7);
+ assert(result.batch.rects[0].x == 3 && result.batch.rects[0].w == 8);
+ assert(result.batch.rects[0].bgr555 == 0x7c1f);
+ assert(result.batch.rects[1].y == 21 && result.batch.rects[1].h == 9);
+ assert(result.batch.rects[1].bgr555 == 0x03e0);
+ assert(psp_ge_subset_translate_memory(words, 7, vertices, sizeof vertices - 1,
+                                       0x08000020u, &result) < 0);
+ assert(result.batch.count == 0 && result.consumed_sprites == 0);
+ words[1] = 0x01000021u;
+ assert(psp_ge_subset_translate_memory(words, 7, vertices, sizeof vertices,
+                                       0x08000020u, &result) < 0);
+ words[1] = 0x01000020u;
+ words[2] = 0x12800115u;
+ assert(psp_ge_subset_translate_memory(words, 7, vertices, sizeof vertices,
+                                       0x08000020u, &result) ==
+        PSP_GE_SUBSET_UNSUPPORTED);
+ assert(result.batch.count == 0);
+}
+
 int main(void){
+ guest_memory();
  for(uint32_t frame=0;frame<8;frame++)raster_match(frame*11u);
  const PspGeDecodedSprite sprite={3,4,8,8,0x7c1f};
  PspGeSubsetResult result;

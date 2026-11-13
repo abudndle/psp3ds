@@ -30,6 +30,49 @@ the public repository, issues, pull requests, logs and CI artifacts.
 Never bypass copy protection to generate a public test fixture. Public CI
 should use **original synthetic/homebrew test fixtures**, not commercial files.
 
+## Game-driven emulation scope
+
+The project targets a repeatable Jetpack Joyride run on all five hardware
+profiles below. Use the same known-good PSP game revision and shared runtime
+where possible. New 3DS provides the first integration checkpoint. Each
+profile needs its own gameplay and performance verification.
+
+| Hardware profile | Device-specific verification |
+| --- | --- |
+| New 3DS family | Establish the first repeatable gameplay run and measure peak RAM, frame time and audio underruns. |
+| Original 3DS / 3DS XL | Repeat the run at the original CPU and memory limits. |
+| DSi / DSi XL | Verify DSi-mode memory use, ARM9 throughput, DS GPU output and audio timing. |
+| DS / DS Lite with Slot-2 Pak | Verify gameplay with guest data split across main RAM and the separately addressed expansion Pak. |
+| DS / DS Lite without a Pak | Verify gameplay within main RAM, measuring the cost of streaming assets and keeping resident data small. |
+
+For each profile, verify cold boot to the game's title, input-driven ascent
+and descent, graphics and audio during a run, scoring, collision and restart.
+Record the game revision, build, hardware mode, peak memory and frame timing.
+When a profile misses its budget, record the measured blocker and use it to
+guide the next optimization.
+
+For each boot or gameplay checkpoint, capture the first unsupported guest
+operation locally. Record the checkpoint, guest PC, operation category
+and identifier (instruction word, import library/NID, or GE opcode),
+plus the expected observable behavior. Reproduce that behavior in a small
+synthetic fixture, implement the required PSP semantics in the shared
+runtime, then rerun the game to confirm progress. Keep game bytes and raw
+dumps private. Treat an unobserved feature as deferred and an observed
+feature with uncertain semantics as a blocker.
+
+| Area | Implementation scope |
+| --- | --- |
+| CPU and kernel | Execute the Allegrex instructions the game reaches and implement the PSP imports it calls. Preserve return values, memory effects and wake-up ordering. |
+| Graphics | Translate the display lists, vertex layouts, texture formats and state the game uses. Submit through the existing native backend. |
+| Storage and input | Serve the asset, directory and controller operations exercised by the selected game revision. |
+| Audio | Implement the sample formats, codecs and buffer timing the game exercises, using native output. |
+
+Defer PSP firmware boot, the PSP system menu, peripheral emulation,
+additional media formats and compatibility work for other titles until a
+target needs them. Preserve working shared functionality. Unsupported
+operations must report a diagnostic and stop safely. Optimize measured
+frame-time and memory bottlenecks independently on each profile.
+
 ## Compatibility checkpoints (in dependency order)
 
 | Checkpoint | Objective | Evidence required |

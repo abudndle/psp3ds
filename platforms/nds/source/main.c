@@ -135,11 +135,13 @@ int main(void){
 
  /* Same experimental GE command decoder as original/New 3DS. */
  {
-  const uint32_t words[]={UINT32_C(0x04060002),UINT32_C(0x0f000000),
-                          UINT32_C(0x0c000000)};
-  const PspGeDecodedSprite sprite={32,70,8,8,0x7c1f};
+  const uint32_t words[] = {0x10080000u, 0x01000000u, 0x12800114u,
+                            0x04060002u, 0x0f000000u, 0x0c000000u};
+  const uint8_t vertices[] = {0x1f, 0xfc, 32, 0, 70, 0, 0, 0,
+                              0x1f, 0xfc, 40, 0, 78, 0, 0, 0};
   PspGeSubsetResult ge;
-  int accepted=psp_ge_subset_translate(words,3,&sprite,1,&ge)==0 &&
+  int accepted = psp_ge_subset_translate_memory(words, 6, vertices,
+                  sizeof vertices, 0x08000000u, &ge) == PSP_GE_SUBSET_OK &&
                ge.batch.count==1 &&
                ge.batch.rects[0].x==32;
   printf("GE sprite subset: %s\n",accepted?"PASS":"FAILED");

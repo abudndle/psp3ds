@@ -3,14 +3,6 @@
 #include "psp_scene_batch.h"
 #include <stdint.h>
 #include <stddef.h>
-/* Highly restricted PSP GE command decoder for an ORIGINAL synthetic 2D
- * sprite fixture. Actual PSP VTYPE/VADDR vertex decoding, render state,
- * DMA/display-list control flow and textured sprites are NOT implemented.
- *
- * Each accepted PRIM = (0x04 << 24) | (6 << 16) | 2: PSP sprite primitive
- * type 6 with exactly two vertices. Caller explicitly supplies a validated
- * predecoded rectangle corresponding to that primitive. No other state
- * changing opcode is accepted. This is not a retail-game GE translator. */
 #define PSP_GE_SUBSET_MAX_COMMANDS 128u
 #define PSP_GE_SUBSET_MAX_SPRITES PSP_SCENE_MAX_RECTS
 typedef struct {
@@ -32,4 +24,8 @@ typedef enum {
 int psp_ge_subset_translate(const uint32_t *words,size_t word_count,
                             const PspGeDecodedSprite *sprites,size_t sprite_count,
                             PspGeSubsetResult *out);
+/* Reads opaque, flat-color sprite pairs from a bounded guest memory window. */
+int psp_ge_subset_translate_memory(const uint32_t *words, size_t word_count,
+                                   const uint8_t *memory, size_t size,
+                                   uint32_t memory_base, PspGeSubsetResult *out);
 #endif
