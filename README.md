@@ -109,3 +109,31 @@ workflow is configured to rerun normal and sanitizer tests. No native
 
 Verification: `ctest` passed 16/16 host suites and 16/16 under
 AddressSanitizer/UndefinedBehaviorSanitizer locally.
+
+## Jetpack Joyride (USA) CSO compatibility diagnostic — 2026-11-13
+
+The user-provided CSO was inspected locally without uploading game content:
+- CSO v1; 70,592 sectors of 2,048 bytes (144,572,416 uncompressed bytes).
+- An actual commercial CSO was found with a zero `header_size` field, unlike
+  the usual 24. The v1 reader now accepts 0 or 24 when the canonical
+  index begins at offset 24; `test_cso` covers both cases.
+- ISO9660 level-1 directory traversal and bounded file reads are implemented
+  in `psp_disc_find` and `psp_disc_read` for ISO/CSO sector callbacks.
+- `psp_disc_probe <path-to-cso-or-iso>` reads basic `PARAM.SFO` metadata and
+  inspects the first four bytes of `PSP_GAME/SYSDIR/EBOOT.BIN`.
+- Observed game identifiers: `TITLE=Jetpack Joyride`, `DISC_ID=NPUZ00292`,
+  `PSP_SYSTEM_VER=6.60`, EBOOT magic `~PSP` (encrypted/signed PSP executable).
+  This executable is **not supported** by PSP3DS's plain ELF loader.
+- Tests passed locally: 17/17 host and 17/17 ASan/UBSan suites. The probe
+  also completed successfully against the supplied CSO.
+- **No native 3DS build or Azahar session occurred**, because the relevant
+  emulator and devkitPro toolchain are not available in this environment.
+  No title screen, gameplay or playable performance is claimed.
+- Original game data is not included in this public repository or test fixtures.
+
+After building on a host, run:
+```sh
+./build-host/psp_disc_probe "/path/to/Jetpack Joyride (USA).cso"
+```
+The next blocker is legal homebrew/commercial executable loading and PSP
+kernel emulation, followed by GPU/audio and a native 3DS build/test pipeline.
