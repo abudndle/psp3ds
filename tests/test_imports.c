@@ -1,0 +1,50 @@
+#include "psp_imports.h"
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#define BASE 0x08800000u
+static unsigned rd32(const unsigned char *p) {
+ return (unsigned)p[0]|(unsigned)p[1]<<8|(unsigned)p[2]<<16|(unsigned)p[3]<<24;
+}
+int main(void) {
+ unsigned char memory[256]; memset(memory,0xaa,sizeof memory);
+ PspCpu cpu; PspHle hle;
+ psp_cpu_init(&cpu,memory,sizeof memory,BASE,BASE);psp_hle_init(&hle);
+ const PspExport exports[]={
+   {"UtilsForUser",0x11223344u,PSP_HLE_SYSTEM_TIME_LOW},
+   {"UtilsForUser",0x55667788u,PSP_HLE_SYSTEM_TIME_WIDE},
+   {"UtilsForUser",0x01020304u,PSP_HLE_SYSTEM_TIME}
+ };
+ const PspImport imports[]={
+   {"UtilsForUser",0x11223344u,BASE+32},
+   {"UtilsForUser",0x55667788u,BASE+48}
+ };
+ assert(psp_imports_link(&cpu,&hle,imports,2,exports,3)==0);
+ assert(hle.count==2 && rd32(memory+32)==0x03e00008u);
+ unsigned id0=rd32(memory+36)>>6,id1=rd32(memory+52)>>6;
+ assert((rd32(memory+36)&63)==12 && id0!=id1);
+ assert(hle.entries[0].syscall_id==id0 && hle.entries[1].syscall_id==id1);
+ cpu.pc=BASE+32;cpu.next_pc=cpu.pc+4;cpu.gpr[31]=BASE+96;
+ psp_hle_advance_time(&hle,0x100000005ULL);
+ assert(psp_hle_step(&hle,&cpu)==0 && cpu.pc==BASE+36 && cpu.delay_slot);
+ assert(psp_hle_step(&hle,&cpu)==1 && cpu.pc==BASE+96 && cpu.gpr[2]==5);
+ cpu.pc=BASE+48;cpu.next_pc=cpu.pc+4;cpu.gpr[31]=BASE+100;
+ assert(psp_hle_step(&hle,&cpu)==0);
+ assert(psp_hle_step(&hle,&cpu)==1 && cpu.gpr[2]==5 && cpu.gpr[3]==1);
+ PspImport bad[]={ {"UtilsForUser",0x01020304u,BASE+64},
+                   {"UtilsForUser",0x99999999u,BASE+80} };
+ size_t before=hle.count;
+ assert(psp_imports_link(&cpu,&hle,bad,2,exports,3)==-3);
+ assert(hle.count==before && rd32(memory+64)==0xaaaaaaaau);
+ bad[1].nid=0x11223344u;bad[1].stub_address=BASE+68;
+ assert(psp_imports_link(&cpu,&hle,bad,2,exports,3)==-2);
+ assert(hle.count==before && rd32(memory+64)==0xaaaaaaaau);
+ bad[1].stub_address=BASE+252;
+ assert(psp_imports_link(&cpu,&hle,bad,2,exports,3)==-1);
+ assert(hle.count==before && rd32(memory+64)==0xaaaaaaaau);
+ PspExport ambiguous[]={exports[0],exports[0]};
+ assert(psp_imports_link(&cpu,&hle,imports,1,ambiguous,2)==-2);
+ assert(hle.count==before);
+ puts("PASS: import NID lookup, stub patching, rollback, jr-delay-slot HLE");
+ return 0;
+}
