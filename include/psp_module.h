@@ -20,4 +20,12 @@ int psp_module_discover(const uint8_t *elf, size_t elf_size,
 /* Extract function imports from the module's in-memory .lib.stub range. */
 int psp_module_imports(const PspCpu *cpu, const PspModuleInfo *module,
                        PspPrxImports *out);
+/* Discover a module in an already mapped plain ELF, parse its import tables,
+ * and atomically link only the HLE services with verified PSP NIDs.
+ * Requires relocation and guest mapping to have completed beforehand.
+ * Unknown NIDs cause failure without modifying guest memory or HLE bindings.
+ * On failure, out (if supplied) is zeroed.
+ */
+int psp_module_link_known(const uint8_t *elf, size_t elf_size,
+                          PspCpu *cpu, PspHle *hle, PspModuleInfo *out);
 #endif
