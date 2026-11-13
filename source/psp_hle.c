@@ -19,7 +19,8 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_KERNEL_CREATE_THREAD && service!=PSP_HLE_KERNEL_START_THREAD &&
       service!=PSP_HLE_MODULE_ID_BY_ADDRESS &&
       service!=PSP_HLE_INTR_SUSPEND && service!=PSP_HLE_INTR_RESUME && service!=PSP_HLE_PART_ALLOC &&
-      service!=PSP_HLE_PART_HEAD && service!=PSP_HLE_PART_FREE)) return -1;
+      service!=PSP_HLE_PART_HEAD && service!=PSP_HLE_PART_FREE &&
+      service!=PSP_HLE_STDIN && service!=PSP_HLE_STDOUT && service!=PSP_HLE_STDERR && service!=PSP_HLE_IO_WRITE)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -102,6 +103,19 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_IO_WRITE:{
+   uint32_t fd=cpu->gpr[4],count=cpu->gpr[6];size_t off;
+   v0=UINT32_MAX;
+   if ((fd==1 || fd==2) && count<=INT32_MAX &&
+       guest_ptr(cpu,cpu->gpr[5],count,&off)==0) {
+    if (hle->stdio_write && count) hle->stdio_write((int)fd,cpu->ram+off,count);
+    v0=count;
+   }
+   break;
+ }
+ case PSP_HLE_STDIN:v0=0;break;
+ case PSP_HLE_STDOUT:v0=1;break;
+ case PSP_HLE_STDERR:v0=2;break;
  case PSP_HLE_PART_ALLOC:v0=alloc_partition(hle,cpu);break;
  case PSP_HLE_PART_HEAD:
  case PSP_HLE_PART_FREE:

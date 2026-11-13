@@ -31,7 +31,8 @@ typedef enum {
  PSP_HLE_MODULE_ID_BY_ADDRESS=17,
  PSP_HLE_INTR_SUSPEND=18,
  PSP_HLE_INTR_RESUME=19,
- PSP_HLE_PART_ALLOC=20, PSP_HLE_PART_HEAD=21, PSP_HLE_PART_FREE=22
+ PSP_HLE_PART_ALLOC=20, PSP_HLE_PART_HEAD=21, PSP_HLE_PART_FREE=22,
+ PSP_HLE_STDIN=23, PSP_HLE_STDOUT=24, PSP_HLE_STDERR=25, PSP_HLE_IO_WRITE=26
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
@@ -39,6 +40,7 @@ typedef struct {
  size_t count;
  size_t last_binding_index; /* verified cache hint for repeated PSP HLE calls */
  struct PspIo *io; /* attached read-only disc filesystem */
+ void (*stdio_write)(int fd, const uint8_t *bytes, size_t size);
  struct PspThreadCpu *threads; /* optional experimental thread services */
  uint64_t uptime_us;
  uint32_t compiled_sdk_version;

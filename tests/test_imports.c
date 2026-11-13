@@ -107,6 +107,16 @@ int main(void) {
  cpu.gpr[31]=BASE+24;
  assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
  assert(cpu.gpr[2]==0);
+ const PspImport stdio[]={{"StdioForUser",0x172d316eu,BASE+32},
+                          {"StdioForUser",0xa6bab2e9u,BASE+40},
+                          {"StdioForUser",0xf78ba90au,BASE+48}};
+ assert(psp_imports_link_known(&cpu,&hle,stdio,3)==0);
+ cpu.pc=BASE+32;cpu.next_pc=BASE+36;
+ for(unsigned fd=0;fd<3;fd++){
+  cpu.gpr[31]=BASE+40+fd*8;
+  assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+  assert(cpu.gpr[2]==fd);
+ }
  puts("PASS: import NID lookup, stub patching, rollback, jr-delay-slot HLE");
  return 0;
 }

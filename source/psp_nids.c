@@ -2,6 +2,10 @@
 /* PSP IoFileMgrForUser NIDs confirmed against PSP library documentation.
  * Unknown calls are not treated as successfully implemented. */
 static const PspExport known_exports[] = {
+ {"IoFileMgrForUser",0x42ec03acu,PSP_HLE_IO_WRITE},
+ {"StdioForUser",0x172d316eu,PSP_HLE_STDIN},
+ {"StdioForUser",0xa6bab2e9u,PSP_HLE_STDOUT},
+ {"StdioForUser",0xf78ba90au,PSP_HLE_STDERR},
  {"SysMemUserForUser",0x237dbd4fu,PSP_HLE_PART_ALLOC},
  {"SysMemUserForUser",0x9d9a5ba1u,PSP_HLE_PART_HEAD},
  {"SysMemUserForUser",0xb6d61d02u,PSP_HLE_PART_FREE},
