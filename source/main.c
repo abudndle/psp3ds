@@ -34,6 +34,20 @@ int main(void) {
  printf("PSP3DS | research prototype\n");
  printf("PSP file inspection + basic MIPS interpreter\n");
  printf("Not a playable PSP emulator yet.\n\n");
+ bool new_model=false;
+ Result hardware=APT_CheckNew3DS(&new_model);
+ PspPlatformBudget policy;
+ PspTarget target=(R_SUCCEEDED(hardware) && new_model)?
+    PSP_TARGET_NEW3DS:PSP_TARGET_OLD3DS;
+ if(psp_platform_budget_choose(target,&policy)==0 &&
+    psp_platform_budget_validate(&policy)==0){
+  printf("Policy: %s\n",policy.name);
+  printf("Hot cap %luK, texture cap %luK\n",
+    (unsigned long)(policy.hot_ram_budget/1024u),
+    (unsigned long)(policy.texture_budget/1024u));
+  printf("Sprite batching planned\n");
+ }
+
  /* Scan ROM names without loading or executing their contents. */
  static PspCatalogItem games[12];
  size_t count=0;
