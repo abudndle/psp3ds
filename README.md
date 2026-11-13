@@ -901,3 +901,22 @@ common IDs, backends and native entrypoint integration in the existing
 scheduled/push/PR GitHub Actions workflows. They guard parity but do not
 write new game code or claim PSP retail compatibility. See the
 [cross-platform feature contract](docs/cross-platform-feature-parity.md).
+
+## Synthetic shared 2D scene on DS, DSi and 3DS (2026-11-13)
+
+The portable `psp_scene` module defines one original deterministic
+scrolling tile scene, color palette, and moving 8×8 actor for all five
+hardware configurations. It contains no PSP game art or proprietary
+materials. On DS/DSi, BlocksDS uses the **main hardware 2D tile engine**
+and an OAM sprite, updating scroll and sprite placement during VBlank;
+the diagnostic console remains available. On original/New 3DS, press
+**A** to toggle a bounded software-rendered BGR8 framebuffer fallback
+for the same scene; the original three-bar boot marker remains the
+startup/default display. The 3DS fallback is **not** PICA200 GPU
+acceleration and is not claimed to be optimized.
+
+The shared scene is classified as a working synthetic diagnostic across
+all five manifests. Host `shared_scene` regression verifies identical
+semantic scene generation and sampled pixel-raster correctness. PSP GE
+graphics translation, accelerated 3DS sprite batching, commercial game
+loading and Jetpack Joyride gameplay are **not implemented**.

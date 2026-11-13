@@ -19,6 +19,7 @@ for token in (
     "PSP_FEATURE_GUEST_DATA_BUS",
     "PSP_FEATURE_GRAPHICS_TRANSLATION",
     "PSP_FEATURE_PSP_GAME_BOOT",
+    "PSP_FEATURE_SYNTHETIC_SCENE",
     "PSP_FEATURE_COUNT",
 ):
     assert token in header and token in shared, token

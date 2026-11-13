@@ -5,6 +5,8 @@
 #include "psp_catalog.h"
 #include "psp_platform_budget.h"
 #include "psp_features.h"
+#include "psp_scene.h"
+int psp_3ds_scene_draw(uint32_t frame);
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
 }
@@ -86,10 +88,16 @@ int main(void) {
   }
   fclose(f);
  } else printf("No EBOOT.PBP found.\n");
- printf("\nSTART: exit\n");
+ printf("\nA: synthetic scene | START: exit\n");
+ int show_scene=0;
+ uint32_t scene_frame=0;
  while(aptMainLoop()){
-  hidScanInput();if(hidKeysDown()&KEY_START)break;
-  psp3ds_draw_boot_marker();
+  hidScanInput();
+  u32 pressed=hidKeysDown();
+  if(pressed&KEY_START)break;
+  if(pressed&KEY_A)show_scene=!show_scene;
+  if(!show_scene || psp_3ds_scene_draw(scene_frame++)!=0)
+   psp3ds_draw_boot_marker();
   gfxFlushBuffers();
   gfxSwapBuffers();
   gspWaitForVBlank();

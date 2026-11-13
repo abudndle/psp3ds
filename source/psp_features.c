@@ -8,7 +8,8 @@ static const char *const names[PSP_FEATURE_COUNT]={
  "Memory and graphics policy",
  "Checked guest data bus",
  "PSP graphics translation",
- "Commercial PSP game boot"
+ "Commercial PSP game boot",
+ "Synthetic shared scrolling scene"
 };
 int psp_features_manifest(PspTarget target,PspFeatureManifest *out){
  if(!out)return -1;
@@ -39,6 +40,10 @@ int psp_features_manifest(PspTarget target,PspFeatureManifest *out){
    PSP_BACKEND_DS_2D:PSP_BACKEND_3DS_GPU;
  /* Never advertise unimplemented retail boot as a working feature. */
  out->features[PSP_FEATURE_PSP_GAME_BOOT].state=PSP_FEATURE_PLANNED;
+ out->features[PSP_FEATURE_SYNTHETIC_SCENE].state=PSP_FEATURE_AVAILABLE;
+ out->features[PSP_FEATURE_SYNTHETIC_SCENE].backend=
+   out->policy.graphics==PSP_GRAPHICS_DS_TILES?
+   PSP_BACKEND_DS_2D:PSP_BACKEND_3DS_FRAMEBUFFER;
  return 0;
 }
 const char *psp_feature_state_name(PspFeatureState state){
