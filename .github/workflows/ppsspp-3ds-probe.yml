@@ -7,12 +7,14 @@ on:
       - 'ports/ppsspp-3ds/**'
       - 'include/psp_mips_probe_fixture.h'
       - 'source/psp_features.c'
+      - 'scripts/patch_ppsspp_armv6k.py'
       - '.github/workflows/ppsspp-3ds-probe.yml'
   pull_request:
     paths:
       - 'ports/ppsspp-3ds/**'
       - 'include/psp_mips_probe_fixture.h'
       - 'source/psp_features.c'
+      - 'scripts/patch_ppsspp_armv6k.py'
       - '.github/workflows/ppsspp-3ds-probe.yml'
   workflow_dispatch:
 permissions:
@@ -30,6 +32,8 @@ jobs:
           ref: 1aebad2c651ff9d0684ee335e43aceff8fc7e3ec
           path: upstream-ppsspp
           persist-credentials: false
+      - name: Apply guarded ARMv6K compatibility patch to pinned PPSSPP
+        run: python3 scripts/patch_ppsspp_armv6k.py upstream-ppsspp
       - name: Compile and package the ARMv6K ABI probe
         shell: bash
         run: |
