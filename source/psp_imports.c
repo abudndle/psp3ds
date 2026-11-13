@@ -19,7 +19,7 @@ static int valid_service(PspHleService s) {
         s==PSP_HLE_CREATE_CALLBACK || s==PSP_HLE_REGISTER_EXIT_CALLBACK ||
         s==PSP_HLE_POWER_REGISTER || s==PSP_HLE_UMD_REGISTER || s==PSP_HLE_UMD_CHECK || s==PSP_HLE_UMD_ACTIVATE || s==PSP_HLE_UMD_WAIT || s==PSP_HLE_RTC_CLOCK ||
         s==PSP_HLE_IO_OPEN || s==PSP_HLE_IO_READ ||
-        s==PSP_HLE_IO_LSEEK32 || s==PSP_HLE_IO_CLOSE;
+        s==PSP_HLE_IO_LSEEK64 || s==PSP_HLE_IO_LSEEK32 || s==PSP_HLE_IO_CLOSE;
 }
 int psp_imports_link(PspCpu *cpu, PspHle *hle, const PspImport *imports,
                      size_t count, const PspExport *exports, size_t export_count) {

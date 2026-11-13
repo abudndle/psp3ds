@@ -23,7 +23,7 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_PART_HEAD && service!=PSP_HLE_PART_FREE &&
       service!=PSP_HLE_STDIN && service!=PSP_HLE_STDOUT && service!=PSP_HLE_STDERR && service!=PSP_HLE_IO_WRITE &&
       service!=PSP_HLE_SET_GPO && service!=PSP_HLE_IMPOSE_LANGUAGE &&
-      service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK && service!=PSP_HLE_POWER_REGISTER && service!=PSP_HLE_UMD_REGISTER && service!=PSP_HLE_UMD_CHECK && service!=PSP_HLE_UMD_ACTIVATE && service!=PSP_HLE_UMD_WAIT && service!=PSP_HLE_RTC_CLOCK)) return -1;
+      service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK && service!=PSP_HLE_POWER_REGISTER && service!=PSP_HLE_UMD_REGISTER && service!=PSP_HLE_UMD_CHECK && service!=PSP_HLE_UMD_ACTIVATE && service!=PSP_HLE_UMD_WAIT && service!=PSP_HLE_RTC_CLOCK && service!=PSP_HLE_IO_LSEEK64)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -284,6 +284,15 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
       guest_ptr(cpu,cpu->gpr[5],count,&off)!=0)v0=(uint32_t)-1;
    else v0=(uint32_t)psp_io_read(hle->io,(int32_t)cpu->gpr[4],
                                 cpu->ram+off,count);
+   break;
+ }
+ case PSP_HLE_IO_LSEEK64:{
+   int64_t upper=cpu->gpr[7];
+   if (upper>INT32_MAX) upper-=INT64_C(4294967296);
+   int64_t displacement=upper*INT64_C(4294967296)+cpu->gpr[6];
+   uint64_t result=(uint64_t)(hle->io ?
+      psp_io_seek64(hle->io,(int32_t)cpu->gpr[4],displacement,cpu->gpr[8]):-1);
+   v0=(uint32_t)result;v1=(uint32_t)(result>>32);
    break;
  }
  case PSP_HLE_IO_LSEEK32:

@@ -55,16 +55,21 @@ int32_t psp_io_read(PspIo *io, int32_t fd, void *dst, uint32_t size) {
     f->offset += count;
     return (int32_t)count;
 }
-int32_t psp_io_seek32(PspIo *io, int32_t fd, int32_t offset, uint32_t whence) {
+static int64_t seek(PspIo *io, int32_t fd, int64_t offset, uint32_t whence, uint32_t limit) {
     PspIoFile *f = get_file(io, fd);
     if (!f || whence > 2) return -1;
     int64_t base = whence == 0 ? 0 :
                    whence == 1 ? (int64_t)f->offset : (int64_t)f->entry.size;
-    int64_t position = base + (int64_t)offset;
-    /* 32-bit PSP lseek32 returns a signed offset; reject overflow. */
-    if (position < 0 || position > INT32_MAX) return -1;
+    if (offset < -base || offset > (int64_t)limit - base) return -1;
+    int64_t position = base + offset;
     f->offset = (uint32_t)position;
-    return (int32_t)position;
+    return position;
+}
+int32_t psp_io_seek32(PspIo *io, int32_t fd, int32_t offset, uint32_t whence) {
+    return (int32_t)seek(io,fd,offset,whence,INT32_MAX);
+}
+int64_t psp_io_seek64(PspIo *io, int32_t fd, int64_t offset, uint32_t whence) {
+    return seek(io,fd,offset,whence,UINT32_MAX);
 }
 int32_t psp_io_close(PspIo *io, int32_t fd) {
     PspIoFile *f = get_file(io, fd);
