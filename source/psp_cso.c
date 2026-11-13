@@ -25,7 +25,8 @@ int psp_cso_open(PspCso *cso, const char *path) {
  long length = ftell(f);
  if (length < (long)sizeof header || at(f, 0, header, sizeof header) != 0) goto fail;
  uint64_t plain_size = le64(header + 8);
- if (memcmp(header, "CISO", 4) || le32(header + 4) != 24 ||
+ if (memcmp(header, "CISO", 4) ||
+     (le32(header + 4) != 0 && le32(header + 4) != 24) ||
      header[20] != 1 || header[21] > 15 || le32(header + 16) != 2048 ||
      !plain_size || plain_size % 2048 != 0 || plain_size / 2048 > UINT32_MAX)
   goto fail;
