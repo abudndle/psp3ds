@@ -2,7 +2,10 @@
 
 **Project priority:** Jetpack Joyride is the **first commercial PSP title** PSP3DS
 will investigate, boot-test, and optimize for on **New Nintendo 3DS** hardware.
-This is a *target*, not a claim that the game currently boots or is playable.
+**Nintendo DS and DSi are also requested targets**, tracked in a separate,
+high-risk feasibility path below. A native DS/DSi demake would be a different
+implementation from running the PSP executable. These are *targets*, not claims
+that the game currently boots or is playable.
 
 ## Target identity and legal boundaries
 
@@ -39,6 +42,45 @@ should use **original synthetic/homebrew test fixtures**, not commercial files.
 | J8: First interactive run | Start a run, control ascent/descent, score distance, restart after collision | Input-driven gameplay capture and crash-free repeatability |
 | J9: Device viability | Evaluate actual New 3DS memory, frame rate, input latency and stability | Measured hardware logs and reproducible performance report |
 
+## Nintendo DS / DSi secondary compatibility track
+
+**Goal:** Investigate running the PSP minis Jetpack Joyride edition on both
+Nintendo DS and DSi. The desired outcome is gameplay, but **PSP binary
+emulation on these devices is not currently demonstrated and may be
+technically infeasible at acceptable performance**. DS and DSi hardware
+must be assessed independently.
+
+- **Original DS / DS Lite:** approximately 4 MiB main RAM and a 67 MHz
+  ARM9; a full PSP software emulator would face severe RAM, instruction
+  translation, rendering, and sound constraints.
+- **DSi / DSi XL:** approximately 16 MiB RAM and a faster 133 MHz ARM9
+  when using DSi features; this helps but does not establish feasibility
+  of a retail PSP minis executable.
+- Both have 256×192 screens versus the PSP's 480×272 output; any faithful
+  adaptation needs explicit display scaling/cropping/layout decisions.
+- The existing `.nds` GitHub artifact is a synthetic demonstration,
+  **not** Jetpack Joyride running on either DS model.
+
+| Checkpoint | DS / DSi objective | Evidence required |
+| --- | --- | --- |
+| D0: Hardware feasibility | Profile memory, CPU budget, display and input constraints separately on DS and DSi | Real-device or accurate emulator measurements, no invented FPS |
+| D1: Minimal PSP runtime | Benchmark synthetic PSP MIPS execution and memory translation on both device classes | Deterministic .nds instrumentation and correctness tests |
+| D2: Graphics and audio feasibility | Benchmark PSP-style 2D/texture compositing, scaling and audio within DS limits | Measured rendering/audio performance |
+| D3: Authorized game boot attempt | Determine whether the real PSP minis package can progress beyond loading | Verified game-specific execution trace; avoid false boot claims |
+| D4: Interactive gameplay gate | Attempt a genuine run with ascent/descent, obstacles, scoring and restart | Real device or melonDS evidence specific to the game |
+| D5: Alternative decision | If direct PSP execution is not viable, document a separately authorized **native DS/DSi demake** scope | Explicit asset/code rights, distinct implementation and acceptance tests |
+
+**Decision rule:** If full PSP execution exceeds available DS/DSi memory or
+frame-time budgets, mark this path `blocked_by_hardware` with evidence.
+Do not quietly substitute a similar-looking native minigame for the retail
+PSP executable. A DS-native demake/port requires appropriate rights to the
+game assets/code, must be clearly labeled as a separate deliverable, and
+cannot be claimed to be commercial PSP binary compatibility.
+
+Evidence for the two device classes is recorded separately:
+`new3ds: not_tested`, `ds: not_tested`, `dsi: not_tested`.
+The next DS engineering checkpoint is **D0**, not a gameplay claim.
+
 ### Public milestone completion rules
 
 1. A merged PR must have reproducible synthetic host regression evidence, with
@@ -57,7 +99,7 @@ should use **original synthetic/homebrew test fixtures**, not commercial files.
 
 ## Current status (2026-11-13)
 
-**Jetpack Joyride: not tested / not playable.**
+**Jetpack Joyride: New 3DS, original DS and DSi all not tested / not playable.**
 
 The PSP3DS repository contains experimental MIPS execution, limited ELF/PRX
 relocation, a synthetic thread-service prototype, and verified homebrew
