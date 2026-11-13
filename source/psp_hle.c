@@ -100,23 +100,23 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
    v0=(uint32_t)(hle->io?psp_io_close(hle->io,(int32_t)cpu->gpr[4]):-1);
    break;
  case PSP_HLE_THREAD_CREATE:
-   if(!hle->threads || cpu->gpr[6]>255u) v0=(uint32_t)-1;
+   if(!hle->threads || hle->threads->live!=cpu || cpu->gpr[6]>255u) v0=(uint32_t)-1;
    else v0=(uint32_t)psp_thread_cpu_spawn(hle->threads,(uint8_t)cpu->gpr[6],
                                           cpu->gpr[4],cpu->gpr[5]);
    break;
  case PSP_HLE_THREAD_WAIT:
-   if(!hle->threads || !hle->threads->scheduler || !hle->threads->active_id)
+   if(!hle->threads || hle->threads->live!=cpu || !hle->threads->scheduler || !hle->threads->active_id)
      v0=(uint32_t)-1;
    else v0=(uint32_t)psp_threads_wait(hle->threads->scheduler,
                          hle->threads->active_id,cpu->gpr[4],
                          (uint64_t)cpu->gpr[5]);
    break;
  case PSP_HLE_THREAD_SIGNAL:
-   v0=(uint32_t)(hle->threads && hle->threads->scheduler?
+   v0=(uint32_t)(hle->threads && hle->threads->live==cpu && hle->threads->scheduler?
        psp_threads_signal(hle->threads->scheduler,cpu->gpr[4]):-1);
    break;
  case PSP_HLE_THREAD_EXIT:
-   v0=(uint32_t)(hle->threads && hle->threads->scheduler &&
+   v0=(uint32_t)(hle->threads && hle->threads->live==cpu && hle->threads->scheduler &&
        hle->threads->active_id?
        psp_threads_stop(hle->threads->scheduler,hle->threads->active_id):-1);
    break;
