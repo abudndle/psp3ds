@@ -17,7 +17,10 @@ done
 TEMP_CXI="$(mktemp "${TMPDIR:-/tmp}/psp3ds-XXXXXXXX.cxi")"
 trap 'rm -f "$TEMP_CXI"' EXIT
 cxitool -n PSP3DS "$INPUT" "$TEMP_CXI"
-makerom -f cia -o "$OUTPUT" -target t -i "${TEMP_CXI}:0:0"
+# Unsigned homebrew CXIs do not have an official access-descriptor signature.
+# Only skip descriptor-signature verification during homebrew packaging;
+# the generated CIA is still subject to independent bounds validation.
+makerom -f cia -o "$OUTPUT" -target t -ignoresign -i "${TEMP_CXI}:0:0"
 if [[ ! -s "$OUTPUT" ]]; then
   echo "No CIA output produced" >&2
   exit 3
