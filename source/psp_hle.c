@@ -24,7 +24,8 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_STDIN && service!=PSP_HLE_STDOUT && service!=PSP_HLE_STDERR && service!=PSP_HLE_IO_WRITE &&
       service!=PSP_HLE_SET_GPO && service!=PSP_HLE_IMPOSE_LANGUAGE &&
       service!=PSP_HLE_CREATE_CALLBACK && service!=PSP_HLE_REGISTER_EXIT_CALLBACK && service!=PSP_HLE_POWER_REGISTER && service!=PSP_HLE_UMD_REGISTER && service!=PSP_HLE_UMD_CHECK && service!=PSP_HLE_UMD_ACTIVATE && service!=PSP_HLE_UMD_WAIT && service!=PSP_HLE_RTC_CLOCK && service!=PSP_HLE_IO_LSEEK64 &&
-      service!=PSP_HLE_CTRL_SET_MODE && service!=PSP_HLE_CTRL_SET_CYCLE && service!=PSP_HLE_GE_EDRAM_ADDR && service!=PSP_HLE_EVENT_CREATE && service!=PSP_HLE_GE_CALLBACK)) return -1;
+      service!=PSP_HLE_CTRL_SET_MODE && service!=PSP_HLE_CTRL_SET_CYCLE && service!=PSP_HLE_GE_EDRAM_ADDR && service!=PSP_HLE_EVENT_CREATE && service!=PSP_HLE_GE_CALLBACK && service!=PSP_HLE_GE_ENQUEUE &&
+      service!=PSP_HLE_GE_DRAW_SYNC && service!=PSP_HLE_GE_LIST_SYNC)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -90,6 +91,42 @@ static uint32_t alloc_partition(PspHle *hle, PspCpu *cpu) {
  return 0x800200d9u;
 }
 
+/* State-only lists can complete synchronously. Operations with side effects
+ * beyond the command registers require a full GE executor. */
+static int ge_state_opcode(unsigned op) {
+ return op<=2 || op==0x10 || op==0x12 || op==0x13 ||
+        (op>=0x15 && op<=0x28) || (op>=0x2a && op<=0x33) ||
+        (op>=0x36 && op<=0x38) || (op>=0x3a && op<=0x4d) ||
+        op==0x50 || op==0x51 || (op>=0x53 && op<=0x58) ||
+        (op>=0x5b && op<=0xb5) || (op>=0xb8 && op<=0xd0) ||
+        (op>=0xd2 && op<=0xe9) || op==0xeb || op==0xec || op==0xee;
+}
+static int ge_run_state_list(PspHle *hle,PspCpu *cpu,uint32_t *id) {
+ uint32_t start=cpu->gpr[4];
+ if ((start&3u) || cpu->gpr[5] || cpu->gpr[6]!=UINT32_MAX || cpu->gpr[7])
+  return -1;
+ uint32_t registers[256];
+ memcpy(registers,hle->ge_registers,sizeof registers);
+ int finished=0;
+ for (unsigned i=0;i<512;i++) {
+  uint64_t address=(uint64_t)start+4u*i;
+  size_t offset;
+  if (address>UINT32_MAX || guest_ptr(cpu,(uint32_t)address,4,&offset)!=0)
+   return -1;
+  const uint8_t *p=cpu->ram+offset;
+  unsigned op=p[3];
+  if (op==0x0c && finished) {
+   memcpy(hle->ge_registers,registers,sizeof registers);
+   *id=hle->ge_completed_id=1+(hle->ge_completed_id%64);
+   return 0;
+  }
+  if (finished || (op!=0x0f && !ge_state_opcode(op))) return -1;
+  finished=op==0x0f;
+  registers[op]=p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16);
+ }
+ return -1;
+}
+
 int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  if(!hle || !cpu)return -2;
  int status=psp_cpu_step(cpu);
@@ -107,6 +144,16 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_GE_ENQUEUE:
+   if (ge_run_state_list(hle,cpu,&v0)) return -3;
+   break;
+ case PSP_HLE_GE_DRAW_SYNC:
+   v0=cpu->gpr[4]<=1 ? 0 : 0x80000107u;
+   break;
+ case PSP_HLE_GE_LIST_SYNC:
+   if (cpu->gpr[5]>1) v0=0x80000107u;
+   else if (!hle->ge_completed_id || cpu->gpr[4]!=hle->ge_completed_id) v0=0x80000100u;
+   break;
  case PSP_HLE_GE_CALLBACK:{
    size_t off;
    v0=0x800200d3u;
