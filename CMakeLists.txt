@@ -81,3 +81,7 @@ add_test(NAME module_link COMMAND test_module_link)
 add_executable(test_boot tests/test_boot.c)
 target_link_libraries(test_boot PRIVATE psp_core)
 add_test(NAME boot COMMAND test_boot)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME installers COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_installers.py)
+endif()
