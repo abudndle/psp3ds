@@ -33,6 +33,10 @@ int psp_perf_schedule(PspPerf *p,uint64_t deadline,uint32_t token);
 /* Advance only while the guest CPU is idle; return event token or 0. */
 uint32_t psp_perf_idle_advance(PspPerf *p,uint64_t until_us);
 uint32_t psp_perf_idle_hle(PspPerf *p,PspHle *hle,uint64_t until_us);
+/* Cancel a queued event by token. No clock changes or callbacks. */
+int psp_perf_cancel_event(PspPerf *p,uint32_t token);
+/* Atomically move an existing token to a new absolute deadline. */
+int psp_perf_reschedule_event(PspPerf *p,uint32_t token,uint64_t deadline);
 void psp_perf_wait_until(PspPerf *p,uint64_t wake_us);
 /* Execute an instruction if runnable; otherwise return 2 for idle. */
 int psp_perf_step(PspPerf *p,PspHle *hle,PspCpu *cpu);
