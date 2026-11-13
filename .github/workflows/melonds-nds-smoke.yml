@@ -83,7 +83,7 @@ jobs:
               executable.write_bytes(z.read(chosen[0]))
           executable.chmod(0o755)
           with open(os.environ['GITHUB_ENV'],'a') as f:
-              f.write('MELONDS_EXE='+str(executable.resolve())+'\\n')
+              f.write('MELONDS_EXE='+str(executable.resolve())+'\n')
           print('Extracted official melonDS executable:', executable)
           PY
           test -s "${MELONDS_EXE:-melonDS.AppImage}" || test -s melonDS
