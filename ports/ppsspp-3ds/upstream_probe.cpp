@@ -3,6 +3,7 @@
 #include "Common/Log.h"
 #include "Core/MIPS/Interpreter.h"
 #include "Core/MIPS/MIPS.h"
+#include "psp_mips_probe_fixture.h"
 
 // The arithmetic probe links no guest memory subsystem. MIPSState's upstream
 // constructor takes this object's address, but the probe never dereferences it.
@@ -19,9 +20,11 @@ void GenericLog(Log, LogLevel, const char *, int, const char *format, ...) {
 
 extern "C" bool ppsspp_integer_probe() {
     MIPSState cpu;
-    cpu.pc = 0x08800000;
+    cpu.pc = PSP_PROBE_GUEST_BASE;
     cpu.r[0] = 0;
-    MIPSInt::Int_IType(&cpu, MIPSOpcode(0x2408002a)); // addiu t0, zero, 42
-    MIPSInt::Int_IType(&cpu, MIPSOpcode(0x2509fffe)); // addiu t1, t0, -2
-    return cpu.r[8] == 42 && cpu.r[9] == 40 && cpu.pc == 0x08800008;
+    MIPSInt::Int_IType(&cpu, MIPSOpcode(PSP_PROBE_ADDIU_T0));
+    MIPSInt::Int_IType(&cpu, MIPSOpcode(PSP_PROBE_ADDIU_T1));
+    return cpu.r[8] == PSP_PROBE_EXPECT_T0 &&
+           cpu.r[9] == PSP_PROBE_EXPECT_T1 &&
+           cpu.r[0] == 0 && cpu.pc == PSP_PROBE_EXPECT_PC;
 }
