@@ -117,6 +117,17 @@ int main(void) {
   assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
   assert(cpu.gpr[2]==fd);
  }
+ assert(psp_hle_bind(&hle,0x300,PSP_HLE_CTRL_SET_MODE)==0);
+ assert(psp_hle_bind(&hle,0x301,PSP_HLE_CTRL_SET_CYCLE)==0);
+ const unsigned values[]={1,0,2,5555,20001};
+ const unsigned results[]={0,1,0x80000107u,0,0x800001feu};
+ for(unsigned i=0;i<5;i++){
+  unsigned opcode=((i<3?0x300u:0x301u)<<6)|12u;
+  for(unsigned b=0;b<4;b++)memory[b]=(unsigned char)(opcode>>(8*b));
+  psp_cpu_init(&cpu,memory,sizeof memory,BASE,BASE);cpu.gpr[4]=values[i];
+  assert(psp_hle_step(&hle,&cpu)==1 && cpu.gpr[2]==results[i]);
+ }
+ assert(hle.ctrl_mode==0 && hle.ctrl_cycle==5555);
  puts("PASS: import NID lookup, stub patching, rollback, jr-delay-slot HLE");
  return 0;
 }
