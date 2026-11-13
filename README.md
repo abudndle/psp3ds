@@ -447,3 +447,41 @@ load rejection.
 regression tests passed. No successful native 3DS/DS build, melonDS/Azahar
 launch, or Jetpack Joyride gameplay is claimed. This API is an
 integration milestone, not a finished PSP emulator.
+
+## Linux toolchain provisioning milestone (2026-11-13)
+
+The shared repository now includes `.github/workflows/linux-tools.yml` to
+provision toolchains **on GitHub-hosted Ubuntu runners** using the installation
+method already present in `abudndle/mii-maker-ds`:
+
+- `scripts/install_blocksds_ubuntu.sh`: bootstrap Wonderful Toolchain,
+  enable the BlocksDS package repository, install `blocksds-toolchain`,
+  verify SDK files and attempt a real `.nds` shared-core demo build.
+- A separate job uses the official `devkitpro/devkitarm:20260610`
+  container and attempts to compile `psp3ds.3dsx`.
+- On **manual workflow dispatch** with `install_emulators=true`,
+  `scripts/install_linux_emulators.sh` retrieves the official Linux x86-64
+  melonDS AppImage and installs Azahar from Flathub. It verifies the
+  installations, **not** GUI emulation or gameplay.
+- The workflow is also triggered automatically by changes to these
+  installation scripts or the workflow itself, but the optional, large
+  emulator job is skipped for regular pushes.
+- `test_installers` is a portable CI syntax/safety check for the scripts.
+
+These dependencies are installed only on ephemeral GitHub runners. They
+cannot be copied into ChatGPT's Linux container automatically and do not
+persist on your computer. Local installation was attempted but the Linux
+container cannot resolve external package hosts. No root permissions, system
+DNS settings or security restrictions were bypassed.
+
+**Local verification:** 29/29 Linux host suites passed after including the
+installer syntax test. A successful native `.nds` or `.3dsx` compilation,
+Azahar/melonDS GUI launch and executable gameplay **are not yet confirmed**.
+Windows `.exe` bootstrap files, the macOS devkitPro `.pkg`, and the
+Azahar `.flatpakref` from the user are not suitable standalone Linux
+installers. No encrypted/decrypted commercial game files are uploaded to
+GitHub.
+
+Official SDK containers:
+- https://blocksds.skylyrac.net/docs/setup/docker/
+- https://hub.docker.com/r/devkitpro/devkitarm/tags
