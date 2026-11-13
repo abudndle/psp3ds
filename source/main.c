@@ -6,7 +6,9 @@
 #include "psp_platform_budget.h"
 #include "psp_features.h"
 #include "psp_scene.h"
+int psp_3ds_scene_init(void);
 int psp_3ds_scene_draw(uint32_t frame);
+void psp_3ds_scene_fini(void);
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
 }
@@ -90,17 +92,26 @@ int main(void) {
  } else printf("No EBOOT.PBP found.\n");
  printf("\nA: synthetic scene | START: exit\n");
  int show_scene=0;
+ int gpu_ready=0;
  uint32_t scene_frame=0;
  while(aptMainLoop()){
   hidScanInput();
   u32 pressed=hidKeysDown();
   if(pressed&KEY_START)break;
-  if(pressed&KEY_A)show_scene=!show_scene;
-  if(!show_scene || psp_3ds_scene_draw(scene_frame++)!=0)
+  if(pressed&KEY_A){
+   if(!gpu_ready)gpu_ready=psp_3ds_scene_init()==0;
+   if(gpu_ready)show_scene=!show_scene;
+  }
+  if(show_scene && gpu_ready &&
+     psp_3ds_scene_draw(scene_frame++)==0) {
+   /* Citro3D submitted the scene to the bottom GPU target. */
+  } else {
    psp3ds_draw_boot_marker();
-  gfxFlushBuffers();
-  gfxSwapBuffers();
-  gspWaitForVBlank();
+   gfxFlushBuffers();
+   gfxSwapBuffers();
+   gspWaitForVBlank();
+  }
  }
+ psp_3ds_scene_fini();
  gfxExit();osSetSpeedupEnable(false);return 0;
 }
