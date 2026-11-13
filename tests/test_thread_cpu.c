@@ -81,6 +81,8 @@ int main(void) {
  assert(psp_thread_cpu_start(&runtime,(uint32_t)dormant,0,0)<0);
  assert(psp_thread_cpu_switch(&runtime,(uint32_t)dormant)==0);
  assert(live.gpr[4]==1 && guest[live.gpr[5]-BASE]==0x7b);
+ assert(live.gpr[26]==BASE+768 && live.gpr[29]<live.gpr[26]);
+ assert(guest[768+0xc0]==(uint8_t)dormant && guest[768+0xfc]==0xff);
  write32(guest,0x03e00008u); /* jr ra */
  write32(guest+4,0x2402002au); /* return value in the delay slot */
  assert(psp_thread_cpu_step(&runtime)==0);
