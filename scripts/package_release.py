@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
-"""Package built native binaries if present, plus SD layout without game content."""
+"""Package existing native outputs and a safe SD-card directory layout.
+
+The ZIP deliberately excludes all PSP ROMs and save contents.
+"""
 from pathlib import Path
-from zipfile import ZipFile, ZIP_DEFLATED
 import sys
-root=Path(__file__).resolve().parents[1]
-out=Path(sys.argv[1]) if len(sys.argv)>1 else root/"psp3ds-release-layout.zip"
-with ZipFile(out,"w",compression=ZIP_DEFLATED) as z:
-    for dirname in ("psp/","psp/roms/","psp/roms/save/"):
-        z.writestr(dirname,"")
+from zipfile import ZipFile, ZIP_DEFLATED
+root = Path(__file__).resolve().parents[1]
+out = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "psp3ds-release-layout.zip"
+with ZipFile(out, "w", compression=ZIP_DEFLATED) as z:
+    for directory in ("psp/", "psp/roms/", "psp/roms/save/"):
+        z.writestr(directory, "")
     z.writestr("psp/roms/README.txt",
-        "Copy legally obtained PSP ISO/CSO files here.\n"
-        "Per-game saves are planned under psp/roms/save/<disc-id>/.\n"
-        "PSP gameplay and save-data HLE are not implemented yet.\n")
-    for file in (root/"psp3ds.3dsx",root/"psp3ds.cia",root/"build-nds"/"psp3ds-nds.nds"):
-        if file.is_file():z.write(file,file.name)
+        "Place legally obtained ISO or CSO images here.\n"
+        "Save data is planned for psp/roms/save/<game-disc-id>/.\n"
+        "PSP gameplay and save-data HLE are NOT implemented yet.\n")
+    candidates = [root / "psp3ds.3dsx", root / "psp3ds.cia"]
+    if (root / "build-nds").is_dir():
+        candidates.extend(sorted((root / "build-nds").glob("*.nds")))
+    for candidate in candidates:
+        if candidate.is_file() and candidate.stat().st_size > 0:
+            z.write(candidate, candidate.name)
 print(out)
