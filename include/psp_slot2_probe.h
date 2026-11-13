@@ -21,4 +21,15 @@ typedef struct {
 } PspSlot2Result;
 PspSlot2Result psp_slot2_probe(volatile uint16_t *base, uint32_t bytes,
                                int peripheral_ram_confirmed, int single_bank);
+/* A bounded sampled memory sweep across the SDK-reported flat Slot-2 bank.
+ * At most 64 evenly spaced 16-bit locations are tested; their previous
+ * contents are restored immediately. The result proves only the sampled
+ * addresses, not contiguous availability, lack of aliasing, or suitability
+ * for guest PSP allocation. Call only after peripheralSlot2Open(). */
+#define PSP_SLOT2_MAX_SAMPLES 64u
+PspSlot2Result psp_slot2_probe_samples(volatile uint16_t *base,
+                                      uint32_t bytes,
+                                      int peripheral_ram_confirmed,
+                                      int single_bank,
+                                      unsigned samples);
 #endif
