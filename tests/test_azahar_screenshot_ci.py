@@ -16,10 +16,17 @@ checks=(
     'scripts/capture_azahar_ci.sh',
     'psp3ds-azahar.png',
     'if: always()',
+    'pull_request:',
+    'cp azahar-test/psp3ds.3dsx screenshots/psp3ds.3dsx',
+    'scripts/verify_capture_artifact.py',
+    'screenshots/evidence.json',
+    'screenshots/psp3ds.3dsx',
     'psp3ds-azahar-real-screenshot-or-diagnostics',
 )
 for check in checks:
     assert check in workflow, 'Missing Azahar workflow guard: '+check
+assert 'screenshots/psp3ds-azahar.png\n            screenshots/evidence.json' not in workflow, 'Unintended evidence.json shell invocation after capture'
+assert 'python3 scripts/verify_capture_artifact.py' in workflow, 'Downloaded artifact integrity verification missing'
 source=script.read_text()
 for check in ('kill -0', 'xdotool search --onlyvisible', 'xwd -silent', 'Screenshot appears blank'):
     assert check in source, 'Missing screenshot authenticity check: '+check
