@@ -6,6 +6,7 @@
 typedef enum { PSP_UMD_NONE=0, PSP_UMD_ISO=1, PSP_UMD_CSO=2 } PspUmdKind;
 typedef struct {
  PspUmdKind kind;
+ uint32_t generation; /* increments on every media unmount/remount */
  PspIso iso;
  PspCso cso;
  PspPerf cache;
