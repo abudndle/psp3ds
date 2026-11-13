@@ -1,0 +1,38 @@
+name: PPSSPP 3DS ABI probe
+on:
+  pull_request:
+    paths:
+      - 'ports/ppsspp-3ds/**'
+      - '.github/workflows/ppsspp-3ds-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  abi-probe:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:20260610
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: hrydgard/ppsspp
+          ref: 1aebad2c651ff9d0684ee335e43aceff8fc7e3ec
+          path: upstream-ppsspp
+          persist-credentials: false
+      - name: Compile and package the ARMv6K ABI probe
+        shell: bash
+        run: |
+          mkdir -p out
+          "$DEVKITARM/bin/arm-none-eabi-g++" -std=gnu++17 -O2 \
+            -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft \
+            -D__3DS__ -specs=3dsx.specs -Iupstream-ppsspp \
+            -I"$DEVKITPRO/libctru/include" -L"$DEVKITPRO/libctru/lib" \
+            ports/ppsspp-3ds/abi_probe.cpp -lctru -lm -o out/ppsspp-abi-probe.elf
+          "$DEVKITPRO/tools/bin/3dsxtool" out/ppsspp-abi-probe.elf out/ppsspp-abi-probe.3dsx
+          test -s out/ppsspp-abi-probe.3dsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ppsspp-3ds-abi-probe
+          path: out/ppsspp-abi-probe.3dsx
+          if-no-files-found: error
