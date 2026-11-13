@@ -13,6 +13,7 @@ checks=(
     'actions/download-artifact@v4',
     'azahar-emu/azahar/releases/latest',
     'xvfb-run',
+    'x11-apps',
     'scripts/capture_azahar_ci.sh',
     'psp3ds-azahar.png',
     'if: always()',
