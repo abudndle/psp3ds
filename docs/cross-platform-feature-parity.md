@@ -29,7 +29,7 @@ create feature code, merge pull requests, or bypass review.
 | Synthetic 2,048-instruction benchmark | **Diagnostic available** | Same shared benchmark; DS reports its local ARM9 timer |
 | Conservative RAM/graphics budget policy | **Diagnostic available** | DS/DSi/Slot-2/old3DS/New3DS policies have separate caps |
 | Checked guest-data bus | **Experimental library** | Internal region on all; optional external bus only on verified DS+Pak |
-| Synthetic scrolling 2D scene | **Diagnostic available** | DS/DSi hardware tiled BG + OAM sprite; 3DS opt-in BGR8 framebuffer fallback (not PICA GPU batching) |
+| Synthetic scrolling 2D scene | **Diagnostic available** | DS/DSi hardware tiled BG + OAM sprite; 3DS opt-in Citro2D PICA200 batched rectangles |
 | PSP GE graphics translation | **Not implemented** | Planned DS tile/OAM versus 3DS GPU rendering |
 | Commercial PSP game boot | **Not implemented** | No hardware backend; Jetpack Joyride remains untested/unplayable |
 
@@ -66,7 +66,25 @@ write permissions. This contract does not enable such an agent itself.
 4bpp tiles, a four-color BGR555 palette, horizontal scrolling and an 8×8
 moving actor. Host `shared_scene` validates scroll, actor, boundaries,
 and pixel-raster equivalence. DS/DSi uses main-engine background VRAM
-and a real OAM sprite. 3DS uses an explicitly labeled CPU framebuffer
-fallback on the lower screen, toggled with **A**, preserving the existing
-synthetic boot-marker at startup. **PICA200 GPU batching is not implemented.**
+and a real OAM sprite. 3DS uses GPU-submitted Citro2D rectangles on the lower screen, toggled
+with **A**, preserving the existing synthetic boot marker at startup.
+The portable rectangle batch is compared pixel-for-pixel against the
+original scene for ten frame states. This proves synthetic scene
+consistency, not PSP graphics compatibility.
 The scene is synthetic and not PSP GE output or Jetpack Joyride content.
+
+## First PICA200 batch milestone
+
+`psp_scene_batch_build` emits at most 64 clipped, ordered opaque
+rectangles from the same tile scene. The 3DS path initializes
+Citro3D/Citro2D only when the user presses **A**, submits rectangles to
+the bottom-screen PICA200 render target with `C2D_DrawRectSolid`, then
+ends the frame with `C3D_FrameEnd`. Original 3DS and New 3DS use the
+same code; there are no New3DS-only GPU instructions. The former
+CPU-drawn BGR8-per-pixel fallback is no longer used for the scene.
+
+The `scene_batch` host test compares all 49,152 pixel colors over ten
+frames between rectangle composition and the shared scene semantics.
+Native 3DS compilation is not hardware display verification. An actual
+3DS or compatible emulator must still press A and capture the GPU
+scene before claiming visible GPU runtime correctness or a speedup.
