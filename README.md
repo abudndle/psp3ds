@@ -605,3 +605,34 @@ prototype, **not** PSP kernel task switching. There is no guest-thread
 creation or scheduling HLE, firmware synchronization semantics, PSP
 context-switch timing, interrupt-driven preemption, floating/VFPU register
 state, full system RAM layout or PSP commercial game compatibility.
+
+## Experimental guest-facing thread services (2026-11-13)
+
+The HLE dispatcher can now optionally attach a `PspThreadCpu` instance using
+`psp_hle_attach_threads()`. It accepts four **manually bound, synthetic**
+services, using the existing bounded task pool and cooperative CPU adapter:
+
+- `PSP_HLE_THREAD_CREATE`: a0=entry PC, a1=stack pointer, a2=priority
+  (0..255), returns positive task ID or -1.
+- `PSP_HLE_THREAD_WAIT`: a0=token (0 allows timeout-only sleep),
+  a1=absolute low-32-bit scheduler deadline, returns 0 if queued or -1.
+- `PSP_HLE_THREAD_SIGNAL`: a0=nonzero token, returns woken task ID,
+  0 if no match, or -1.
+- `PSP_HLE_THREAD_EXIT`: marks the current task stopped and returns
+  0 or -1. The next cooperative step chooses another runnable task.
+
+These are *not actual PSP kernel NIDs or PSP-compatible syscall signatures*.
+Import linking does not recognize them automatically. Guests must be
+explicitly assigned interpreter syscall IDs by a trusted test harness.
+The attachment is optional; missing/mismatched CPU contexts fail closed.
+`test_thread_hle` covers a MIPS syscall-trap sequence that creates,
+waits, signals and stops synthetic guest tasks.
+
+**Limitations:** calls return immediately, including WAIT (there is no
+firmware-compatible delayed syscall return), a1 deadlines are only
+32 bits, tasks share one guest RAM, and there is no PSP semaphore,
+priority inversion handling, interrupt dispatch, FPU/VFPU state,
+thread-stack allocation, preemption, or commercial PSP executable loading.
+An actual PSP game such as Jetpack Joyride is still not playable.
+The new test is registered in CTest; a complete host build, sanitizer
+run and native 3DS compilation are **not yet confirmed** for this change.
