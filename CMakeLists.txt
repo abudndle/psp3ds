@@ -57,3 +57,7 @@ endif()
 add_executable(test_catalog tests/test_catalog.c)
 target_link_libraries(test_catalog PRIVATE psp_core)
 add_test(NAME catalog COMMAND test_catalog)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME native_scripts COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_native_scripts.py)
+endif()
