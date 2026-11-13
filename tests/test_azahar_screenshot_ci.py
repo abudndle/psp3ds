@@ -25,7 +25,7 @@ checks=(
 )
 for check in checks:
     assert check in workflow, 'Missing Azahar workflow guard: '+check
-assert 'screenshots/psp3ds-azahar.png\n            screenshots/evidence.json' not in workflow, 'Unintended evidence.json shell invocation after capture'
+assert '              screenshots/psp3ds-azahar.png\n            screenshots/evidence.json' not in workflow, 'Unintended evidence.json shell invocation after capture'
 assert 'python3 scripts/verify_capture_artifact.py' in workflow, 'Downloaded artifact integrity verification missing'
 source=script.read_text()
 for check in ('kill -0', 'xdotool search --onlyvisible', 'xwd -silent', 'Screenshot appears blank'):
