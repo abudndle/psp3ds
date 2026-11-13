@@ -2,6 +2,17 @@
 
 **Research prototype only. It does not run commercial PSP games.** Target device is New Nintendo 3DS. PPSSPP is an architectural reference; no PPSSPP source code has been incorporated.
 
+
+## Shared GitHub repository: 3DS + DS/DSi-enhanced roadmap
+
+This repository now documents both the existing **Nintendo 3DS PSP3DS** target
+and a **future BlocksDS Nintendo DS / DSi-enhanced** port. It is one repository,
+not two different source histories. Platform plans live in
+[3DS](platforms/3ds/README.md) and [DS/DSi](platforms/nds/README.md).
+See the [3DS/DS library inventory](docs/PLATFORM_LIBRARIES.md) for dependencies,
+package discovery, reusable PSP core modules and a migration plan.
+The DS/DSi port is **not built or tested** yet; no .nds artifact exists.
+
 ## Current components
 - PSP PBP, plain ELF32/MIPS, ISO9660 and CSO header identification (not decoding ISO/CSO games).
 - Bounds-checked loader for plain, unencrypted, fixed-address ELF32/MIPS ET_EXEC segments, including BSS and executable entry-point validation; no encrypted retail executable support, PRX relocation or PSP firmware APIs.
