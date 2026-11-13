@@ -705,3 +705,33 @@ linking, invalid mapped entry points and invalid segment descriptions.
 **Not implemented:** automatic mapping of actual PSP ET_REL/PRX files,
 relocation of all module metadata, encrypted PSP EBOOT loading, PSP
 firmware thread compatibility, and running commercial PSP games.
+
+## Automatic ELF segment mapping (2026-11-13)
+
+The new `psp_boot_auto_mapped_elf()` moves one step beyond the
+caller-supplied mappings introduced in the previous milestone. For a
+supported **unencrypted ELF32/MIPS ET_EXEC** image it derives the
+`PT_LOAD` mapping records directly from its program-header table,
+validates segment file/memory lengths and guest bounds, copies the
+file-backed bytes into PSP guest RAM and clears each BSS tail.
+
+The first executable-linked segment remains at its original address.
+Additional segments honor a nonzero `p_paddr` placement hint, use
+their original guest addresses when available, or fall back to aligned
+space after previously mapped segments when no explicit placement
+hint is given. Overlapping, out-of-range or truncated mappings fail
+without guest changes. The function automatically calls the already
+available relocation, module metadata, known-NID HLE import-link and
+CPU initialization pipeline. Failures during **any stage** restore
+the full guest RAM image and preserve the previous CPU and HLE state.
+
+The `boot_auto` CTest checks automatic placement, p_paddr placement,
+fallback addresses, BSS zero fill, post-relocation guest interpreter
+execution, import patching, and whole-boot rollback on mapping,
+relocation or import errors.
+
+**Important limits:** this is an incremental fixed-entry mapping
+path, not a complete PSP PRX loader. It does not rebase executable
+entry addresses or section headers, load `ET_REL`/`ET_SCE_PRX`
+modules at arbitrary locations, decrypt firmware/retail EBOOTs,
+implement PSP kernel services or run commercial PSP games.
