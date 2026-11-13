@@ -1,4 +1,5 @@
 #include "psp_hle.h"
+#include "psp_io.h"
 #include <string.h>
 #include <limits.h>
 void psp_hle_init(PspHle *hle) {
@@ -7,12 +8,17 @@ void psp_hle_init(PspHle *hle) {
 int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
  if (!hle || id>0xfffffu || hle->count>=PSP_HLE_MAX_BINDINGS ||
      (service!=PSP_HLE_SYSTEM_TIME_LOW && service!=PSP_HLE_SYSTEM_TIME_WIDE &&
-      service!=PSP_HLE_SYSTEM_TIME)) return -1;
+      service!=PSP_HLE_SYSTEM_TIME &&
+      service!=PSP_HLE_IO_OPEN && service!=PSP_HLE_IO_READ &&
+      service!=PSP_HLE_IO_LSEEK32 && service!=PSP_HLE_IO_CLOSE)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
  hle->count++;
  return 0;
+}
+void psp_hle_attach_io(PspHle *hle,struct PspIo *io) {
+ if(hle)hle->io=io;
 }
 void psp_hle_advance_time(PspHle *hle,uint64_t delta_us) {
  if(!hle)return;
@@ -59,6 +65,34 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
    }
    break;
  }
+ case PSP_HLE_IO_OPEN:{
+   char path[256];size_t i,off;int terminated=0;
+   for(i=0;i<sizeof path;i++){
+     uint64_t address=(uint64_t)cpu->gpr[4]+i;
+     if(address>UINT32_MAX ||
+        guest_ptr(cpu,(uint32_t)address,1,&off)!=0)break;
+     path[i]=(char)cpu->ram[off];
+     if(!path[i]){terminated=1;break;}
+   }
+   v0=(uint32_t)(!hle->io || !terminated?-1:
+      psp_io_open(hle->io,path,cpu->gpr[5]));
+   break;
+ }
+ case PSP_HLE_IO_READ:{
+   uint32_t count=cpu->gpr[6];size_t off=0;
+   if(!hle->io || count>INT32_MAX ||
+      guest_ptr(cpu,cpu->gpr[5],count,&off)!=0)v0=(uint32_t)-1;
+   else v0=(uint32_t)psp_io_read(hle->io,(int32_t)cpu->gpr[4],
+                                cpu->ram+off,count);
+   break;
+ }
+ case PSP_HLE_IO_LSEEK32:
+   v0=(uint32_t)(hle->io?psp_io_seek32(hle->io,(int32_t)cpu->gpr[4],
+                   (int32_t)cpu->gpr[5],cpu->gpr[6]):-1);
+   break;
+ case PSP_HLE_IO_CLOSE:
+   v0=(uint32_t)(hle->io?psp_io_close(hle->io,(int32_t)cpu->gpr[4]):-1);
+   break;
  default:return -3;
  }
  cpu->gpr[2]=v0;cpu->gpr[3]=v1;cpu->gpr[0]=0;
