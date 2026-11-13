@@ -681,3 +681,27 @@ PRX boot path. The module has to be mapped into RAM before calling it;
 it does not allocate segments, relocate module metadata, handle PSP
 encrypted executables, support full PSPREL2 modes, or implement actual
 PSP game boot. Repeatedly relocating the same image is not supported.
+
+## Transactional mapped-ELF boot with PSP relocations (2026-11-13)
+
+`psp_boot_mapped_relocated_elf()` composes the previously separate
+relocation stream discovery and known-NID module import linking steps,
+then initializes the MIPS CPU at the validated mapped entry. It works
+only on **already-mapped, plain ELF32/MIPS ET_EXEC** images with an
+explicit program-header-to-guest mapping. It does not allocate or move
+PT_LOAD segments, and assumes section metadata addresses already match
+the guest mapping. All supported relocation streams are discovered and
+applied automatically when this new opt-in boot API is called.
+
+The sequence is transactional. A relocation or module-discovery/import
+failure restores the entire guest RAM snapshot and leaves the original
+CPU, HLE binding table, output module information and stream count
+unchanged/zero as documented. RAM is bounded to 32 MiB; the snapshot
+is freed before the function returns. New `boot_relocated` CTest covers
+successful relocation-to-MIPS execution, imported HLE stub patching,
+failure during relocation, failure after relocation during import
+linking, invalid mapped entry points and invalid segment descriptions.
+
+**Not implemented:** automatic mapping of actual PSP ET_REL/PRX files,
+relocation of all module metadata, encrypted PSP EBOOT loading, PSP
+firmware thread compatibility, and running commercial PSP games.
