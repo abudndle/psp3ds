@@ -885,3 +885,19 @@ These policies are **not allocated RAM**, speed improvements, or PSP
 graphics compatibility. For concrete tile/OAM/GPU batching priorities
 and real-device validation gates see
 [all-system memory/GPU optimization plan](docs/all-platform-memory-gpu-budget.md).
+
+## Shared feature parity on all target systems (2026-11-13)
+
+The new `psp_features` manifest assigns **the same semantic feature
+IDs and truthful availability states** to original DS, DS + verified
+Slot-2 RAM, DSi, original 3DS, and New 3DS. Each platform can choose an
+optimized future renderer or memory backend without dropping features.
+Native DS and 3DS applications now run the same portable CPU smoke test
+and 2,048-instruction benchmark and report their PSP game boot status as
+**not implemented**.
+
+New `feature_parity` and `feature_wiring` CTests automatically check
+common IDs, backends and native entrypoint integration in the existing
+scheduled/push/PR GitHub Actions workflows. They guard parity but do not
+write new game code or claim PSP retail compatibility. See the
+[cross-platform feature contract](docs/cross-platform-feature-parity.md).
