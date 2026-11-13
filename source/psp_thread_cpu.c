@@ -135,7 +135,8 @@ int psp_thread_cpu_switch(PspThreadCpu *r,uint32_t id) {
 }
 int psp_thread_cpu_step(PspThreadCpu *r) {
  if (!valid_mapping(r)) return -2;
- int32_t selected=psp_threads_pick(r->scheduler);
+ int32_t selected=r->hle->interrupts_suspended ? (int32_t)r->active_id :
+                                                 psp_threads_pick(r->scheduler);
  if (selected<0) return -2;
  if (!selected) return 2;
  if (psp_thread_cpu_switch(r,(uint32_t)selected)!=0) return -2;

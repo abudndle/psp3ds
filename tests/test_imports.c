@@ -68,6 +68,22 @@ int main(void) {
  cpu.gpr[4]=0x040300u;cpu.gpr[31]=BASE+160;
  assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
  assert(hle.compiler_version==0x040300u && cpu.gpr[2]==0 && cpu.pc==BASE+160);
+ const PspImport intr[]={{"Kernel_Library",0x092968f4u,BASE+160},
+                         {"Kernel_Library",0x5f10d406u,BASE+168}};
+ assert(psp_imports_link_known(&cpu,&hle,intr,2)==0);
+ psp_cpu_init(&cpu,memory,sizeof memory,BASE,BASE+160);
+ cpu.gpr[31]=BASE+160;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ assert(cpu.gpr[2]==1 && hle.interrupts_suspended);
+ cpu.gpr[31]=BASE+168;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ assert(cpu.gpr[2]==0 && hle.interrupts_suspended);
+ cpu.gpr[4]=2;cpu.gpr[31]=BASE+168;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ assert(hle.interrupts_suspended);
+ cpu.gpr[4]=3;cpu.gpr[31]=BASE+176;
+ assert(psp_hle_step(&hle,&cpu)==0 && psp_hle_step(&hle,&cpu)==1);
+ assert(!hle.interrupts_suspended);
  puts("PASS: import NID lookup, stub patching, rollback, jr-delay-slot HLE");
  return 0;
 }

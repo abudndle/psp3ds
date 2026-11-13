@@ -17,7 +17,8 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_SET_COMPILED_SDK && service!=PSP_HLE_GET_COMPILED_SDK &&
       service!=PSP_HLE_SET_COMPILER_VERSION &&
       service!=PSP_HLE_KERNEL_CREATE_THREAD && service!=PSP_HLE_KERNEL_START_THREAD &&
-      service!=PSP_HLE_MODULE_ID_BY_ADDRESS)) return -1;
+      service!=PSP_HLE_MODULE_ID_BY_ADDRESS &&
+      service!=PSP_HLE_INTR_SUSPEND && service!=PSP_HLE_INTR_RESUME)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -62,6 +63,14 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_INTR_SUSPEND:
+   v0=(uint32_t)!hle->interrupts_suspended;
+   hle->interrupts_suspended=1;
+   break;
+ case PSP_HLE_INTR_RESUME:
+   hle->interrupts_suspended=(cpu->gpr[4] & 1u)==0;
+   v0=cpu->gpr[2];
+   break;
  case PSP_HLE_MODULE_ID_BY_ADDRESS:
    if (cpu->gpr[4] & 0x80000000u) v0=0x800200d3u;
    else if (cpu->gpr[4]>=hle->module_base &&
