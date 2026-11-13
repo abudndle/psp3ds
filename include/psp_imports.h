@@ -10,4 +10,8 @@ typedef struct { const char *library; uint32_t nid; PspHleService service; } Psp
    Reject invalid/unsupported imports atomically, before changing guest memory. */
 int psp_imports_link(PspCpu *cpu, PspHle *hle, const PspImport *imports,
                      size_t count, const PspExport *exports, size_t export_count);
+/* Link confirmed PSP library NIDs to implemented HLE services only.
+   Unsupported functions fail atomically; this is not a full firmware NID DB. */
+int psp_imports_link_known(PspCpu *cpu, PspHle *hle,
+                           const PspImport *imports, size_t count);
 #endif
