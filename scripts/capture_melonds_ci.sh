@@ -27,7 +27,6 @@ for attempt in $(seq 1 40); do
   sleep 1
 done
 if [[ -z "$window" ]]; then echo 'No visible melonDS window appeared' >&2; exit 3; fi
-xdotool windowactivate --sync "$window" || true
 sleep 4
 if ! kill -0 "$emulator_pid" 2>/dev/null; then
   echo 'melonDS exited before screenshot capture' >&2; exit 3
