@@ -94,6 +94,13 @@ jobs:
         run: |
           mkdir -p melonds-evidence
           timeout 100 xvfb-run -a -s '-screen 0 1280x960x24' bash scripts/capture_melonds_ci.sh melonds-test/psp3ds_nds.nds melonds-evidence/melonds-window.png
+      - name: Attempt official melonDS emulated Slot-2 Memory expansion
+        env:
+          QT_QPA_PLATFORM: xcb
+          MELONDS_SLOT2_EXPANSION: '1'
+        run: |
+          mkdir -p melonds-expansion
+          timeout 100 xvfb-run -a -s '-screen 0 1280x960x24' bash scripts/capture_melonds_ci.sh melonds-test/psp3ds_nds.nds melonds-expansion/melonds-expansion.png
       - name: Include source ROM hash and evidence notes
         if: always()
         run: |
@@ -107,4 +114,5 @@ jobs:
           name: melonds-nds-window-or-diagnostics
           path: |
             melonds-evidence/
+            melonds-expansion/
           if-no-files-found: error
