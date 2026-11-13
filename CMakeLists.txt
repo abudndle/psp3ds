@@ -47,3 +47,9 @@ add_test(NAME demand COMMAND test_demand)
 add_executable(test_demand_runtime tests/test_demand_runtime.c)
 target_link_libraries(test_demand_runtime PRIVATE psp_core)
 add_test(NAME demand_runtime COMMAND test_demand_runtime)
+
+# Verify release layout without installing any Nintendo cross toolchain.
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME packaging COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_packaging.py)
+endif()
