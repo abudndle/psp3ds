@@ -38,7 +38,7 @@ if [[ "$EXPANSION_MODE" == 1 ]]; then
   echo "Attempting emulated Slot-2 Memory expansion via melonDS File menu"
   xdotool windowfocus --sync "$window"
   sleep 0.5
-  xdotool key --clearmodifiers Alt_L+f
+  xdotool mousemove --window "$window" 16 10 click 1
   sleep 0.3
   xwd -silent -root | convert xwd:- PNG:"$(dirname "$OUTPUT")/debug-file-menu.png" || true
   xdotool key Home
