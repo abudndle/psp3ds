@@ -63,3 +63,19 @@ int psp_module_imports(const PspCpu *cpu,const PspModuleInfo *module,
  if (!module || !out) return -1;
  return psp_prx_parse_imports(cpu,module->import_top,module->import_end,out);
 }
+
+int psp_module_link_known(const uint8_t *elf, size_t elf_size,
+                          PspCpu *cpu, PspHle *hle, PspModuleInfo *out) {
+ if (out) memset(out,0,sizeof(*out));
+ if (!cpu || !hle) return -1;
+ PspModuleInfo info;
+ int status=psp_module_discover(elf,elf_size,cpu,&info);
+ if (status) return status;
+ PspPrxImports parsed;
+ status=psp_module_imports(cpu,&info,&parsed);
+ if (status) return status;
+ if (parsed.count && psp_imports_link_known(cpu,hle,parsed.imports,parsed.count)!=0)
+  return -4;
+ if (out) *out=info;
+ return 0;
+}
