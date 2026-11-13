@@ -1,0 +1,106 @@
+name: PSP3DS 3DS Azahar screenshot test
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/azahar-screenshots.yml'
+      - 'scripts/capture_azahar_ci.sh'
+      - 'tests/test_azahar_screenshot_ci.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-azahar-screenshot-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-3dsx:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    container:
+      image: devkitpro/devkitarm:20260610
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile real 3DS homebrew build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${DEVKITARM:-}"
+          test -f "$DEVKITARM/3ds_rules"
+          make -j2
+          test -s psp3ds.3dsx
+      - name: Upload 3DSX for downstream emulator test
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-azahar-test-3dsx
+          path: psp3ds.3dsx
+          if-no-files-found: error
+  capture-azahar:
+    needs: build-3dsx
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve native executable produced by this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: psp3ds-azahar-test-3dsx
+          path: azahar-test
+      - name: Install virtual display and image verification requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3 python3-pil ca-certificates xvfb x11-utils \
+            xdotool imagemagick file
+      - name: Download official stable Azahar Linux AppImage
+        run: |
+          mkdir -p screenshots
+          python3 - <<'PY'
+          import json,urllib.request,shutil
+          api='https://api.github.com/repos/azahar-emu/azahar/releases/latest'
+          req=urllib.request.Request(api,headers={'User-Agent':'PSP3DS-Azahar-CI'})
+          with urllib.request.urlopen(req,timeout=40) as response:
+              release=json.load(response)
+          candidates=[]
+          for asset in release.get('assets',[]):
+              name=asset['name'].lower()
+              if name.endswith('.appimage') and 'wayland' not in name:
+                  candidates.append(asset)
+          # Prefer Linux x86_64 when explicitly specified in the filename.
+          candidates.sort(key=lambda asset: 0 if any(
+              s in asset['name'].lower() for s in ('x86_64','amd64')) else 1)
+          if not candidates:
+              raise SystemExit('No official Azahar Linux AppImage in latest stable release')
+          asset=candidates[0]
+          print('Official Azahar release:',release.get('tag_name'))
+          print('Selected asset:',asset['name'])
+          req=urllib.request.Request(asset['browser_download_url'],
+                                     headers={'User-Agent':'PSP3DS-Azahar-CI'})
+          with urllib.request.urlopen(req,timeout=180) as data, open('screenshots/Azahar.AppImage','wb') as dst:
+              shutil.copyfileobj(data,dst)
+          PY
+          chmod +x screenshots/Azahar.AppImage
+          file screenshots/Azahar.AppImage
+      - name: Launch compiled 3DSX inside Azahar and capture real window
+        env:
+          QT_QPA_PLATFORM: xcb
+          AZAHAR_EXE: ${{ github.workspace }}/screenshots/Azahar.AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s azahar-test/psp3ds.3dsx
+          timeout 110s xvfb-run -a -s '-screen 0 1280x900x24' \
+            bash scripts/capture_azahar_ci.sh \
+              "$PWD/azahar-test/psp3ds.3dsx" \
+              screenshots/psp3ds-azahar.png
+          test -s screenshots/psp3ds-azahar.png
+          file screenshots/psp3ds-azahar.png
+      - name: Upload actual Azahar screenshot or failure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-azahar-real-screenshot-or-diagnostics
+          path: |
+            screenshots/psp3ds-azahar.png
+            screenshots/azahar-stdout.log
+            screenshots/azahar-stderr.log
+          if-no-files-found: warn
