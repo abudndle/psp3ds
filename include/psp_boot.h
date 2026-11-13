@@ -18,7 +18,8 @@ typedef enum {
  PSP_BOOT_ELF_FAILED = -2,
  PSP_BOOT_IMPORT_FAILED = -3,
  PSP_BOOT_RELOCATION_FAILED = -4,
- PSP_BOOT_NO_MEMORY = -5
+ PSP_BOOT_NO_MEMORY = -5,
+ PSP_BOOT_MAPPING_FAILED = -6
 } PspBootStatus;
 int psp_boot_plain_elf(const uint8_t *elf, size_t elf_size,
                        PspCpu *cpu, PspHle *hle,
@@ -38,4 +39,20 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
                                   size_t segment_count,
                                   PspModuleInfo *module,
                                   size_t *relocation_streams);
+/* Derive PT_LOAD placements directly from a plain ELF32/MIPS ET_EXEC.
+ * The entry's file-backed executable segment must remain linked at its
+ * original guest virtual address. Other PT_LOADs use a nonzero p_paddr
+ * placement hint, their original vaddr if free, or first available aligned
+ * space after prior load segments. All placements must fit existing RAM.
+ * This maps, relocates, links imports and initializes CPU transactionally:
+ * on failure guest RAM, CPU and HLE stay unchanged; outputs are zero.
+ *
+ * Not a general PSP ET_REL or ET_SCE_PRX loader: relocatable entry
+ * rebasing, section-table rebasing, encrypted EBOOT and firmware setup
+ * are explicitly unsupported. Requires at least one PSP relocation stream.
+ */
+int psp_boot_auto_mapped_elf(const uint8_t *elf, size_t elf_size,
+                             PspCpu *cpu, PspHle *hle,
+                             PspModuleInfo *module,
+                             size_t *relocation_streams);
 #endif
