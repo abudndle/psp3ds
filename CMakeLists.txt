@@ -189,3 +189,7 @@ add_test(NAME shared_scene COMMAND test_scene)
 add_executable(test_scene_batch tests/test_scene_batch.c)
 target_link_libraries(test_scene_batch PRIVATE psp_core)
 add_test(NAME scene_batch COMMAND test_scene_batch)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME azahar_gpu_scene_detector COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_azahar_gpu_scene.py)
+endif()
