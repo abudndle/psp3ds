@@ -87,6 +87,7 @@ int main(void){
  setup(ram,&cpu,&hle);
  assert(psp_boot_auto_mapped_elf(prx,sizeof prx,&cpu,&hle,&mod,&streams)==PSP_BOOT_OK);
  assert(cpu.pc==BASE && mod.module_address==BASE+64 && hle.count==2);
+ assert(hle.module_base==BASE && hle.module_size==448 && hle.module_id!=0);
  assert(rd32(ram+16)==BASE+0x20 && ram[400]==0x31 && ram[447]==0);
  assert(psp_cpu_step(&cpu)==0 && cpu.gpr[8]==1);
  /* Without a p_paddr hint, select the first aligned gap after code. */

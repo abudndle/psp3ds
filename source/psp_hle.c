@@ -16,7 +16,8 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_THREAD_SIGNAL && service!=PSP_HLE_THREAD_EXIT &&
       service!=PSP_HLE_SET_COMPILED_SDK && service!=PSP_HLE_GET_COMPILED_SDK &&
       service!=PSP_HLE_SET_COMPILER_VERSION &&
-      service!=PSP_HLE_KERNEL_CREATE_THREAD && service!=PSP_HLE_KERNEL_START_THREAD)) return -1;
+      service!=PSP_HLE_KERNEL_CREATE_THREAD && service!=PSP_HLE_KERNEL_START_THREAD &&
+      service!=PSP_HLE_MODULE_ID_BY_ADDRESS)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -61,6 +62,12 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_MODULE_ID_BY_ADDRESS:
+   if (cpu->gpr[4] & 0x80000000u) v0=0x800200d3u;
+   else if (cpu->gpr[4]>=hle->module_base &&
+            cpu->gpr[4]-hle->module_base<hle->module_size) v0=hle->module_id;
+   else v0=0x8002012eu;
+   break;
  case PSP_HLE_SET_COMPILED_SDK:hle->compiled_sdk_version=cpu->gpr[4];break;
  case PSP_HLE_GET_COMPILED_SDK:v0=hle->compiled_sdk_version;break;
  case PSP_HLE_SET_COMPILER_VERSION:hle->compiler_version=cpu->gpr[4];break;

@@ -72,6 +72,8 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
     (uint64_t)phoff+(uint64_t)entsize*count>elf_size)
   return PSP_BOOT_ELF_FAILED;
  int executable=0;
+ uint32_t module_base=UINT32_MAX;
+ uint64_t module_end=0;
  for(size_t i=0;i<count;i++){
   const uint8_t *ph=elf+phoff+i*entsize;
   if(boot_u32(ph)!=1u)continue;
@@ -84,6 +86,9 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
      mapped-cpu->ram_base>cpu->ram_size ||
      memsz>cpu->ram_size-(size_t)(mapped-cpu->ram_base))
    return PSP_BOOT_ELF_FAILED;
+  if(mapped+memsz>UINT64_C(0x100000000))return PSP_BOOT_ELF_FAILED;
+  if(mapped<module_base)module_base=(uint32_t)mapped;
+  if(mapped+memsz>module_end)module_end=mapped+memsz;
   if((flags&1u) && entry>=mapped &&
      (uint64_t)entry+4u<=mapped+filesz) executable=1;
  }
@@ -105,6 +110,9 @@ int psp_boot_mapped_relocated_elf(const uint8_t *elf, size_t elf_size,
  }
  psp_cpu_init(&candidate,cpu->ram,cpu->ram_size,cpu->ram_base,entry);
  *cpu=candidate;
+ staged_hle.module_base=module_base;
+ staged_hle.module_size=(uint32_t)(module_end-module_base);
+ staged_hle.module_id=0x1000u; /* Single boot module UID. */
  *hle=staged_hle;
  *module=staged_module;
  if(relocation_streams)*relocation_streams=streams;
