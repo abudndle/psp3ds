@@ -45,6 +45,8 @@ int32_t psp_thread_cpu_spawn(PspThreadCpu *r, uint8_t priority,
  }
  /* A new scheduler task always has a free or retired CPU slot. */
  if (index<0) {psp_threads_stop(r->scheduler,(uint32_t)id);return -1;}
+ /* A retired active task must not later flush into its successor's slot. */
+ if (r->slot_id[index]==r->active_id) r->active_id=0;
  psp_cpu_init(&r->saved[index],r->ram,r->ram_size,r->ram_base,entry_pc);
  r->saved[index].gpr[29]=stack_pointer;
  r->slot_id[index]=(uint32_t)id;
