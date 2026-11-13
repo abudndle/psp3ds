@@ -1,0 +1,40 @@
+name: PSP3DS verified automatic uploads
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: psp3ds-upload-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure portable host build
+        run: cmake -S . -B build-host -DCMAKE_BUILD_TYPE=Debug
+      - name: Compile portable host build
+        run: cmake --build build-host --parallel 2
+      - name: Verify all host suites
+        run: ctest --test-dir build-host --output-on-failure
+      - name: Create source and SD-layout packages
+        run: |
+          mkdir -p dist
+          git archive --format=zip --output=dist/psp3ds-source.zip HEAD -- \
+            include source tests scripts tools docs platforms .github \
+            README.md CMakeLists.txt Makefile
+          python3 scripts/package_release.py dist/psp3ds-sd-layout.zip
+          python3 scripts/verify_release.py dist/psp3ds-source.zip dist/psp3ds-sd-layout.zip
+      - name: Upload verified sources and SD-card layout to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-verified-${{ github.sha }}
+          path: |
+            dist/psp3ds-source.zip
+            dist/psp3ds-sd-layout.zip
+          if-no-files-found: error
+          retention-days: 30
