@@ -23,8 +23,9 @@ static int overlap(const uint8_t *a,size_t as,const uint8_t *b,size_t bs){
  return x<y+bs && y<x+as;
 }
 
-int psp_prx_image_map_relocated(const uint8_t *elf,size_t len,
-                                PspCpu *cpu,PspPrxImageResult *out){
+static int prx_map_core(const uint8_t *elf,size_t len,
+                        PspCpu *cpu,PspPrxImageResult *out,
+                        int fresh_scratch){
  if(out)memset(out,0,sizeof(*out));
  if(!elf||!cpu||!out||!cpu->ram||!cpu->ram_size||
     cpu->ram_size>PRX_MAX_RAM||len<52u||
@@ -82,9 +83,12 @@ int psp_prx_image_map_relocated(const uint8_t *elf,size_t len,
   * The source image remains external; on allocation failure no guest
   * state changes. Limit snapshot to the image span rather than 32 MiB. */
  const size_t backup_len=(size_t)high;
- uint8_t *backup=(uint8_t*)malloc(backup_len);
- if(!backup)return PSP_PRX_IMAGE_NO_MEMORY;
- memcpy(backup,cpu->ram,backup_len);
+ uint8_t *backup=NULL;
+ if(!fresh_scratch){
+  backup=(uint8_t*)malloc(backup_len);
+  if(!backup)return PSP_PRX_IMAGE_NO_MEMORY;
+  memcpy(backup,cpu->ram,backup_len);
+ }
  for(unsigned i=0;i<count;i++){
   if(!mapped[i].mem_size)continue;
   const uint8_t *ph=elf+phoff+(size_t)i*phsize;
@@ -97,7 +101,7 @@ int psp_prx_image_map_relocated(const uint8_t *elf,size_t len,
  const int reloc=psp_reloc_image_apply(elf,len,&candidate,mapped,count,
                                       &relocated_streams);
  if(reloc!=0 || relocated_streams!=streams){
-  memcpy(cpu->ram,backup,backup_len);
+  if(backup)memcpy(cpu->ram,backup,backup_len);
   free(backup);
   return PSP_PRX_IMAGE_RELOCATION;
  }
@@ -110,4 +114,13 @@ int psp_prx_image_map_relocated(const uint8_t *elf,size_t len,
  out->load_segments=(uint16_t)used;
  out->relocation_streams=(uint16_t)streams;
  return PSP_PRX_IMAGE_OK;
+}
+
+int psp_prx_image_map_relocated(const uint8_t *elf,size_t elf_size,
+                                PspCpu *cpu,PspPrxImageResult *out){
+ return prx_map_core(elf,elf_size,cpu,out,0);
+}
+int psp_prx_image_map_fresh(const uint8_t *elf,size_t elf_size,
+                             PspCpu *cpu,PspPrxImageResult *out){
+ return prx_map_core(elf,elf_size,cpu,out,1);
 }
