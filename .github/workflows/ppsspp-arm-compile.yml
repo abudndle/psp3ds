@@ -76,7 +76,7 @@ jobs:
         run: |
           set -eu
           mkdir -p build/guest-memory-arm
-          for unit in psp_guest_window psp_guest_bus; do
+          for unit in psp_guest_window psp_guest_bus psp_ppsspp_bus_bridge; do
             "$DEVKITARM/bin/arm-none-eabi-gcc" -std=c11 -O2 -Wall -Wextra -Werror \
               -marm -mcpu=mpcore -Iinclude -c "source/${unit}.c" \
               -o "build/guest-memory-arm/${unit}.o"
@@ -120,7 +120,8 @@ jobs:
             -o build/ppsspp-arm/interpreter-with-guest-bus-relocatable.o \
             build/ppsspp-arm/ppsspp-interpreter-relocatable.o \
             build/guest-memory-arm/psp_guest_window.o \
-            build/guest-memory-arm/psp_guest_bus.o
+            build/guest-memory-arm/psp_guest_bus.o \
+            build/guest-memory-arm/psp_ppsspp_bus_bridge.o
           "$DEVKITARM/bin/arm-none-eabi-readelf" -h \
             build/ppsspp-arm/interpreter-with-guest-bus-relocatable.o \
             > build/ppsspp-arm/integration-elf-header.txt
@@ -130,7 +131,82 @@ jobs:
             build/ppsspp-arm/interpreter-with-guest-bus-relocatable.o \
             > build/ppsspp-arm/integration-symbols.txt
           grep -q ' T psp_guest_bus_read32$' build/ppsspp-arm/integration-symbols.txt
-          grep -q ' T psp_guest_bus_write32$' build/ppsspp-arm/integration-symbols.txt
+          grep -q ' T psp_guest_bus_write32
+          # Relocatable link proves object compatibility, not runtime memory wiring.
+      - name: Inventory ARM interpreter link dependencies
+        shell: bash
+        run: |
+          set -eu
+          "$DEVKITARM/bin/arm-none-eabi-nm" -u -C build/ppsspp-arm/ppsspp-interpreter-relocatable.o > build/ppsspp-arm/unresolved-symbols.txt
+          "$DEVKITARM/bin/arm-none-eabi-nm" -C build/ppsspp-arm/ppsspp-interpreter-relocatable.o > build/ppsspp-arm/all-symbols.txt
+          python3 scripts/audit-ppsspp-link-closure.py \
+            build/ppsspp-arm/unresolved-symbols.txt \
+            build/ppsspp-arm/all-symbols.txt \
+            --output build/ppsspp-arm/link-closure.json
+          cat build/ppsspp-arm/link-closure.json
+          python3 scripts/summarize-ppsspp-link-deps.py \
+            build/ppsspp-arm/unresolved-symbols.txt \
+            --output build/ppsspp-arm/dependency-categories.json
+          cat build/ppsspp-arm/dependency-categories.json
+          # A dependency inventory is not proof of successful linking.
+      - name: Publish cross-compiler evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppsspp-arm-interpreter-compile-evidence
+          path: |
+            build/ppsspp-arm/*.log
+            build/ppsspp-arm/status.tsv
+            build/ppsspp-arm/*.o
+            build/ppsspp-arm/*symbols.txt
+            build/ppsspp-arm/link-closure.json
+            build/ppsspp-arm/dependency-categories.json
+            build/ppsspp-arm/relocatable-elf-header.txt
+            build/ppsspp-arm/relocatable-unresolved.txt
+            build/guest-memory-arm/*.o
+            build/guest-memory-arm/elf-header.txt
+            build/ppsspp-arm/integration-elf-header.txt
+            build/ppsspp-arm/integration-symbols.txt
+          if-no-files-found: warn
+ build/ppsspp-arm/integration-symbols.txt
+          grep -q ' T psp_ppsspp_bus_fetch32
+          # Relocatable link proves object compatibility, not runtime memory wiring.
+      - name: Inventory ARM interpreter link dependencies
+        shell: bash
+        run: |
+          set -eu
+          "$DEVKITARM/bin/arm-none-eabi-nm" -u -C build/ppsspp-arm/ppsspp-interpreter-relocatable.o > build/ppsspp-arm/unresolved-symbols.txt
+          "$DEVKITARM/bin/arm-none-eabi-nm" -C build/ppsspp-arm/ppsspp-interpreter-relocatable.o > build/ppsspp-arm/all-symbols.txt
+          python3 scripts/audit-ppsspp-link-closure.py \
+            build/ppsspp-arm/unresolved-symbols.txt \
+            build/ppsspp-arm/all-symbols.txt \
+            --output build/ppsspp-arm/link-closure.json
+          cat build/ppsspp-arm/link-closure.json
+          python3 scripts/summarize-ppsspp-link-deps.py \
+            build/ppsspp-arm/unresolved-symbols.txt \
+            --output build/ppsspp-arm/dependency-categories.json
+          cat build/ppsspp-arm/dependency-categories.json
+          # A dependency inventory is not proof of successful linking.
+      - name: Publish cross-compiler evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppsspp-arm-interpreter-compile-evidence
+          path: |
+            build/ppsspp-arm/*.log
+            build/ppsspp-arm/status.tsv
+            build/ppsspp-arm/*.o
+            build/ppsspp-arm/*symbols.txt
+            build/ppsspp-arm/link-closure.json
+            build/ppsspp-arm/dependency-categories.json
+            build/ppsspp-arm/relocatable-elf-header.txt
+            build/ppsspp-arm/relocatable-unresolved.txt
+            build/guest-memory-arm/*.o
+            build/guest-memory-arm/elf-header.txt
+            build/ppsspp-arm/integration-elf-header.txt
+            build/ppsspp-arm/integration-symbols.txt
+          if-no-files-found: warn
+ build/ppsspp-arm/integration-symbols.txt
           # Relocatable link proves object compatibility, not runtime memory wiring.
       - name: Inventory ARM interpreter link dependencies
         shell: bash
