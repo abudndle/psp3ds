@@ -12,9 +12,29 @@ static uint32_t rd32(const uint8_t *mem,size_t pos){
  return (uint32_t)mem[pos]|(uint32_t)mem[pos+1]<<8|
         (uint32_t)mem[pos+2]<<16|(uint32_t)mem[pos+3]<<24;
 }
+static int submit_ge(const PspCpu *cpu, void *context) {
+ unsigned *calls=(unsigned *)context;
+ ++*calls;
+ return cpu->gpr[4]==BASE+128 && cpu->gpr[5]==6 ? 0 : -1;
+}
 int main(void){
  uint8_t mem[256]={0}; PspCpu cpu; PspHle hle;
  psp_hle_init(&hle);
+ /* Synthetic syscall boundary: real MIPS syscall instruction, host callback. */
+ unsigned ge_calls=0;
+ assert(psp_hle_bind(&hle,42,PSP_HLE_GE_SUBMIT)==0);
+ psp_cpu_init(&cpu,mem,sizeof mem,BASE,BASE);
+ wr32(mem,0,SYSCALL(42));
+ cpu.gpr[4]=BASE+128;cpu.gpr[5]=6;
+ assert(psp_hle_step(&hle,&cpu)==1 && cpu.gpr[2]==UINT32_MAX);
+ assert(ge_calls==0);
+ psp_hle_attach_ge(&hle,submit_ge,&ge_calls);
+ psp_cpu_init(&cpu,mem,sizeof mem,BASE,BASE);
+ cpu.gpr[4]=BASE+128;cpu.gpr[5]=6;
+ assert(psp_hle_step(&hle,&cpu)==1 && cpu.gpr[2]==0 && ge_calls==1);
+ psp_cpu_init(&cpu,mem,sizeof mem,BASE,BASE);
+ cpu.gpr[4]=BASE+132;cpu.gpr[5]=6;
+ assert(psp_hle_step(&hle,&cpu)==1 && cpu.gpr[2]==UINT32_MAX && ge_calls==2);
  assert(psp_hle_bind(NULL,1,PSP_HLE_SYSTEM_TIME_LOW)==-1);
  assert(psp_hle_bind(&hle,0x100000,PSP_HLE_SYSTEM_TIME_LOW)==-1);
  assert(psp_hle_bind(&hle,10,(PspHleService)99)==-1);
