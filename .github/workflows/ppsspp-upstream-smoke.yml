@@ -8,6 +8,7 @@ on:
       - 'scripts/audit-ppsspp-mips.py'
       - 'scripts/audit-ppsspp-transitive.py'
       - 'scripts/summarize-ppsspp-link-deps.py'
+      - 'scripts/audit-ppsspp-link-closure.py'
       - 'tests/test_ppsspp_link_deps.py'
 permissions:
   contents: read
@@ -50,6 +51,12 @@ jobs:
           # A source compilation alone does not prove these objects can link.
           # Record unresolved symbols to guide the actual integration work.
           nm -u -C build/upstream-mips/*.o > build/upstream-mips/unresolved-symbols.txt
+          nm -C build/upstream-mips/*.o > build/upstream-mips/all-symbols.txt
+          python3 scripts/audit-ppsspp-link-closure.py \
+            build/upstream-mips/unresolved-symbols.txt \
+            build/upstream-mips/all-symbols.txt \
+            --output build/upstream-mips/link-closure.json
+          cat build/upstream-mips/link-closure.json
           test -s build/upstream-mips/unresolved-symbols.txt
           # Attempt an actual link: compiling object files is not integration.
           # Expected to fail until PPSSPP's transitive dependencies are wired.
@@ -80,4 +87,5 @@ jobs:
             build/upstream-mips/unresolved-symbols.txt
             build/upstream-mips/link-probe.log
             build/upstream-mips/dependency-summary.json
+            build/upstream-mips/link-closure.json
           if-no-files-found: warn
