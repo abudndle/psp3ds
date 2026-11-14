@@ -8,6 +8,7 @@
 #include "psp_guest_bus.h"
 #include "psp_rom_pager.h"
 #include "psp_platform_budget.h"
+#include "psp_ds_memory.h"
 #include "psp_runtime_tuning.h"
 #include "psp_video_layout.h"
 #include "psp_native_texture.h"
@@ -22,11 +23,16 @@ int psp_nds_triangles_init(void);
 void psp_nds_triangles_update(void);
 void psp_nds_triangles_shutdown(void);
 int psp_nds_rom_pager_synthetic_test(void);
+void psp_nds_memory_report(PspTarget target,
+                           uint32_t sampled_slot2_bytes,
+                           int sampled_slot2_verified);
 int psp_nds_rom_pager_verified_slot2_test(volatile uint16_t *region,
                                            uint32_t capacity);
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
+/* Metadata only. The Slot-2 peripheral is CLOSED after test_slot2_ram(). */
+static uint32_t verified_slot2_capacity_bytes;
 static void test_shared_cpu(void){
  uint32_t value=0;
  int pass=psp_feature_run(PSP_FEATURE_CPU_SMOKE,&value)==0 && value==2u;
@@ -34,6 +40,7 @@ static void test_shared_cpu(void){
 }
 static int test_slot2_ram(void){
  int verified_pak=0;
+ verified_slot2_capacity_bytes=0;
  if(isDSiMode()){
   printf("Slot-2: unavailable (DSi)\n");
   return 0;
@@ -107,10 +114,16 @@ static int test_slot2_ram(void){
     for(unsigned i=0;i<4;i++)if(region[i]!=saved[i])routed=0;
     printf("Dual RAM bus: %s\n",routed?"PASS":"FAILED");
     if(routed){
-     verified_pak=1;
      const int paged=psp_nds_rom_pager_verified_slot2_test(region,capacity);
      printf("Pak cold ROM pages: %s\n",
             paged==0?"PASS (synthetic)":"FAILED");
+     /* Only select the Pak profile when all previous checks, including
+      * a fully restored 8-KiB test window, succeeded. This does not
+      * prove the entire claimed peripheral memory region is writable. */
+     if(paged==0){
+      verified_pak=1;
+      verified_slot2_capacity_bytes=capacity;
+     }
     }
    }
   }
@@ -155,6 +168,7 @@ int main(void){
  PspPlatformBudget policy;
  PspTarget target=isDSiMode()?PSP_TARGET_DSI:
                   slot2_verified?PSP_TARGET_DS_SLOT2:PSP_TARGET_DS;
+ psp_nds_memory_report(target,verified_slot2_capacity_bytes,slot2_verified);
  PspRuntimeTuning tuning;
  if(psp_runtime_tuning_choose(target,&tuning)==0) {
   printf("Guest slice: %lu, GPU batch cap %u\n",
