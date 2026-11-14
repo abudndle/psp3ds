@@ -189,3 +189,52 @@ milestone; further milestones must replace/bridge upstream Allegrex and
 VFPU state, load actual PSP homebrew, schedule guest threads and render
 real GE display lists. Compilation and host tests are not evidence of
 real game compatibility or native-device frame rates.
+
+## PSP ET_SCE_PRX image mapping (Jetpack Joyride compatibility increment)
+
+The `psp_prx_image_map_relocated()` function maps **already decrypted**
+PSP ELF32/MIPS `ET_SCE_PRX` (`0xFFA0`) program images. Unlike ordinary
+`ET_EXEC`, the image and entry addresses are relative to the caller's
+selected PSP guest address base (usually `0x08800000`). The parser copies
+PT_LOAD data into guest memory, zero-fills BSS, validates nonoverlap and the
+executable entry, applies existing supported PT_SCE_PSPREL/PSPREL2
+relocations, and initializes the guest PC **only on success**.
+
+The code preserves preexisting guest RAM and CPU registers if segment
+validation or relocation fails, and requires at most a 32 MiB guest buffer.
+This is **not** a decrypted PSP game loader or a general module
+relocator: it does not rewrite section tables or firmware import names,
+resolve unknown firmware NIDs, initialize VFPU/threads, or execute a
+game. Existing ET_EXEC and restricted PRX mapping paths stay separate.
+
+`tools/psp_prx_probe.c` is a host utility built with `cmake` alongside the
+regression suite. For a **locally held, lawfully obtained decrypted ELF**:
+
+```sh
+cmake -S . -B build
+cmake --build build --target psp_prx_probe
+./build/psp_prx_probe /path/to/decrypted-EBOOT.elf
+```
+
+The utility maps relocations and prints *only* guest entry, image size,
+segment and relocation-stream counts. It **does not execute game code**,
+print decrypted bytes or upload anything to CI. No original game assets
+are committed.
+
+Private validation of the user-supplied decrypted **Jetpack Joyride** ELF
+showed 2 PT_LOAD segments, a 6,320,916-byte mapped guest image,
+83,187 relocations in one PSPREL stream, a mapped entry at
+`0x08955018`, valid unique relocation targets and zero-initialized BSS.
+This validation was an independent *offline Python memory-mapping
+dry run*, not a claim that the new C loader has already run this
+private executable on a Nintendo device. The C implementation is
+regression-tested using a separate **original synthetic ELF fixture**.
+
+Resource implications: the mapped Jetpack image alone exceeds an
+original DS's 4 MiB main RAM. An Expansion Pak is not faster CPU RAM;
+this PRX mapping stage is therefore primarily applicable to 3DS and
+New 3DS testing, not a proof of Jetpack gameplay on DS or DSi.
+The game also imports approximately 145 PSP functions across 19
+libraries, exceeding current prototype NID/HLE coverage. Subsequent
+work must support module-info rebasing and import resolution before
+guest execution, then VFPU, graphics, audio and PSP kernel services.
