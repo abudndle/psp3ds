@@ -43,4 +43,17 @@ jobs:
           done
           test "$(find build/upstream-mips -name '*.o' | wc -l)" -eq 3
           file build/upstream-mips/*.o
+          # A source compilation alone does not prove these objects can link.
+          # Record unresolved symbols to guide the actual integration work.
+          nm -u -C build/upstream-mips/*.o > build/upstream-mips/unresolved-symbols.txt
+          test -s build/upstream-mips/unresolved-symbols.txt
+          echo "Upstream PPSSPP interpreter dependencies (first 60):"
+          head -n 60 build/upstream-mips/unresolved-symbols.txt
           echo "Upstream objects compiled for Linux host only; not linked or built for Nintendo hardware."
+      - name: Publish upstream integration dependency inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppsspp-mips-link-dependencies
+          path: build/upstream-mips/unresolved-symbols.txt
+          if-no-files-found: warn
