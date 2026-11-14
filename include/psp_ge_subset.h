@@ -2,6 +2,7 @@
 #define PSP_GE_SUBSET_H
 #include "psp_scene_batch.h"
 #include "psp_guest_bus.h"
+#include "psp_core.h"
 #include <stdint.h>
 #include <stddef.h>
 #define PSP_GE_SUBSET_MAX_COMMANDS 128u
@@ -38,4 +39,8 @@ int psp_ge_subset_translate_guest(const uint8_t *memory, size_t size,
    Cold/Slot-2 windows and CPU submission scheduling are not yet supported. */
 int psp_ge_subset_translate_bus(const PspGuestBus *bus, uint32_t list_address,
                                 size_t word_count, PspGeSubsetResult *out);
+/* Experimental host-triggered submission: caller explicitly selects registers
+   holding the list address and command count. This is not a PSP syscall. */
+int psp_ge_subset_submit_cpu(const PspCpu *cpu, unsigned address_reg,
+                             unsigned count_reg, PspGeSubsetResult *out);
 #endif
