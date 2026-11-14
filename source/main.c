@@ -181,10 +181,21 @@ int main(void) {
  if(f) {
   if(fseek(f,0,SEEK_END)==0) {
    long n=ftell(f);
-   if(n>=0 && n<=8*1024*1024 && fseek(f,0,SEEK_SET)==0) {
-    unsigned char *p=malloc((size_t)n?(size_t)n:1);
-    if(p) { if(fread(p,1,(size_t)n,f)==(size_t)n){PspFileInfo info;int rc=psp_inspect(p,(size_t)n,&info);printf("File: %s (rc=%d)\n",rc==0?type_name(info.type):"Invalid",rc);}free(p); }
-   } else printf("File too large for prototype scan.\n");
+   if(n>=40 && fseek(f,0,SEEK_SET)==0) {
+    /* Read metadata only. Previously this diagnostic allocated up to
+     * 8 MiB for the entire EBOOT.PBP and could consume precious app RAM.
+     * Only PBP/ELF headers are inspected here; no PSP game is loaded. */
+    unsigned char header[52]={0};
+    const size_t got=fread(header,1,sizeof header,f);
+    if(got>=40u &&
+       ((memcmp(header,"\0PBP",4)==0) ||
+        (got>=52u && memcmp(header,"\177ELF",4)==0))){
+     PspFileInfo info;
+     const int rc=psp_inspect(header,(size_t)n,&info);
+     printf("File header: %s (rc=%d)\n",
+            rc==0?type_name(info.type):"Invalid",rc);
+    }else printf("File header: unrecognized\n");
+   }else printf("Cannot inspect short/invalid file\n");
   }
   fclose(f);
  } else printf("No EBOOT.PBP found.\n");
