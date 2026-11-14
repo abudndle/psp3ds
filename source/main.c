@@ -4,6 +4,8 @@
 #include "psp_core.h"
 #include "psp_catalog.h"
 #include "psp_platform_budget.h"
+#include "psp_3ds_memory.h"
+#include "psp_3ds_storage.h"
 #include "psp_runtime_tuning.h"
 #include "psp_benchmark.h"
 #include "psp_video_layout.h"
@@ -16,6 +18,8 @@ int psp_3ds_scene_init(void);
 int psp_3ds_scene_draw(uint32_t frame);
 int psp_3ds_triangle_draw(uint32_t frame,PspTarget model);
 int psp_3ds_guest_runtime_demo(PspTarget model);
+int psp_3ds_native_memory_probe(PspTarget model);
+int psp_3ds_native_sd_probe(void);
 void psp_3ds_scene_fini(void);
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
@@ -91,6 +95,18 @@ int main(void) {
  const int tune_ok=psp_runtime_tuning_choose(target,&tuning)==0;
  const bool high_clock=tune_ok && tuning.request_new3ds_speedup;
  if(high_clock)osSetSpeedupEnable(true);
+ /* A CPU speedup request does not grant the app the physical 256 MiB.
+  * libctru reports the process APPLICATION memory region and free bytes.
+  * The scratch allocation is always released before other runtime work. */
+ if(R_SUCCEEDED(hardware)){
+  const int memory_probe=psp_3ds_native_memory_probe(target);
+  printf("3DS RAM probe: %s\n",memory_probe==0?"PASS":"limited");
+ }else{
+  printf("3DS model unavailable: memory probe skipped\n");
+ }
+ /* Optional SD file under /psp3ds; FSFILE_Read uses 64-bit offsets.
+  * Never prints or executes the contents. No file is required to boot. */
+ (void)psp_3ds_native_sd_probe();
  /* Execute an original synthetic MIPS syscall and an HLE-aware guest
   * instruction slice using the actual per-model scheduler. */
  const int guest_demo_ok=psp_3ds_guest_runtime_demo(target)==0;
