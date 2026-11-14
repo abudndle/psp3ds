@@ -28,4 +28,9 @@ int psp_ge_subset_translate(const uint32_t *words,size_t word_count,
 int psp_ge_subset_translate_memory(const uint32_t *words, size_t word_count,
                                    const uint8_t *memory, size_t size,
                                    uint32_t memory_base, PspGeSubsetResult *out);
+/* Decode little-endian GE words directly from a bounded guest RAM window.
+   Both command list and vertex data must reside in this same window. */
+int psp_ge_subset_translate_guest(const uint8_t *memory, size_t size,
+                                  uint32_t memory_base, uint32_t list_address,
+                                  size_t word_count, PspGeSubsetResult *out);
 #endif
