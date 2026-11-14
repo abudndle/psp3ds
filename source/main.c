@@ -9,6 +9,7 @@
 #include "psp_3ds_storage.h"
 #include "psp_runtime_tuning.h"
 #include "psp_play_cutbacks.h"
+#include "psp_stage_metrics.h"
 #include "psp_benchmark.h"
 #include "psp_video_layout.h"
 #include "psp_native_texture.h"
@@ -94,6 +95,8 @@ int main(void) {
  PspPlatformBudget policy;
  PspTarget target=(R_SUCCEEDED(hardware) && new_model)?
     PSP_TARGET_NEW3DS:PSP_TARGET_OLD3DS;
+ PspStageMetrics stage={0};
+ (void)psp_stage_metrics_init(&stage,target);
  PspRuntimeTuning tuning;
  const int tune_ok=psp_runtime_tuning_choose(target,&tuning)==0;
  const bool high_clock=tune_ok && tuning.request_new3ds_speedup;
@@ -102,6 +105,12 @@ int main(void) {
   * libctru reports the process APPLICATION memory region and free bytes.
   * The scratch allocation is always released before other runtime work. */
  if(R_SUCCEEDED(hardware)){
+  const u32 region=osGetMemRegionSize(MEMREGION_APPLICATION);
+  const u32 used=osGetMemRegionUsed(MEMREGION_APPLICATION);
+  if(region && used<=region)
+   (void)psp_stage_metrics_memory(&stage,used,region-used,
+             target==PSP_TARGET_NEW3DS?PSP_3DS_NEW_HEADROOM:
+                                       PSP_3DS_OLD_HEADROOM);
   const int memory_probe=psp_3ds_native_memory_probe(target);
   printf("3DS RAM probe: %s\n",memory_probe==0?"PASS":"limited");
  }else{
@@ -109,7 +118,14 @@ int main(void) {
  }
  /* Optional SD file under /psp3ds; FSFILE_Read uses 64-bit offsets.
   * Never prints or executes the contents. No file is required to boot. */
- (void)psp_3ds_native_sd_probe();
+ TickCounter sd_clock={0};
+ osTickCounterStart(&sd_clock);
+ const int sd_rc=psp_3ds_native_sd_probe();
+ osTickCounterUpdate(&sd_clock);
+ const double sd_ms=osTickCounterRead(&sd_clock);
+ if(sd_rc==0 && sd_ms>0.0 && sd_ms<10000.0)
+  (void)psp_stage_metrics_record(&stage,PSP_STAGE_STORAGE,
+             (uint32_t)(sd_ms*1000.0+0.5),0u,0);
  /* Execute an original synthetic MIPS syscall and an HLE-aware guest
   * instruction slice using the actual per-model scheduler. */
  const int guest_demo_ok=psp_3ds_guest_runtime_demo(target)==0;
@@ -129,6 +145,7 @@ int main(void) {
   if(bench_status==0 && elapsed_ms>0.0 && elapsed_ms<60000.0){
    uint32_t elapsed_us=(uint32_t)(elapsed_ms*1000.0+0.5);
    if(!elapsed_us)elapsed_us=1;
+   (void)psp_stage_metrics_record(&stage,PSP_STAGE_CPU,elapsed_us,0u,0);
    const int adapted=psp_runtime_tuning_feedback(&tuning,
                        bench.executed_instructions,elapsed_us);
    printf("Synthetic %lu MIPS insns: %.2f ms\n",
@@ -241,6 +258,10 @@ int main(void) {
    * suppress PSP CPU guest ticks, input, or audio when implemented. */
   const int showing=gpu_ready && (show_triangles||show_scene);
   const uint32_t visual_index=scene_frame++;
+  const int submitted=showing && (!cutbacks_ready ||
+                              psp_play_cutbacks_should_render(&play,visual_index));
+  TickCounter draw_clock={0};
+  if(submitted)osTickCounterStart(&draw_clock);
   if(showing && cutbacks_ready &&
      !psp_play_cutbacks_should_render(&play,visual_index)){
    gspWaitForVBlank(); /* Retain the previously presented picture. */
@@ -256,6 +277,13 @@ int main(void) {
    gfxSwapBuffers();
    gspWaitForVBlank();
   }
+  if(submitted){
+   osTickCounterUpdate(&draw_clock);
+   const double measured_ms=osTickCounterRead(&draw_clock);
+   if(measured_ms>=0.0 && measured_ms<10000.0)
+    (void)psp_stage_metrics_record(&stage,PSP_STAGE_GPU_SUBMIT,
+              (uint32_t)(measured_ms*1000.0+0.5),0u,0);
+  }
   if(cutbacks_ready){
    osTickCounterUpdate(&play_clock);
    const double current_ms=osTickCounterRead(&play_clock);
@@ -267,6 +295,10 @@ int main(void) {
    const u32 region=osGetMemRegionSize(MEMREGION_APPLICATION);
    const u32 used=osGetMemRegionUsed(MEMREGION_APPLICATION);
    const uint32_t free_bytes=region && used<=region?region-used:0u;
+   if(region && used<=region && visual_index%120u==0u)
+    (void)psp_stage_metrics_memory(&stage,used,free_bytes,
+            target==PSP_TARGET_NEW3DS?PSP_3DS_NEW_HEADROOM:
+                                      PSP_3DS_OLD_HEADROOM);
    const uint32_t reserve=free_bytes?
     target==PSP_TARGET_NEW3DS?PSP_3DS_NEW_HEADROOM:
                               PSP_3DS_OLD_HEADROOM:0u;
@@ -278,6 +310,19 @@ int main(void) {
    }
   }
  }
+ uint32_t us=0;
+ if(psp_stage_metrics_average(&stage,PSP_STAGE_CPU,&us)==0)
+  printf("3DS CPU benchmark: %lu us (synthetic)\n",(unsigned long)us);
+ else printf("3DS CPU benchmark: unmeasured\n");
+ if(psp_stage_metrics_average(&stage,PSP_STAGE_GPU_SUBMIT,&us)==0)
+  printf("3DS visual submit avg: %lu us (synthetic)\n",(unsigned long)us);
+ else printf("3DS GPU submit: unmeasured\n");
+ printf("3DS SD: %s, PSP audio: unmeasured\n",
+        stage.stage[PSP_STAGE_STORAGE].measured_operations?
+        "read timed":"not measured");
+ if(stage.memory_sampled)
+  printf("3DS APP peak reported used: %lu MiB\n",
+        (unsigned long)(stage.peak_application_used_bytes/PSP_3DS_MIB));
  psp_3ds_scene_fini();
  gfxExit();if(high_clock)osSetSpeedupEnable(false);return 0;
 }
