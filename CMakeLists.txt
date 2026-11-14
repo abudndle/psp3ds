@@ -312,3 +312,9 @@ add_test(NAME hle_sdk_version COMMAND test_hle_sdk_version)
 add_executable(test_startup_trace_sdk_linked tests/test_startup_trace_sdk_linked.c)
 target_link_libraries(test_startup_trace_sdk_linked PRIVATE psp_core)
 add_test(NAME startup_trace_sdk_linked COMMAND test_startup_trace_sdk_linked)
+
+# Bind only verified PSP firmware NIDs from larger PRX import inventories;
+# unsupported calls remain unchanged, never fabricated as successful.
+add_executable(test_prx_selective_link tests/test_prx_selective_link.c)
+target_link_libraries(test_prx_selective_link PRIVATE psp_core)
+add_test(NAME prx_selective_link COMMAND test_prx_selective_link)
