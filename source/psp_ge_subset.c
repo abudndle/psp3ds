@@ -153,3 +153,16 @@ int psp_ge_subset_translate_bus(const PspGuestBus *bus, uint32_t list_address,
                                       bus->hot_base, list_address,
                                       word_count, out);
 }
+
+/* Host integration boundary for CPU-produced list pointers. The emulator
+   must explicitly call this after a verified graphics submission event. */
+int psp_ge_subset_submit_cpu(const PspCpu *cpu, unsigned address_reg,
+                             unsigned count_reg, PspGeSubsetResult *out) {
+ if (out) memset(out, 0, sizeof *out);
+ if (!out || !cpu || !cpu->ram || !cpu->ram_size ||
+     address_reg >= 32u || count_reg >= 32u || cpu->fault)
+  return PSP_GE_SUBSET_BAD_ARGUMENT;
+ return psp_ge_subset_translate_guest(cpu->ram, cpu->ram_size,
+                                      cpu->ram_base, cpu->gpr[address_reg],
+                                      cpu->gpr[count_reg], out);
+}
