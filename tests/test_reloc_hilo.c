@@ -48,9 +48,21 @@ int main(void){
  reset(mem,&cpu,s);wr(mem+8,0x24081234);wr(mem+12,0x25087ff0);
  rec(recs,8,0,1,5);rec(recs+8,12,0,1,6);memcpy(before,mem,sizeof mem);
  assert(psp_reloc_apply(&cpu,recs,16,s,2)<0 && memcmp(mem,before,sizeof mem)==0);
- reset(mem,&cpu,s);wr(mem+8,0x3c081234);wr(mem+12,0x8d087ff0);
- memcpy(before,mem,sizeof mem);
- assert(psp_reloc_apply(&cpu,recs,16,s,2)<0 && memcmp(mem,before,sizeof mem)==0);
+ /* Jetpack Joyride uses LO16 on loads and stores, not only ADDIU. */
+ const unsigned memory_ops[]={32,35,36,40,43,49,57};
+ for(size_t i=0;i<sizeof(memory_ops)/sizeof(memory_ops[0]);i++){
+  reset(mem,&cpu,s);wr(mem+8,0x3c081234);
+  uint32_t low=(memory_ops[i]<<26)|(8u<<21)|(8u<<16)|0x7ff0u;
+  wr(mem+12,low);
+  rec(recs,8,0,1,5);rec(recs+8,12,0,1,6);
+  assert(psp_reloc_apply(&cpu,recs,16,s,2)==0);
+  assert(rd(mem+8)==0x3c081235);
+  assert(rd(mem+12)==((low&0xffff0000u)|0x8ff0u));
+ }
+ /* Standalone memory LO16 remains unsupported and must be atomic. */
+ reset(mem,&cpu,s);wr(mem+12,0x8d087ff0);
+ rec(recs,12,0,1,6);memcpy(before,mem,sizeof mem);
+ assert(psp_reloc_apply(&cpu,recs,8,s,2)<0 && memcmp(mem,before,sizeof mem)==0);
  /* Invalid segment bounds reject the whole batch before applying changes. */
  reset(mem,&cpu,s);wr(mem+8,0x3c081234);wr(mem+12,0x25087ff0);
  rec(recs,8,0,1,5);rec(recs+8,12,0,1,6);rec(recs+16,127,0,1,2);
