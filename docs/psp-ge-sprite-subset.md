@@ -29,8 +29,7 @@ scene using this layout and submit the decoded batch through Citro2D.
 Host tests cover consecutive vertex fetches, truncated memory,
 misalignment, unsupported VTYPE and legacy fixture pixel parity.
 
-Texture sampling, additional vertex formats and guest display-list
-execution are future work. Commercial-game rendering remains unverified.
+A new `psp_ge_subset_translate_guest` entry point reads little-endian GE\ncommand words from a bounded guest RAM window, then decodes vertices\nfrom the same window. It rejects misaligned, truncated, out-of-window,\nand oversized lists without exposing partial batches. This is a bounded\ncommand-list translation API, **not** CPU-driven display-list scheduling\nor general PSP GPU execution.\n\nTexture sampling, additional vertex formats and guest CPU-driven\ndisplay-list execution are future work. Commercial-game rendering remains unverified.
 
 Documentation references:
 - https://www.ppsspp.org/docs/psp-hardware/gpu/display-lists/
