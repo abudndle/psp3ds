@@ -1,5 +1,6 @@
 #include "psp_ge_subset.h"
 #include "psp_scene.h"
+#include "psp_video_layout.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -63,8 +64,54 @@ static void guest_memory(void) {
  assert(result.batch.count == 0);
 }
 
+/* Real PSP logical coordinates exceed the 256x192 synthetic test scene. */
+static void psp_native_bounds(void) {
+ uint8_t vertices[16]={
+   0x1f,0xfc,0x90,0x01,0xf0,0x00,0x00,0x00,
+   0x1f,0xfc,0xd8,0x01,0x0c,0x01,0x00,0x00
+ };
+ const uint32_t words[6]={0x10080000u,0x01000000u,0x12800114u,
+                          SPRITE_CMD,FINISH,END};
+ PspGeSubsetResult translated;
+ assert(psp_ge_subset_translate_memory(words,6,vertices,sizeof vertices,
+                                       0x08000000u,&translated)==
+        PSP_GE_SUBSET_MALFORMED);
+ assert(translated.batch.count==0);
+ assert(psp_ge_subset_translate_psp_memory(words,6,vertices,sizeof vertices,
+                                           0x08000000u,&translated)==
+        PSP_GE_SUBSET_OK);
+ assert(translated.batch.count==1);
+ const PspSceneRect *sprite=&translated.batch.rects[0];
+ assert(sprite->x==400&&sprite->y==240&&sprite->w==72&&sprite->h==28);
+ PspVideoLayout layout;
+ PspVideoRect projected;
+ const PspVideoRect rect={sprite->x,sprite->y,sprite->w,sprite->h};
+ assert(psp_video_layout_init(PSP_TARGET_OLD3DS,
+                             PSP_VIDEO_DISPLAY_3DS_TOP,480,272,&layout)==0);
+ assert(psp_video_rect_project(&layout,&rect,&projected)==0);
+ assert(projected.x+projected.w<=400u);
+ assert(projected.y+projected.h<=240u);
+ assert(projected.w>0&&projected.h>0);
+ vertices[10]=0xe1; /* endpoint 481, beyond PSP width */
+ assert(psp_ge_subset_translate_psp_memory(words,6,vertices,sizeof vertices,
+                                           0x08000000u,&translated)==
+        PSP_GE_SUBSET_MALFORMED);
+ assert(translated.batch.count==0);
+ vertices[10]=0xd8;
+ vertices[12]=0x11; /* endpoint 273, beyond PSP height */
+ assert(psp_ge_subset_translate_psp_memory(words,6,vertices,sizeof vertices,
+                                           0x08000000u,&translated)==
+        PSP_GE_SUBSET_MALFORMED);
+ assert(translated.batch.count==0);
+ assert(psp_ge_subset_translate_psp_memory(words,6,NULL,0,
+                                           0x08000000u,&translated)==
+        PSP_GE_SUBSET_BAD_ARGUMENT);
+ assert(translated.batch.count==0);
+}
+
 int main(void){
  guest_memory();
+ psp_native_bounds();
  for(uint32_t frame=0;frame<8;frame++)raster_match(frame*11u);
  const PspGeDecodedSprite sprite={3,4,8,8,0x7c1f};
  PspGeSubsetResult result;
@@ -97,6 +144,6 @@ int main(void){
  PspGeDecodedSprite clipped={255,191,2,2,0x7c1f};
  assert(psp_ge_subset_translate(good,4,&clipped,1,&result)!=0);
  assert(result.batch.count==0);
- puts("PASS: limited PSP GE sprite opcode subset, 8 scene pixel parities, fail-closed unsupported state");
+ puts("PASS: PSP-native 480x272 GE sprites, synthetic scene pixel parity, fail-closed GE state");
  return 0;
 }
