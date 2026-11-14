@@ -47,5 +47,22 @@ int psp_platform_budget_validate(const PspPlatformBudget *b){
  if(b->target==PSP_TARGET_DS_SLOT2 &&
     b->hot_ram_budget!=policies[PSP_TARGET_DS].hot_ram_budget)return -1;
  if((unsigned)b->target>=PSP_TARGET_COUNT)return -1;
+ /* Enforce actual retail DS and DSi main-memory ceilings, while keeping
+  * existing conservative PSP3DS hot and cold data allocations. These
+  * budgets are maximum independent reservations, not measured free heap
+  * or a guarantee that the full sum can be allocated contiguously. */
+ if(b->target<=PSP_TARGET_DSI){
+  const uint64_t total=(uint64_t)b->hot_ram_budget+b->cache_budget+
+      b->texture_budget+b->io_budget+b->frame_buffer_bytes;
+  if(b->target==PSP_TARGET_DSI){
+   if(b->hot_ram_budget>2048u*1024u ||
+      b->cold_data_budget!=0u || total>16u*1024u*1024u)return -1;
+  }else{
+   if(b->hot_ram_budget>512u*1024u ||
+      total>4u*1024u*1024u ||
+      b->cold_data_budget>(b->target==PSP_TARGET_DS_SLOT2?
+                            2048u*1024u:0u))return -1;
+  }
+ }
  return 0;
 }
