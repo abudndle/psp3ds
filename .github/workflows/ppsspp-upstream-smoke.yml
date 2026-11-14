@@ -10,6 +10,7 @@ on:
       - 'scripts/summarize-ppsspp-link-deps.py'
       - 'scripts/audit-ppsspp-link-closure.py'
       - 'tests/test_ppsspp_link_deps.py'
+      - 'tests/test_ppsspp_link_closure.py'
 permissions:
   contents: read
 jobs:
@@ -19,7 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test PPSSPP linker report parser
-        run: python3 tests/test_ppsspp_link_deps.py
+        run: |
+          python3 tests/test_ppsspp_link_deps.py
+          python3 tests/test_ppsspp_link_closure.py
       - name: Fetch pinned real PPSSPP sources
         run: bash scripts/fetch-ppsspp-upstream.sh
       - name: Validate source directories and pinned revision
