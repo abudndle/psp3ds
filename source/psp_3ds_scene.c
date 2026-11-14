@@ -4,11 +4,13 @@
 #include "psp_scene.h"
 #include "psp_scene_batch.h"
 #include "psp_ge_subset.h"
+#include "psp_video_layout.h"
 /* Citro2D submits bounded rectangle primitives to the PICA200 GPU on
  * both original and New 3DS using an original synthetic scene. */
 static PspScene scene;
 static PspSceneBatch batch;
 static PspGeSubsetResult ge_result;
+static PspVideoLayout scene_layout;
 static uint8_t vertices[PSP_SCENE_MAX_RECTS * 16u];
 static uint32_t ge_words[PSP_GE_SUBSET_MAX_COMMANDS];
 static C3D_RenderTarget *target;
@@ -21,6 +23,10 @@ static uint32_t color555(uint16_t v){
 }
 int psp_3ds_scene_init(void){
  if(initialized)return 0;
+ /* The same backend-neutral viewport mapping also supports native PSP
+  * 480x272 frames on top or bottom displays when a GE renderer exists. */
+ if (psp_video_layout_init(PSP_TARGET_OLD3DS,
+         PSP_VIDEO_DISPLAY_3DS_BOTTOM,256,192,&scene_layout)!=0) return -1;
  if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE))return -1;
  if(!C2D_Init(C2D_DEFAULT_MAX_OBJECTS)){
   C3D_Fini();return -1;
@@ -56,17 +62,19 @@ int psp_3ds_scene_draw(uint32_t frame){
  if (psp_ge_subset_translate_memory(ge_words, batch.count + 5u, vertices,
                                     batch.count * 16u, 0x08000000u,
                                     &ge_result) != PSP_GE_SUBSET_OK) return -1;
- /* DS scene logical coordinates are 256x192; bottom 3DS LCD is 320x240.
-  * Integer ratio 5/4 keeps the whole scene visible without cropping. */
+ /* Scale PSP-style batches through tested backend-neutral geometry,
+  * rather than retaining a hard-coded OpenGL-style scale factor. */
  C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
  C2D_TargetClear(target,C2D_Color32(0,0,0,255));
  C2D_SceneBegin(target);
  int ok=1;
  for(unsigned i=0;i<ge_result.batch.count;i++){
   const PspSceneRect *r=&ge_result.batch.rects[i];
-  const float scale=1.25f;
-  if(!C2D_DrawRectSolid(r->x*scale,r->y*scale,0.0f,
-                        r->w*scale,r->h*scale,color555(r->bgr555))){
+  const PspVideoRect src={r->x,r->y,r->w,r->h};
+  PspVideoRect dst;
+  if (psp_video_rect_project(&scene_layout,&src,&dst)!=0 ||
+      !C2D_DrawRectSolid((float)dst.x,(float)dst.y,0.0f,
+                        (float)dst.w,(float)dst.h,color555(r->bgr555))){
    ok=0;break;
   }
  }
