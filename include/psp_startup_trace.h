@@ -40,6 +40,9 @@ typedef struct {
  uint8_t executable_count;
  uint32_t instruction_cap;
  const PspPrxImportInventory *imports; /* validated read-only inventory */
+ /* Optional, narrowly linked HLE. Caller must link only verified NIDs
+  * BEFORE tracing. Every unlinked/unknown import still stops cleanly. */
+ PspHle *hle;
 } PspStartupTraceConfig;
 
 typedef struct {
@@ -78,7 +81,9 @@ int psp_startup_trace_config_elf(const uint8_t *elf,size_t elf_size,
 /* Status 0 indicates a valid reproducible STOP REPORT, not a successful
  * game boot. Stop before entering any unresolved import stub; detect
  * unsupported FPU/VFPU and memory faults without guessing HLE behavior.
- * The CPU is left at the exact reproducible halt point. */
+ * The CPU is left at the exact reproducible halt point. When a valid
+ * linked HLE is supplied, its verified syscall executes with the normal
+ * branch-delay behavior, while all other import stubs still stop. */
 int psp_startup_trace_run(PspCpu *cpu,
                           const PspStartupTraceConfig *config,
                           PspStartupTraceReport *out);
