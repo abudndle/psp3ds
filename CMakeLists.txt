@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(psp3ds_host C)
 set(CMAKE_C_STANDARD 11)
-add_library(psp_core STATIC source/psp_core.c source/psp_loader.c source/psp_hle.c source/psp_imports.c source/psp_nids.c source/psp_prx.c source/psp_module.c source/psp_reloc.c source/psp_reloc2.c source/psp_reloc_image.c source/psp_perf.c source/psp_iso.c source/psp_cso.c source/psp_disc.c source/psp_paths.c source/psp_catalog.c source/psp_demand.c source/psp_threads.c source/psp_thread_cpu.c source/psp_umd.c source/psp_io.c source/psp_boot.c source/psp_boot_auto.c source/psp_slot2_probe.c source/psp_benchmark.c source/psp_guest_window.c source/psp_guest_bus.c source/psp_platform_budget.c source/psp_video_layout.c source/psp_nintendo_input.c source/psp_features.c source/psp_scene.c source/psp_scene_batch.c source/psp_ge_subset.c)
+add_library(psp_core STATIC source/psp_core.c source/psp_loader.c source/psp_hle.c source/psp_imports.c source/psp_nids.c source/psp_prx.c source/psp_module.c source/psp_reloc.c source/psp_reloc2.c source/psp_reloc_image.c source/psp_perf.c source/psp_iso.c source/psp_cso.c source/psp_disc.c source/psp_paths.c source/psp_catalog.c source/psp_demand.c source/psp_threads.c source/psp_thread_cpu.c source/psp_umd.c source/psp_io.c source/psp_boot.c source/psp_boot_auto.c source/psp_slot2_probe.c source/psp_benchmark.c source/psp_guest_window.c source/psp_guest_bus.c source/psp_platform_budget.c source/psp_video_layout.c source/psp_nintendo_input.c source/psp_native_texture.c source/psp_features.c source/psp_scene.c source/psp_scene_batch.c source/psp_ge_subset.c)
 target_include_directories(psp_core PUBLIC include)
 find_package(ZLIB REQUIRED)
 target_link_libraries(psp_core PUBLIC ZLIB::ZLIB)
@@ -207,3 +207,8 @@ add_test(NAME video_layout COMMAND test_video_layout)
 add_executable(test_nintendo_input tests/test_nintendo_input.c)
 target_link_libraries(test_nintendo_input PRIVATE psp_core)
 add_test(NAME nintendo_input COMMAND test_nintendo_input)
+
+# Source/texture decode without OpenGL, Vulkan, Direct3D or runtime allocations.
+add_executable(test_native_texture tests/test_native_texture.c)
+target_link_libraries(test_native_texture PRIVATE psp_core)
+add_test(NAME native_texture COMMAND test_native_texture)
