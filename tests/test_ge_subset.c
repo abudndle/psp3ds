@@ -352,6 +352,15 @@ static void guest_multi_sprite_list(void) {
  assert(output.batch.rects[0].x==3);
  assert(output.batch.rects[1].x==40);
  assert(output.batch.rects[2].x==20);
+ /* The redirected list must also work through CPU -> HLE -> GE, not
+    only through the direct guest-memory decoder. */
+ cpu.gpr[4]=base+0xa0u;
+ cpu.gpr[5]=10u;
+ cpu.pc=base+0x10u;
+ cpu.next_pc=base+0x14u;
+ assert(psp_hle_step(&hle,&cpu)==1);
+ assert(cpu.gpr[2]==0 && cpu.fault==0);
+ assert(memcmp(&output,&via_hle,sizeof output)==0);
  /* Third primitive is malformed; the entire scene must be discarded. */
  ram[0x20u+2u*16u+8u+2u]=40u;
  assert(psp_ge_subset_translate_guest(ram,sizeof ram,base,base+0x80u,8,&output)
