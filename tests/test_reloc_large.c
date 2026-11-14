@@ -61,7 +61,7 @@ int main(void){
  PspRelocSegment tiny[2]={{BASE,BASE,8u},{0x10000u,0x19000u,8u}};
  assert(psp_reloc_apply(&cpu,pair,sizeof pair,tiny,2)==0);
  assert(r32(hi_ram)==0x3c080002u);
- assert(r32(hi_ram+4)==0x8d090010u);
+ assert(r32(hi_ram+4)==0x8d099010u);
  free(previous);free(records);free(guest);
  puts("PASS: 83187 synthetic PSP PRX relocations, load/store LO16, atomic duplicates");
  return 0;
