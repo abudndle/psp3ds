@@ -32,11 +32,16 @@ jobs:
         run: python3 scripts/audit-ppsspp-mips.py vendor/ppsspp
       - name: Inventory transitive interpreter headers
         run: python3 scripts/audit-ppsspp-transitive.py vendor/ppsspp
-      - name: Compile upstream MIPS interpreter translation units (syntax only)
+      - name: Compile upstream MIPS interpreter translation units to objects
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p build/upstream-mips
           for file in Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/MIPSCodeUtils.cpp; do
             echo "Checking $file"
-            g++ -std=c++17 -fsyntax-only -Ivendor/ppsspp "vendor/ppsspp/$file"
+            g++ -std=c++17 -c -Ivendor/ppsspp "vendor/ppsspp/$file" -o "build/upstream-mips/$(basename "$file" .cpp).o"
+          done
+          test "$(find build/upstream-mips -name '*.o' | wc -l)" -eq 3
+          file build/upstream-mips/*.o
+          echo "Upstream objects compiled for Linux host only; not linked or built for Nintendo hardware."
           done
