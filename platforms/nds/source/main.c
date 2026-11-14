@@ -10,6 +10,7 @@
 #include "psp_platform_budget.h"
 #include "psp_ds_memory.h"
 #include "psp_runtime_tuning.h"
+#include "psp_stage_metrics.h"
 #include "psp_play_cutbacks.h"
 #include "psp_lazy_backends.h"
 #include "psp_video_layout.h"
@@ -139,18 +140,16 @@ static int test_slot2_ram(void){
 }
 /* TIMER0 counts at approximately 32768Hz (ARM9 ~33.51 MHz/1024).
  * This is a local device-timer measurement only, never commercial PSP FPS. */
-static void benchmark_shared_mips(void){
- TIMER0_CR=0;
- TIMER0_DATA=0;
- TIMER0_CR=TIMER_ENABLE|TIMER_DIV_1024;
+static void benchmark_shared_mips(PspStageMetrics *stage){
+ cpuStartTiming(0);
  uint32_t executed=0;
- int status=psp_feature_run(PSP_FEATURE_MIPS_BENCHMARK,&executed);
- uint16_t ticks=TIMER0_DATA;
- TIMER0_CR=0;
+ const int status=psp_feature_run(PSP_FEATURE_MIPS_BENCHMARK,&executed);
+ uint32_t us=timerTicks2usec(cpuEndTiming());
+ if(stage && status==0)
+  (void)psp_stage_metrics_record(stage,PSP_STAGE_CPU,us,0u,0);
  printf("MIPS %lu insns: %s\n",(unsigned long)executed,
         status==0?"PASS":"FAILED");
- printf("TIMER0 /1024: %u ticks\n",(unsigned)ticks);
- printf("Synthetic CPU test only\n");
+ printf("DS CPU time: %lu us (synthetic)\n",(unsigned long)us);
 }
 _Static_assert(KEY_A == PSP_NINTENDO_KEY_A &&
                KEY_B == PSP_NINTENDO_KEY_B &&
@@ -172,6 +171,8 @@ int main(void){
  PspPlatformBudget policy;
  PspTarget target=isDSiMode()?PSP_TARGET_DSI:
                   slot2_verified?PSP_TARGET_DS_SLOT2:PSP_TARGET_DS;
+ PspStageMetrics stage={0};
+ (void)psp_stage_metrics_init(&stage,target);
  psp_nds_memory_report(target,verified_slot2_capacity_bytes,slot2_verified);
  printf("On-demand backends: %s\n",
         psp_nds_lazy_backends_smoke(target)==0?"PASS (synthetic)":"FAILED");
@@ -245,7 +246,7 @@ int main(void){
   printf("GE sprite subset: %s\n",accepted?"PASS":"FAILED");
  }
  test_shared_cpu();
- benchmark_shared_mips();
+ benchmark_shared_mips(&stage);
  printf("Scene BG/OAM: %s\n",scene_ok?"PASS":"FAILED");
  printf("Y: DS native 3D triangles\n");
  printf("START: exit\n");
@@ -274,13 +275,22 @@ int main(void){
    * optional synthetic scene presentations are reduced under pressure. */
   cpuStartTiming(0);
   swiWaitForVBlank();
+  const uint32_t wait_us=timerTicks2usec(cpuEndTiming());
   const uint32_t visual_frame=frame++;
-  if(!cutbacks_ready ||
-     psp_play_cutbacks_should_render(&play,visual_frame)){
+  cpuStartTiming(0);
+  const int draw=(!cutbacks_ready ||
+     psp_play_cutbacks_should_render(&play,visual_frame));
+  if(draw){
    if(triangle_mode)psp_nds_triangles_update();
    else if(scene_ok)psp_nds_scene_update(visual_frame);
   }
-  const uint32_t elapsed_us=timerTicks2usec(cpuEndTiming());
+  const uint32_t submit_us=timerTicks2usec(cpuEndTiming());
+  /* Measure only the native draw/update CPU time, not the time
+   * waiting for VBlank or an unmeasured DS GPU completion event. */
+  if(draw && (triangle_mode||scene_ok))
+   (void)psp_stage_metrics_record(&stage,PSP_STAGE_GPU_SUBMIT,
+                                   submit_us,0u,0);
+  const uint32_t elapsed_us=wait_us+submit_us;
   if(cutbacks_ready){
    /* No continuous free-heap API on retail DS. Never invent an available
     * RAM count; only native render-loop timing is used for live feedback.
@@ -293,6 +303,16 @@ int main(void){
    }
   }
  }
+ uint32_t cpu_us=0,gpu_us=0;
+ printf("CPU avg us: %s\n",
+        psp_stage_metrics_average(&stage,PSP_STAGE_CPU,&cpu_us)==0?
+        "measured synthetic":"unmeasured");
+ printf("GPU CPU-submit avg us: %s\n",
+        psp_stage_metrics_average(&stage,PSP_STAGE_GPU_SUBMIT,&gpu_us)==0?
+        "measured synthetic":"unmeasured");
+ if(stage.stage[PSP_STAGE_GPU_SUBMIT].measured_operations)
+  printf("GPU submit average: %lu us\n",(unsigned long)gpu_us);
+ printf("Storage/audio: unmeasured on DS\n");
  psp_nds_triangles_shutdown();
  return 0;
 }
