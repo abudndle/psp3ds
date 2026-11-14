@@ -170,6 +170,13 @@ static void guest_display_list_from_ram(void) {
          0x08000060u, 6, &result) == PSP_GE_SUBSET_OK);
  assert(result.batch.count == 1 && result.batch.rects[0].w == 8);
  assert(result.consumed_commands == 6 && result.consumed_sprites == 1);
+ PspGuestBus bus;
+ assert(psp_guest_bus_init(&bus, memory, 0x08000000u, sizeof memory, NULL) == 0);
+ PspGeSubsetResult bridged;
+ assert(psp_ge_subset_translate_bus(&bus, 0x08000060u, 6, &bridged) == PSP_GE_SUBSET_OK);
+ assert(memcmp(&result, &bridged, sizeof result) == 0);
+ assert(psp_ge_subset_translate_bus(&bus, 0x08000078u, 6, &bridged) != PSP_GE_SUBSET_OK);
+ assert(bridged.batch.count == 0);
  assert(psp_ge_subset_translate_guest(memory, sizeof memory, 0x08000000u,
          0x08000061u, 6, &result) != PSP_GE_SUBSET_OK);
  assert(result.batch.count == 0);
