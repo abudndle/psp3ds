@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "psp_ds_memory.h"
+#include "psp_memory_guard.h"
 
 /* A successful scratch allocation is not a free-memory inventory.
  * Allocate/touch/release at most the existing hot-memory budget while
@@ -59,4 +60,31 @@ void psp_nds_memory_report(PspTarget target,
   printf("Pak cold RAM: not available\n");
  }
  printf("PSP guest RAM not allocated\n");
+ /* An original synthetic "game session" allocates several small buffers
+  * only through the guarded heap. Every branch closes its ownership
+  * ledger before returning; the real PSP game runtime is not wired yet. */
+ PspMemoryGuardPolicy quota;
+ PspMemoryGuard guard={0};
+ PspMemoryGuardReport report={0};
+ int clean=psp_memory_guard_policy_ds(&plan,&quota)==0 &&
+           psp_memory_guard_init(&guard,&quota,NULL,NULL,NULL)==0;
+ if(clean){
+  for(unsigned cycle=0;cycle<8u && clean;cycle++){
+   void *guest=NULL,*texture=NULL;
+   clean=psp_memory_guard_acquire(&guard,PSP_MEMORY_GUEST,
+                                  PSP_DS_MEMORY_GRANULE,&guest)==0;
+   if(clean)clean=psp_memory_guard_acquire(&guard,PSP_MEMORY_TEXTURE,
+                                          1024u,&texture)==0;
+   if(texture){
+    if(psp_memory_guard_release(&guard,texture)!=0)clean=0;
+   }
+   if(guest){
+    if(psp_memory_guard_release(&guard,guest)!=0)clean=0;
+   }
+  }
+  if(psp_memory_guard_close(&guard,&report)!=0)clean=0;
+  if(report.reclaimed_allocations || report.end_outstanding_bytes)clean=0;
+ }
+ printf("PSP guarded RAM: %s\n",clean?"PASS (synthetic)":"unavailable");
+
 }
