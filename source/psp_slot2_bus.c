@@ -11,9 +11,13 @@ int psp_slot2_bus_init(PspGuestBus *bus,uint8_t *hot,
  if(expanded<0)return -1;
  PspGuestWindow window;
  const PspGuestWindow *cold=0;
- if(expanded && confirmed_ram &&
-    !psp_guest_window_init(&window,confirmed_ram,cold_guest_base,
-                           budget.cold_data_budget,1,1))cold=&window;
+ if(expanded && confirmed_ram) {
+  /* An explicitly supplied, verified RAM mapping must be valid.
+   * Never disguise a bad address, alignment or capacity as "no pack". */
+  if(psp_guest_window_init(&window,confirmed_ram,cold_guest_base,
+                           budget.cold_data_budget,1,1))return -1;
+  cold=&window;
+ }
  if(psp_guest_bus_init(bus,hot,hot_base,hot_size,cold))return -1;
  if(!cold && psp_platform_budget_choose(PSP_TARGET_DS,&budget))return -1;
  *selected=budget;
