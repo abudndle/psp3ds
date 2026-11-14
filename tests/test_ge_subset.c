@@ -83,7 +83,7 @@ static void guest_memory_rejections(void) {
   size_t size = sizeof bytes;
   uint32_t memory_base = 0x08000020u;
   switch (scenario) {
-   case 0: bytes[0] &= 0x7fu; break; /* non-opaque vertex */
+   case 0: bytes[1] &= 0x7fu; break; /* non-opaque vertex */
    case 1: bytes[8] ^= 1u; break; /* mismatched endpoint color */
    case 2: bytes[14] = 1; break; /* mismatched depth */
    case 3: bytes[10] = 3; break; /* zero-width rectangle */
