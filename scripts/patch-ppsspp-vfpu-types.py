@@ -32,6 +32,15 @@ def main() -> int:
             updated = updated.replace(old, new)
         path.write_text(updated)
         print(f"patched {path}")
+    # devkitARM defines uint32_t as unsigned long, while PPSSPP's u32 is
+    # unsigned int. Explicitly select the 32-bit bit-scan overload.
+    ir_cache = root / "Core/MIPS/IR/IRRegCache.h"
+    original = ir_cache.read_text()
+    needle = "LeastSignificantSetBit(word)"
+    if original.count(needle) != 1:
+        raise SystemExit(f"{ir_cache}: expected exactly one bit-scan call")
+    ir_cache.write_text(original.replace(needle, "LeastSignificantSetBit(u32(word))"))
+    print(f"patched {ir_cache}")
     return 0
 
 if __name__ == "__main__":
