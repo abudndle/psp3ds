@@ -17,9 +17,9 @@ static uint32_t rd32(const uint8_t *p) {
  return (uint32_t)p[0] | (uint32_t)p[1]<<8 |
         (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24;
 }
-int psp_reloc_image_apply(const uint8_t *elf,size_t len,PspCpu *cpu,
-                          const PspRelocSegment *segments,size_t n,
-                          size_t *out_streams) {
+static int relocate_core(const uint8_t *elf,size_t len,PspCpu *cpu,
+                         const PspRelocSegment *segments,size_t n,
+                         size_t *out_streams,int scratch) {
  if(out_streams)*out_streams=0;
  if(!elf || !cpu || !cpu->ram || !segments || !n || n>MAX_HEADERS ||
     !cpu->ram_size || cpu->ram_size>MAX_RAM_SNAPSHOT || len<52)
@@ -74,9 +74,12 @@ int psp_reloc_image_apply(const uint8_t *elf,size_t len,PspCpu *cpu,
  }
  /* Individual decoders are atomic, but later sections may fail after an
   * earlier one succeeded. Preserve the complete original RAM image. */
- uint8_t *snapshot=(uint8_t *)malloc(cpu->ram_size);
- if(!snapshot)return -3;
- memcpy(snapshot,cpu->ram,cpu->ram_size);
+ uint8_t *snapshot=NULL;
+ if(!scratch){
+  snapshot=(uint8_t *)malloc(cpu->ram_size);
+  if(!snapshot)return -3;
+  memcpy(snapshot,cpu->ram,cpu->ram_size);
+ }
  int status=0;
  for(size_t i=0;i<n;i++) {
   const uint8_t *ph=elf+phoff+i*entsize;
@@ -89,9 +92,20 @@ int psp_reloc_image_apply(const uint8_t *elf,size_t len,PspCpu *cpu,
    status=psp_reloc2_apply(cpu,elf+off,size,segments,n,(unsigned)n);
   if(status!=0)break;
  }
- if(status)memcpy(cpu->ram,snapshot,cpu->ram_size);
+ if(status && snapshot)memcpy(cpu->ram,snapshot,cpu->ram_size);
  free(snapshot);
  if(status)return -4;
  if(out_streams)*out_streams=streams;
  return 0;
+}
+
+int psp_reloc_image_apply(const uint8_t *elf,size_t len,PspCpu *cpu,
+                          const PspRelocSegment *segments,size_t n,
+                          size_t *out_streams){
+ return relocate_core(elf,len,cpu,segments,n,out_streams,0);
+}
+int psp_reloc_image_apply_scratch(const uint8_t *elf,size_t len,PspCpu *cpu,
+                                  const PspRelocSegment *segments,size_t n,
+                                  size_t *out_streams){
+ return relocate_core(elf,len,cpu,segments,n,out_streams,1);
 }
