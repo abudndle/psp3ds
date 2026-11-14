@@ -1,0 +1,28 @@
+name: PPSSPP upstream source integration smoke
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/fetch-ppsspp-upstream.sh'
+      - '.github/workflows/ppsspp-upstream-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  upstream-checkout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned real PPSSPP sources
+        run: bash scripts/fetch-ppsspp-upstream.sh
+      - name: Validate source directories and pinned revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C vendor/ppsspp rev-parse HEAD)" = "1aebad2c651ff9d0684ee335e43aceff8fc7e3ec"
+          for dir in Core/MIPS Core/HLE GPU Core/FileSystems Core/Loaders; do
+            test -d "vendor/ppsspp/$dir"
+            test -n "$(find "vendor/ppsspp/$dir" -type f -print -quit)"
+          done
+          test -f vendor/ppsspp/LICENSE.TXT || test -f vendor/ppsspp/LICENSE
+          echo "Pinned PPSSPP source checkout verified (not yet compiled into PSP3DS)"
