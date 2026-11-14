@@ -111,7 +111,7 @@ static void guest_memory_rejections(void) {
 static void guest_display_list_atomicity(void) {
  const uint8_t vertices[] = {
   0x1f, 0xfc, 3, 0, 4, 0, 0, 0,
-  0x1f, 0xfc, 11, 0, 12, 0, 0,
+  0x1f, 0xfc, 11, 0, 12, 0, 0, 0,
   0xe0, 0x83, 20, 0, 21, 0, 0, 0,
   0xe0, 0x83, 27, 0, 30, 0, 0, 0
  };
