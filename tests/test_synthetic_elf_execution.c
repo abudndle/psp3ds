@@ -18,7 +18,7 @@ static void build_fixture(uint8_t *elf,size_t size){
   0x24090005u, /* addiu t1, zero, 5 */
   0x01095021u, /* addu t2, t0, t1 */
   0x254affffu, /* addiu t2, t2, -1 */
-  0x00000000u  /* nop */
+  0x0000000cu  /* syscall: observable guest-to-host trap boundary */
  };
  memset(elf,0,size);
  memcpy(elf,"\177ELF",4);elf[4]=1;elf[5]=1;elf[6]=1;
@@ -38,9 +38,13 @@ int main(void){
  assert(psp_elf_load(elf,sizeof elf,ram,sizeof ram,BASE,&loaded)==PSP_LOAD_OK);
  assert(loaded.entry==BASE&&loaded.segments==1);
  PspCpu cpu;psp_cpu_init(&cpu,ram,sizeof ram,BASE,loaded.entry);
- for(unsigned i=0;i<5;i++)assert(psp_cpu_step(&cpu)==0);
+ for(unsigned i=0;i<4;i++)assert(psp_cpu_step(&cpu)==0);
+ assert(psp_cpu_step(&cpu)==-3);
  assert(cpu.gpr[8]==7&&cpu.gpr[9]==5&&cpu.gpr[10]==11);
- assert(cpu.pc==BASE+20);
- puts("PASS: synthetic PSP ELF loader-to-custom-CPU execution (NOT PPSSPP/game boot)");
+ assert(cpu.pc==BASE+16);
+ assert(cpu.cp0_epc==BASE+16);
+ assert(((cpu.cp0_cause>>2)&31u)==8u);
+ assert(cpu.fault==-3);
+ puts("PASS: synthetic PSP ELF entry, arithmetic and syscall trap (NOT PPSSPP/game boot)");
  return 0;
 }
