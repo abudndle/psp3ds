@@ -169,6 +169,14 @@ int psp_ge_subset_submit_cpu(const PspCpu *cpu, unsigned address_reg,
 
 int psp_ge_subset_hle_submit(const PspCpu *cpu, void *context) {
  PspGeSubsetResult *out=(PspGeSubsetResult *)context;
- if (!out) return -1;
- return psp_ge_subset_submit_cpu(cpu, 4u, 5u, out)==PSP_GE_SUBSET_OK ? 0 : -1;
+ if (!out || !cpu) return -1;
+ /* The interpreter marks SYSCALL as a trap before HLE dispatch.
+    Only clear that expected trap in a local copy, never in live CPU state. */
+ if (!cpu->fault || ((cpu->cp0_cause >> 2) & 31u) != 8u) {
+  memset(out, 0, sizeof *out);
+  return -1;
+ }
+ PspCpu submitted = *cpu;
+ submitted.fault = 0;
+ return psp_ge_subset_submit_cpu(&submitted, 4u, 5u, out)==PSP_GE_SUBSET_OK ? 0 : -1;
 }
