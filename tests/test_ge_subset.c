@@ -285,6 +285,28 @@ int main(void){
  guest_memory_rejections();
  guest_memory();
  for(uint32_t frame=0;frame<8;frame++)raster_match(frame*11u);
+ /* A single GE list can submit multiple sprite primitives in order. */
+ const PspGeDecodedSprite multi_sprites[]={
+  {3,4,8,8,0x7c1f},{20,25,6,7,0x03e0},{40,50,9,10,0x001f}
+ };
+ const uint32_t multi_commands[]={
+  SPRITE_CMD,SPRITE_CMD,SPRITE_CMD,FINISH,END
+ };
+ PspGeSubsetResult multi;
+ assert(psp_ge_subset_translate(multi_commands,5,multi_sprites,3,&multi)
+        == PSP_GE_SUBSET_OK);
+ assert(multi.batch.count==3 && multi.consumed_sprites==3);
+ assert(multi.consumed_commands==5);
+ for(size_t i=0;i<3;i++){
+  assert(multi.batch.rects[i].x==multi_sprites[i].x);
+  assert(multi.batch.rects[i].y==multi_sprites[i].y);
+  assert(multi.batch.rects[i].w==multi_sprites[i].w);
+  assert(multi.batch.rects[i].h==multi_sprites[i].h);
+  assert(multi.batch.rects[i].bgr555==multi_sprites[i].bgr555);
+ }
+ assert(psp_ge_subset_translate(multi_commands,5,multi_sprites,2,&multi)
+        != PSP_GE_SUBSET_OK);
+ assert(multi.batch.count==0 && multi.consumed_sprites==0);
  const PspGeDecodedSprite sprite={3,4,8,8,0x7c1f};
  PspGeSubsetResult result;
  uint32_t good[]={0,SPRITE_CMD,FINISH,END};
