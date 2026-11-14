@@ -237,3 +237,8 @@ add_test(NAME reloc_large COMMAND test_reloc_large)
 add_executable(test_prx_image tests/test_prx_image.c)
 target_link_libraries(test_prx_image PRIVATE psp_core)
 add_test(NAME prx_image COMMAND test_prx_image)
+
+# User-supplied decrypted ET_SCE_PRX file probe. Never stages private game
+# bytes, does not execute guest code, and is not a runtime test target.
+add_executable(psp_prx_probe tools/psp_prx_probe.c)
+target_link_libraries(psp_prx_probe PRIVATE psp_core)
