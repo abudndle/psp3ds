@@ -44,7 +44,22 @@ jobs:
           # Preserve all compiler failures as artifacts for the integration batch.
           test "$(wc -l < build/ppsspp-arm/status.tsv)" -eq 3
           # A blocked compiler unit is a failed integration gate, not a green build.
-          if grep -q "$(printf '\\tblocked')" build/ppsspp-arm/status.tsv; then
+          if grep -q 'blocked
+            echo "FAIL: at least one upstream PPSSPP interpreter unit did not cross-compile" >&2
+            exit 1
+          fi
+          test "$(find build/ppsspp-arm -name '*.o' | wc -l)" -eq 3
+      - name: Publish cross-compiler evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppsspp-arm-interpreter-compile-evidence
+          path: |
+            build/ppsspp-arm/*.log
+            build/ppsspp-arm/status.tsv
+            build/ppsspp-arm/*.o
+          if-no-files-found: warn
+ build/ppsspp-arm/status.tsv; then
             echo "FAIL: at least one upstream PPSSPP interpreter unit did not cross-compile" >&2
             exit 1
           fi
