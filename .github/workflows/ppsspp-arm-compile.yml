@@ -1,0 +1,55 @@
+name: PPSSPP interpreter ARM cross-compile probe
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ppsspp-arm-compile.yml'
+      - 'scripts/fetch-ppsspp-upstream.sh'
+permissions:
+  contents: read
+jobs:
+  arm-interpreter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: devkitpro/devkitarm:20260610
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned PPSSPP source
+        shell: bash
+        run: |
+          bash scripts/fetch-ppsspp-upstream.sh
+          test "$(git -C vendor/ppsspp rev-parse HEAD)" = "1aebad2c651ff9d0684ee335e43aceff8fc7e3ec"
+      - name: Attempt real ARM interpreter translation-unit compilation
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p build/ppsspp-arm
+          : > build/ppsspp-arm/status.tsv
+          for unit in Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/MIPSCodeUtils.cpp; do
+            name="$(basename "$unit" .cpp)"
+            echo "Compiling upstream $unit with ARM C++ compiler"
+            if "$DEVKITARM/bin/arm-none-eabi-g++" -std=c++17 -O2 -marm -mcpu=arm11mpcore \
+                -Ivendor/ppsspp -c "vendor/ppsspp/$unit" \
+                -o "build/ppsspp-arm/$name.o" \
+                > "build/ppsspp-arm/$name.log" 2>&1; then
+              printf '%s\tcompiled\n' "$unit" >> build/ppsspp-arm/status.tsv
+            else
+              printf '%s\tblocked\n' "$unit" >> build/ppsspp-arm/status.tsv
+              sed -n '1,50p' "build/ppsspp-arm/$name.log"
+            fi
+          done
+          cat build/ppsspp-arm/status.tsv
+          # This is a diagnostic cross-compile, NOT a PSP runtime link or game boot.
+          # Preserve all compiler failures as artifacts for the integration batch.
+          test "$(wc -l < build/ppsspp-arm/status.tsv)" -eq 3
+      - name: Publish cross-compiler evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppsspp-arm-interpreter-compile-evidence
+          path: |
+            build/ppsspp-arm/*.log
+            build/ppsspp-arm/status.tsv
+            build/ppsspp-arm/*.o
+          if-no-files-found: warn
