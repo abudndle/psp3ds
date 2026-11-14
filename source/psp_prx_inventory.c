@@ -63,3 +63,40 @@ int psp_prx_import_inventory(const PspCpu *cpu,uint32_t top,uint32_t end,
  *out=staged;
  return 0;
 }
+
+int psp_prx_import_coverage(const PspCpu *cpu,
+                            const PspPrxImportInventory *inventory,
+                            PspPrxHleCoverage *out){
+ if(out)memset(out,0,sizeof(*out));
+ if(!cpu||!cpu->ram||!inventory||!out||
+    inventory->library_count>PSP_PRX_INVENTORY_MAX_LIBRARIES ||
+    inventory->function_count>PSP_PRX_INVENTORY_MAX_FUNCTIONS)return -1;
+ unsigned total=0,implemented=0;
+ for(unsigned i=0;i<inventory->library_count;i++){
+  const PspPrxLibraryInventory *lib=&inventory->libraries[i];
+  const size_t count=lib->function_count;
+  if(!count || count>PSP_PRX_INVENTORY_MAX_FUNCTIONS-total)return -2;
+  const char *name=lib->name;
+  unsigned n=0;
+  for(;n<PSP_PRX_MAX_NAME;n++){
+   unsigned char character=(unsigned char)name[n];
+   if(!character)break;
+   if(character<0x21u||character>0x7eu)return -2;
+  }
+  if(n==0 || n>=PSP_PRX_MAX_NAME)return -2;
+  const uint8_t *nids=mapped(cpu,lib->nid_table,count*4u);
+  if(!nids)return -2;
+  for(size_t j=0;j<count;j++){
+   PspHleService service;
+   const int known=psp_imports_known_service(name,u32(nids+j*4u),
+                                             &service);
+   if(known<0)return -2;
+   if(known==1)implemented++;
+  }
+  total+=(unsigned)count;
+ }
+ if(total!=inventory->function_count)return -2;
+ out->implemented=(uint16_t)implemented;
+ out->unsupported=(uint16_t)(total-implemented);
+ return 0;
+}
