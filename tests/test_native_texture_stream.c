@@ -110,7 +110,7 @@ static void invalid_and_io_fault(void){
  assert(psp_native_texture_decode_stream(NULL,0,256,&rect,read_at,
              &input,out,8,sizeof out,&stats)==PSP_TEXTURE_BAD_ARGUMENT);
  assert(stats.decoded_pixels==0u);
- assert(psp_native_texture_decode_stream(&tex,0,255,&rect,read_at,
+ assert(psp_native_texture_decode_stream(&tex,0,127,&rect,read_at,
              &input,out,8,sizeof out,&stats)==PSP_TEXTURE_TRUNCATED);
  assert(psp_native_texture_decode_stream(&tex,UINT64_MAX-8u,256u,
              &rect,read_at,&input,out,8,sizeof out,&stats)==PSP_TEXTURE_TRUNCATED);
