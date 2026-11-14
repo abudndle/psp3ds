@@ -20,6 +20,7 @@
 #include "psp_ge_subset.h"
 #include "psp_ge_triangles.h"
 int psp_nds_lazy_backends_smoke(PspTarget target);
+int psp_nds_startup_trace_smoke(void);
 int psp_nds_scene_init(void);
 void psp_nds_scene_update(uint32_t frame);
 int psp_nds_triangles_init(void);
@@ -174,6 +175,8 @@ int main(void){
  psp_nds_memory_report(target,verified_slot2_capacity_bytes,slot2_verified);
  printf("On-demand backends: %s\n",
         psp_nds_lazy_backends_smoke(target)==0?"PASS (synthetic)":"FAILED");
+ printf("PSP startup trace: %s\n",
+        psp_nds_startup_trace_smoke()==0?"PASS (synthetic)":"FAILED");
  PspRuntimeTuning tuning;
  if(psp_runtime_tuning_choose(target,&tuning)==0) {
   printf("Guest slice: %lu, GPU batch cap %u\n",
