@@ -6,6 +6,7 @@
 #include "psp_platform_budget.h"
 #include "psp_video_layout.h"
 #include "psp_native_texture.h"
+#include "psp_ge_triangles.h"
 #include "psp_nintendo_input.h"
 #include "psp_features.h"
 #include "psp_scene.h"
@@ -62,6 +63,22 @@ int main(void) {
     rgba[0]==255 && rgba[1]==0 && rgba[2]==0 && rgba[3]==255 &&
     rgba[4]==0 && rgba[5]==255 && rgba[6]==0 && rgba[7]==255;
   printf("PSP texture decode: %s\n",decoded?"PASS":"FAILED");
+ }
+ /* Synthetic PSP through-mode triangle command diagnostic, shared by
+  * DS, DS+verified Slot-2, DSi and old/New 3DS. Not game execution. */
+ {
+  const uint32_t cmds[]={0x10080000u,0x01000000u,0x12800114u,
+                         0x04030003u,0x0f000000u,0x0c000000u};
+  const uint8_t verts[]={
+   0x1f,0x80,20,0,20,0,1,0,
+   0xe0,0x83,180,0,30,0,2,0,
+   0x00,0xfc,100,0,150,0,3,0
+  };
+  PspGeTriangleResult tris;
+  const int ok=psp_ge_triangles_decode(cmds,6,verts,sizeof verts,
+                                      0x08000000u,&tris)==PSP_GE_TRIANGLE_OK &&
+               tris.count==1u && tris.triangles[0].v[2].z==3u;
+  printf("GE triangles: %s\n",ok?"PASS":"FAILED");
  }
  PspPlatformBudget policy;
  PspTarget target=(R_SUCCEEDED(hardware) && new_model)?
