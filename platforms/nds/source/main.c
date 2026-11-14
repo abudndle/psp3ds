@@ -8,6 +8,7 @@
 #include "psp_guest_bus.h"
 #include "psp_platform_budget.h"
 #include "psp_video_layout.h"
+#include "psp_nintendo_input.h"
 #include "psp_features.h"
 #include "psp_scene.h"
 #include "psp_ge_subset.h"
@@ -116,6 +117,12 @@ static void benchmark_shared_mips(void){
  printf("TIMER0 /1024: %u ticks\n",(unsigned)ticks);
  printf("Synthetic CPU test only\n");
 }
+_Static_assert(KEY_A == PSP_NINTENDO_KEY_A &&
+               KEY_B == PSP_NINTENDO_KEY_B &&
+               KEY_UP == PSP_NINTENDO_KEY_UP &&
+               KEY_RIGHT == PSP_NINTENDO_KEY_RIGHT &&
+               KEY_X == PSP_NINTENDO_KEY_X,
+               "BlocksDS Nintendo key positions have changed");
 int main(void){
  consoleDemoInit();
  int scene_ok=psp_nds_scene_init()==0;
@@ -159,7 +166,16 @@ int main(void){
  printf("START: exit\n");
  uint32_t frame=0;
  while(1){
-  scanKeys();if(keysDown()&KEY_START)break;
+  scanKeys();
+  const uint32_t pressed=keysDown();
+  PspNintendoCtrl psp_pad;
+  if(psp_nintendo_ctrl_sample(target,keysHeld(),0,0,&psp_pad)==0 &&
+     (pressed&KEY_SELECT)){
+   printf("PSP pad: %04lx X:%u Y:%u\n",
+          (unsigned long)psp_pad.buttons,(unsigned)psp_pad.lx,
+          (unsigned)psp_pad.ly);
+  }
+  if(pressed&KEY_START)break;
   swiWaitForVBlank();
   if(scene_ok)psp_nds_scene_update(frame++);
  }
