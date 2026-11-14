@@ -53,6 +53,25 @@ int psp_reloc_image_apply(const uint8_t *elf,size_t len,PspCpu *cpu,
    return -2;
  }
  if(!streams)return -2;
+ /* Each decoder commits only after validating all records. A single PSP
+  * relocation stream therefore needs no full-RAM rollback buffer. Large
+  * ET_SCE_PRX modules otherwise pay for a second 6+ MiB snapshot here.
+  * Keep the snapshot below for multi-stream whole-image rollback. */
+ if(streams==1u){
+  for(size_t i=0;i<n;i++){
+   const uint8_t *ph=elf+phoff+i*entsize;
+   const uint32_t type=rd32(ph);
+   if(type!=PT_SCE_PSPREL && type!=PT_SCE_PSPREL2)continue;
+   const size_t off=rd32(ph+4),size=rd32(ph+16);
+   const int result=type==PT_SCE_PSPREL?
+     psp_reloc_apply(cpu,elf+off,size,segments,n):
+     psp_reloc2_apply(cpu,elf+off,size,segments,n,(unsigned)n);
+   if(result!=0)return -4;
+   if(out_streams)*out_streams=1u;
+   return 0;
+  }
+  return -2;
+ }
  /* Individual decoders are atomic, but later sections may fail after an
   * earlier one succeeded. Preserve the complete original RAM image. */
  uint8_t *snapshot=(uint8_t *)malloc(cpu->ram_size);
