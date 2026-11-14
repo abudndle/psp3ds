@@ -36,6 +36,8 @@ typedef struct {
 } PspGuardAllocation;
 typedef struct {
  PspMemoryGuardPolicy policy;
+ uint32_t soft_total_limit;
+ uint32_t soft_class_limit[PSP_MEMORY_GUARD_CLASSES];
  PspGuardMalloc allocate;
  PspGuardFree deallocate;
  void *opaque;
@@ -82,6 +84,14 @@ int psp_memory_guard_init(PspMemoryGuard *guard,
 int psp_memory_guard_acquire(PspMemoryGuard *guard,PspMemoryClass category,
                              size_t bytes,void **result);
 int psp_memory_guard_release(PspMemoryGuard *guard,void *pointer);
+/* Tighten FUTURE admissions as the game experiences pressure, without
+ * invalidating existing guest pointers. Soft caps may be lower than
+ * current occupancy; new allocations are denied until releases occur.
+ * All values must stay within the unchanged hard policy caps. */
+int psp_memory_guard_set_soft_limits(PspMemoryGuard *guard,
+                                     uint32_t total_limit,
+                                     const uint32_t class_limits[
+                                       PSP_MEMORY_GUARD_CLASSES]);
 /* Records how much was still allocated and reclaims ALL owned pointers.
  * A nonzero reclaimed count indicates a missing explicit release path
  * in the runtime even though final session teardown repairs the leak.
