@@ -2,7 +2,7 @@
 
 ## Priority and safety
 
-**Priority hardware:** New 3DS / New 2DS XL in native 3DS mode; Old 3DS, retail DS/DS Lite, verified Slot-2 Memory Expansion Pak, and DSi remain at their previous **synthetic validation** levels. The known local decrypted game ELF and CSO stay **outside public GitHub and CI**. This work does not claim PSP title-screen display, interactive gameplay, PSP graphics/audio emulation, or real-device benchmark data.
+**Lead hardware:** New 3DS / New 2DS XL in native 3DS mode. **All five** device profiles continue receiving runtime diagnostics, streaming and performance work; Old 3DS, retail DS/DS Lite, verified Slot-2 Memory Expansion Pak and DSi are not frozen at their previous test milestones. First playable PSP gameplay on each remains conditional on measured feasibility. The known local decrypted game ELF and CSO stay **outside public GitHub and CI**. This work does not claim PSP title-screen display, interactive gameplay, PSP graphics/audio emulation, or real-device benchmark data.
 
 ## Private Jetpack Joyride startup checkpoint (Nov 2026)
 
@@ -47,6 +47,6 @@ Do not substitute CI compilation for melonDS/Azahar screenshots or hardware meas
 3. **Render game graphics:** not demonstrated. Follow PR #32's synthetic sprite subset by collecting only the GE commands and vertex/texture formats actually submitted by the running game.
 4. **Interactive gameplay:** not demonstrated. Wire only the input, thread/callback, audio and display services observed in private traces; defer broad PSP compatibility and codec work until needed.
 5. **Stabilize New 3DS:** not started on real title. Require measured CPU, GPU, RAM, storage and audio budgets, repeatable restart, and bounded memory growth.
-6. **Other hardware:** native `.nds`/`.3dsx`/`.cia` and Linux checks preserve regressions; actual DS gameplay feasibility remains unknown. Do not claim all five family profiles can play the game.
+6. **All five profiles:** extend the synthetic native startup trace and bounded streaming/profiling capabilities on Old 3DS, DS, DS+verified Pak and DSi while New 3DS leads private title boot. Actual DS commercial gameplay feasibility remains unknown. Do not claim the other systems are playable until they run and meet measured targets.
 
 **Next engineering gate:** verify `sceKernelSetCompilerVersion` NID `0xF77D77CB` semantics; add only that tested service, then advance and repeat the private startup trace. In parallel, stage New 3DS CPU/GPU/RAM/storage/audio profiling hooks separately and stream texture crops through the new bounded callback API without double-loading the source image.
