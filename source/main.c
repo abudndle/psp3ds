@@ -4,6 +4,8 @@
 #include "psp_core.h"
 #include "psp_catalog.h"
 #include "psp_platform_budget.h"
+#include "psp_runtime_tuning.h"
+#include "psp_benchmark.h"
 #include "psp_video_layout.h"
 #include "psp_native_texture.h"
 #include "psp_ge_triangles.h"
@@ -12,7 +14,7 @@
 #include "psp_scene.h"
 int psp_3ds_scene_init(void);
 int psp_3ds_scene_draw(uint32_t frame);
-int psp_3ds_triangle_draw(uint32_t frame);
+int psp_3ds_triangle_draw(uint32_t frame,PspTarget model);
 void psp_3ds_scene_fini(void);
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
@@ -45,7 +47,7 @@ _Static_assert(KEY_A == PSP_NINTENDO_KEY_A &&
                KEY_X == PSP_NINTENDO_KEY_X,
                "libctru Nintendo key positions have changed");
 int main(void) {
- osSetSpeedupEnable(true); /* Request New 3DS high-speed mode; old models unaffected. */
+ /* Only request the New 3DS clock increase once APT confirms hardware. */
  gfxInitDefault();consoleInit(GFX_TOP,NULL);
  printf("PSP3DS | research prototype\n");
  printf("PSP file inspection + basic MIPS interpreter\n");
@@ -84,6 +86,35 @@ int main(void) {
  PspPlatformBudget policy;
  PspTarget target=(R_SUCCEEDED(hardware) && new_model)?
     PSP_TARGET_NEW3DS:PSP_TARGET_OLD3DS;
+ PspRuntimeTuning tuning;
+ const int tune_ok=psp_runtime_tuning_choose(target,&tuning)==0;
+ const bool high_clock=tune_ok && tuning.request_new3ds_speedup;
+ if(high_clock)osSetSpeedupEnable(true);
+ if(tune_ok){
+  PspBenchResult bench;
+  TickCounter ticks={0};
+  osTickCounterStart(&ticks);
+  const int bench_status=psp_benchmark_run(tuning.benchmark_rounds,&bench);
+  osTickCounterUpdate(&ticks);
+  const double elapsed_ms=osTickCounterRead(&ticks);
+  printf("CPU mode: %s\n",high_clock?"New 3DS speedup requested":"standard");
+  printf("Geometry batch: %u, decode staging %luK\n",
+         (unsigned)tuning.triangle_demo_budget,
+         (unsigned long)(tuning.texture_decode_staging_bytes/1024u));
+  if(bench_status==0 && elapsed_ms>0.0 && elapsed_ms<60000.0){
+   uint32_t elapsed_us=(uint32_t)(elapsed_ms*1000.0+0.5);
+   if(!elapsed_us)elapsed_us=1;
+   const int adapted=psp_runtime_tuning_feedback(&tuning,
+                       bench.executed_instructions,elapsed_us);
+   printf("Synthetic %lu MIPS insns: %.2f ms\n",
+          (unsigned long)bench.executed_instructions,elapsed_ms);
+   printf("CPU next-slice cap: %lu (%s)\n",
+          (unsigned long)tuning.cpu_slice_current,
+          adapted>=0?"adaptive policy":"unchanged");
+  }else{
+   printf("Synthetic MIPS timing: unavailable\n");
+  }
+ }
  PspVideoLayout video;
  if(psp_video_layout_init(target,PSP_VIDEO_DISPLAY_3DS_TOP,
                           PSP_VIDEO_PSP_WIDTH,PSP_VIDEO_PSP_HEIGHT,&video)==0)
@@ -166,7 +197,7 @@ int main(void) {
    if(gpu_ready){show_triangles=!show_triangles;if(show_triangles)show_scene=0;}
   }
   if(gpu_ready &&
-     ((show_triangles && psp_3ds_triangle_draw(scene_frame++)==0) ||
+     ((show_triangles && psp_3ds_triangle_draw(scene_frame++,target)==0) ||
       (show_scene && psp_3ds_scene_draw(scene_frame++)==0))) {
    /* Citro3D submitted the synthetic 2D or triangle scene to PICA200. */
   } else {
@@ -177,5 +208,5 @@ int main(void) {
   }
  }
  psp_3ds_scene_fini();
- gfxExit();osSetSpeedupEnable(false);return 0;
+ gfxExit();if(high_clock)osSetSpeedupEnable(false);return 0;
 }
