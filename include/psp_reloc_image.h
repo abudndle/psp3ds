@@ -18,4 +18,13 @@
 int psp_reloc_image_apply(const uint8_t *elf, size_t elf_size, PspCpu *cpu,
                           const PspRelocSegment *segments, size_t segment_count,
                           size_t *out_streams);
+
+/* Faster multi-stream loading into a disposable, exclusively owned guest
+ * scratch buffer only. No whole-image snapshot is allocated; if any
+ * stream fails, prior relocations MAY remain. Caller must discard the
+ * entire scratch buffer. The CPU register state is unchanged. */
+int psp_reloc_image_apply_scratch(const uint8_t *elf,size_t elf_size,
+                                  PspCpu *cpu,
+                                  const PspRelocSegment *segments,
+                                  size_t segment_count,size_t *out_streams);
 #endif
