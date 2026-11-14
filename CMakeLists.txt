@@ -300,3 +300,9 @@ target_link_libraries(test_startup_trace PRIVATE psp_core)
 add_test(NAME startup_trace COMMAND test_startup_trace)
 add_executable(psp_startup_probe tools/psp_startup_probe.c)
 target_link_libraries(psp_startup_probe PRIVATE psp_core)
+
+# Exact firmware import reached by the private PSP startup diagnostic:
+# verified SysMemUserForUser SDK-version setter, not other fake sysmem calls.
+add_executable(test_hle_sdk_version tests/test_hle_sdk_version.c)
+target_link_libraries(test_hle_sdk_version PRIVATE psp_core)
+add_test(NAME hle_sdk_version COMMAND test_hle_sdk_version)
