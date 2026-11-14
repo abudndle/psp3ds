@@ -49,6 +49,16 @@ int psp_prx_import_coverage(const PspCpu *cpu,
                             const PspPrxImportInventory *inventory,
                             PspPrxHleCoverage *out);
 
+/* Link ONLY already-implemented HLE functions found in a large PRX import
+ * table (e.g. 145 functions, where <64 have verified handlers). Missing
+ * imports remain unmodified and must stop the startup trace when reached.
+ * Failed validation/linking changes neither bindings nor guest memory.
+ * A successful result reports verified imports patched, not total support.
+ * Call only for an owned, mutable and not-yet-running guest image. */
+int psp_prx_link_verified_imports(PspCpu *cpu,PspHle *hle,
+                                  const PspPrxImportInventory *inventory,
+                                  PspPrxHleCoverage *coverage);
+
 #ifdef __cplusplus
 }
 #endif
