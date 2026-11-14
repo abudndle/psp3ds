@@ -59,3 +59,24 @@ Before integrating an upstream source file, record its exact path, license,
 required upstream dependencies, and the target abstraction replacing its
 platform assumptions. Preserve copyright/license notices and test behavior
 against upstream PSP homebrew test cases.
+
+## Unsupported upstream code: porting policy
+
+Do not compile upstream platform or JIT backends directly into a Nintendo target.
+Classify each dependency before integration:
+
+| PPSSPP subsystem | Nintendo 3DS strategy | DS/DSi strategy |
+| --- | --- | --- |
+| x86/x64, ARM64, RISC-V JIT | Exclude; begin with interpreter, investigate ARM11-specific backend separately | Exclude; interpreter subset only |
+| Vulkan, D3D, desktop GL | Replace with 3DS GPU renderer and explicit PSP GE translation | Replace with bounded DS 2D/3D rendering subset |
+| OS threads, timers, sockets | Platform-specific services and scheduler abstractions | Cooperative/limited scheduling and platform APIs |
+| Host virtual memory and JIT executable pages | Explicit guest-address translation and bounded allocations | Small bounded guest-memory windows; reject unsupported mappings |
+| Desktop file dialogs, paths, input, audio | Native filesystem, controller, audio adapters | DS/DSi filesystem, input and audio adapters |
+| Third-party desktop libraries | Audit dependencies and licenses; port only required pieces | Prefer dependency-free subsets or documented unsupported status |
+
+The upstream source checkout is **not** automatically buildable for either console.
+For every imported source file, track (1) pinned upstream revision, (2) original
+license notice, (3) transitive headers/libraries, (4) unsupported host APIs,
+(5) console replacement, (6) executable tests. Do not silently stub essential
+emulation behavior and report success. Fail compilation clearly when a required
+platform adapter is absent. Maintain distinct 3DS and DS/DSi capability claims.
