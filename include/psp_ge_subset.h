@@ -43,4 +43,7 @@ int psp_ge_subset_translate_bus(const PspGuestBus *bus, uint32_t list_address,
    holding the list address and command count. This is not a PSP syscall. */
 int psp_ge_subset_submit_cpu(const PspCpu *cpu, unsigned address_reg,
                              unsigned count_reg, PspGeSubsetResult *out);
+/* HLE callback adapter: context points to caller-owned output storage.
+   Returns zero only after a complete validated graphics submission. */
+int psp_ge_subset_hle_submit(const PspCpu *cpu, void *context);
 #endif
