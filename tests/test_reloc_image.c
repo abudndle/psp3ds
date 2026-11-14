@@ -57,6 +57,19 @@ int main(void){
  elf[416+9]=5;applied=99;
  assert(psp_reloc_image_apply(elf,sizeof elf,&cpu,seg,4,&applied)<0);
  assert(applied==0 && memcmp(before,ram,sizeof ram)==0);
+ /* Fresh, EXCLUSIVELY OWNED guest scratch RAM avoids a second full-size
+  * memory snapshot. The first successful stream may remain modified on
+  * later failure. Its owner must free/discard the entire arena. */
+ image(elf);init(&cpu,ram);memcpy(before,ram,sizeof ram);
+ elf[416+9]=5;applied=99;
+ assert(psp_reloc_image_apply_scratch(elf,sizeof elf,&cpu,seg,4,&applied)<0);
+ assert(applied==0 && r32(ram+8)==0x1033 &&
+        r32(ram+12)==0x55);
+ assert(cpu.pc==BASE);
+ image(elf);init(&cpu,ram);
+ assert(psp_reloc_image_apply_scratch(elf,sizeof elf,&cpu,seg,4,&applied)==0);
+ assert(applied==2 && r32(ram+8)==0x1033 &&
+        r32(ram+12)==0x1055);
  /* Truncated/malformed program header ranges fail before any writes. */
  image(elf);init(&cpu,ram);memcpy(before,ram,sizeof ram);
  ph(elf,3,PSPREL2,507,0,22,22);
