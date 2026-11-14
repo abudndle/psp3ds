@@ -33,13 +33,14 @@ for i in range(shnum):
         for pos in range(off, off + size, 8):
             target_offset, info = struct.unpack_from("<II", b, pos)
             kind = info & 0xff
+            target_segment = (info >> 8) & 0xff
             source_segment = (info >> 16) & 0xff
             relocation_types[kind] += 1
             relocation_source_segments[source_segment] += 1
-            if source_segment >= len(segments):
-                invalid.append(f"relocation section {i}: invalid source segment {source_segment}")
+            if target_segment >= len(segments) or source_segment >= len(segments):
+                invalid.append(f"relocation section {i}: invalid segment selector {target_segment}/{source_segment}")
                 break
-            if target_offset + 4 > segments[source_segment]["memory_size"]:
+            if target_offset + 4 > segments[target_segment]["memory_size"]:
                 invalid.append(f"relocation section {i}: out-of-bounds relocation target")
                 break
 entry = u32(24)
