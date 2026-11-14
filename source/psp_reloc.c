@@ -18,7 +18,7 @@ static int duplicate(const Write *writes,size_t used,size_t offset) {
 int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
                     const PspRelocSegment *segments,size_t n) {
  if (!cpu || !cpu->ram || (!records && record_len) || !segments || n==0 || n>256 ||
-     record_len%8 || record_len/8>65536) return -1;
+     record_len%8 || record_len/8>131072) return -1;
  size_t count=record_len/8;
  if(count && (count>SIZE_MAX/sizeof(Write) || count>SIZE_MAX/sizeof(PendingHi)))return -1;
  Write *writes=count?(Write *)calloc(count,sizeof(Write)):NULL;
