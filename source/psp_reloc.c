@@ -61,8 +61,15 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
    int memory_op = opcode==32 || opcode==35 || opcode==36 ||
                    opcode==40 || opcode==43 || opcode==49 ||
                    opcode==57;
-   if (opcode!=9 && !(opcode==13 && !hi_count) &&
-       !(memory_op && hi_count)) goto cleanup;
+   if (opcode!=9 && !(opcode==13 && !hi_count) && !memory_op)
+       goto cleanup;
+   /* Without a HI16 partner, memory offsets have only a signed 16-bit
+    * field. Reject relocations whose adjusted offset cannot be encoded. */
+   if (memory_op && !hi_count) {
+       int64_t adjusted=(int64_t)(int16_t)(old&0xffffu) +
+                        (int64_t)(int32_t)delta;
+       if (adjusted < -32768 || adjusted > 32767) goto cleanup;
+   }
    int32_t low=(int32_t)(int16_t)(old&0xffffu);
    for(size_t j=0;j<hi_count;j++) {
     if(pending[j].addr_base!=addr_base || used>=count)goto cleanup;
