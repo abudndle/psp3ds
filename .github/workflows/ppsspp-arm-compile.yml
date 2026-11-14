@@ -49,6 +49,20 @@ jobs:
             exit 1
           fi
           test "$(find build/ppsspp-arm -name '*.o' | wc -l)" -eq 3
+      - name: Combine real PPSSPP ARM objects into relocatable link unit
+        shell: bash
+        run: |
+          set -eu
+          "$DEVKITARM/bin/arm-none-eabi-g++" -nostdlib -Wl,-r \
+            -o build/ppsspp-arm/ppsspp-interpreter-relocatable.o \
+            build/ppsspp-arm/Interpreter.o \
+            build/ppsspp-arm/InterpreterDispatch.o \
+            build/ppsspp-arm/MIPSCodeUtils.o
+          test -s build/ppsspp-arm/ppsspp-interpreter-relocatable.o
+          "$DEVKITARM/bin/arm-none-eabi-nm" -u -C \
+            build/ppsspp-arm/ppsspp-interpreter-relocatable.o \
+            > build/ppsspp-arm/relocatable-unresolved.txt
+          # -r intentionally permits undefined symbols. NOT an executable link.
       - name: Inventory ARM interpreter link dependencies
         shell: bash
         run: |
