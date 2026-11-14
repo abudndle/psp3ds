@@ -48,7 +48,13 @@ int main(void){
  reset(mem,&cpu,s);wr(mem+8,0x24081234);wr(mem+12,0x25087ff0);
  rec(recs,8,0,1,5);rec(recs+8,12,0,1,6);memcpy(before,mem,sizeof mem);
  assert(psp_reloc_apply(&cpu,recs,16,s,2)<0 && memcmp(mem,before,sizeof mem)==0);
+ /* PSP PRX load/store instructions also use sign-extended LO16.
+  * They must be relocated with the same carry rules as ADDIU. */
  reset(mem,&cpu,s);wr(mem+8,0x3c081234);wr(mem+12,0x8d087ff0);
+ assert(psp_reloc_apply(&cpu,recs,16,s,2)==0);
+ assert(rd(mem+8)==0x3c081235 && rd(mem+12)==0x8d088ff0);
+ /* Truly unsupported LO16 opcodes still reject atomically. */
+ reset(mem,&cpu,s);wr(mem+8,0x3c081234);wr(mem+12,0x00000000);
  memcpy(before,mem,sizeof mem);
  assert(psp_reloc_apply(&cpu,recs,16,s,2)<0 && memcmp(mem,before,sizeof mem)==0);
  /* Invalid segment bounds reject the whole batch before applying changes. */
