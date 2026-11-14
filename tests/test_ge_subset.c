@@ -280,7 +280,7 @@ static void guest_display_list_from_ram(void) {
 }
 
 static void guest_multi_sprite_list(void) {
- uint8_t ram[192] = {0};
+ uint8_t ram[256] = {0};
  const uint32_t base = 0x08000000u;
  /* Three 8-byte vertex pairs, directly stored in PSP guest memory. */
  const uint16_t boxes[3][5] = {
