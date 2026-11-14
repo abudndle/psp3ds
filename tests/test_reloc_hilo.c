@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #define BASE 0x08800000u
 static void wr(uint8_t *p,uint32_t v){for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(v>>(i*8));}
@@ -78,5 +79,15 @@ int main(void){
  rec(recs,8,0,1,5);rec(recs+8,12,0,1,6);rec(recs+16,127,0,1,2);
  memcpy(before,mem,sizeof mem);
  assert(psp_reloc_apply(&cpu,recs,24,s,2)<0 && memcmp(mem,before,sizeof mem)==0);
- puts("PASS: HI16/LO16 carry, signed addends, multi-HI pairing, atomicity");return 0;
+ /* Jetpack's largest relocation section exceeds the former 65536 cap.
+  * R_MIPS_NONE records exercise the parser without changing memory. */
+ {
+  const size_t count=77754u;
+  uint8_t *many=(uint8_t *)calloc(count,8u);
+  assert(many);
+  reset(mem,&cpu,s);
+  assert(psp_reloc_apply(&cpu,many,count*8u,s,2)==0);
+  free(many);
+ }
+ puts("PASS: HI16/LO16 carry, signed addends, multi-HI pairing, atomicity, large relocation section");return 0;
 }
