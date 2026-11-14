@@ -61,7 +61,7 @@ static void known_import(void){
   w32(cpu.ram,0x27bdffe0u);    /* addiu $sp,$sp,-32 */
   w32(cpu.ram+4u,0xafbf001cu); /* sw $ra,28($sp) */
   w32(cpu.ram+8u,0x25080001u);/* addiu $t0,$t0,1 */
-  w32(cpu.ram+12u,0x0c200008u);/* jal base+32 */
+  w32(cpu.ram+12u,0x0e200008u);/* jal base+32 */
   w32(cpu.ram+16u,0u);         /* delay-slot NOP */
   w32(cpu.ram+32u,0x03e00008u);/* jr $ra import stub placeholder */
   w32(cpu.ram+512u,0xdeadbeefu);
