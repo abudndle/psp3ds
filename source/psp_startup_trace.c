@@ -152,6 +152,7 @@ int psp_startup_trace_run(PspCpu *cpu,
                           PspStartupTraceReport *out){
  if(out)memset(out,0,sizeof(*out));
  if(!cpu||!out||!cpu->ram||!config||
+    (config->hle && config->hle->count>PSP_HLE_MAX_BINDINGS) ||
     !config->instruction_cap||
     config->instruction_cap>PSP_STARTUP_TRACE_MAX_STEPS||
     !config->executable_count ||
@@ -192,6 +193,7 @@ int psp_startup_trace_run(PspCpu *cpu,
   out->interpreter_status=status;
   if(status==0 || status==1){
    out->executed++;
+   if(status==1)out->handled_hle_traps++;
    /* A linked import was successfully handled; do not leave its
     * identity in a subsequent unrelated budget/fault checkpoint. */
    if(imported){
