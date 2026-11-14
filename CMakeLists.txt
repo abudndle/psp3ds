@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(psp3ds_host C)
 set(CMAKE_C_STANDARD 11)
-add_library(psp_core STATIC source/psp_core.c source/psp_loader.c source/psp_hle.c source/psp_imports.c source/psp_nids.c source/psp_prx.c source/psp_prx_inventory.c source/psp_module.c source/psp_reloc.c source/psp_reloc2.c source/psp_reloc_image.c source/psp_perf.c source/psp_iso.c source/psp_cso.c source/psp_disc.c source/psp_paths.c source/psp_catalog.c source/psp_demand.c source/psp_threads.c source/psp_thread_cpu.c source/psp_umd.c source/psp_io.c source/psp_boot.c source/psp_boot_auto.c source/psp_slot2_probe.c source/psp_benchmark.c source/psp_guest_window.c source/psp_guest_bus.c source/psp_rom_pager.c source/psp_rom_file.c source/psp_platform_budget.c source/psp_ds_memory.c source/psp_memory_guard.c source/psp_play_cutbacks.c source/psp_guarded_prx.c source/psp_startup_trace.c source/psp_3ds_memory.c source/psp_3ds_storage.c source/psp_prx_image.c source/psp_runtime_tuning.c source/psp_runtime_guest.c source/psp_lazy_backends.c source/psp_on_demand_guest.c source/psp_video_layout.c source/psp_nintendo_input.c source/psp_native_texture.c source/psp_ge_triangles.c source/psp_features.c source/psp_scene.c source/psp_scene_batch.c source/psp_ge_subset.c)
+add_library(psp_core STATIC source/psp_core.c source/psp_loader.c source/psp_hle.c source/psp_imports.c source/psp_nids.c source/psp_prx.c source/psp_prx_inventory.c source/psp_module.c source/psp_reloc.c source/psp_reloc2.c source/psp_reloc_image.c source/psp_perf.c source/psp_iso.c source/psp_cso.c source/psp_disc.c source/psp_paths.c source/psp_catalog.c source/psp_demand.c source/psp_threads.c source/psp_thread_cpu.c source/psp_umd.c source/psp_io.c source/psp_boot.c source/psp_boot_auto.c source/psp_slot2_probe.c source/psp_benchmark.c source/psp_guest_window.c source/psp_guest_bus.c source/psp_rom_pager.c source/psp_rom_file.c source/psp_platform_budget.c source/psp_stage_metrics.c source/psp_ds_memory.c source/psp_memory_guard.c source/psp_play_cutbacks.c source/psp_guarded_prx.c source/psp_startup_trace.c source/psp_3ds_memory.c source/psp_3ds_storage.c source/psp_prx_image.c source/psp_runtime_tuning.c source/psp_runtime_guest.c source/psp_lazy_backends.c source/psp_on_demand_guest.c source/psp_video_layout.c source/psp_nintendo_input.c source/psp_native_texture.c source/psp_ge_triangles.c source/psp_features.c source/psp_scene.c source/psp_scene_batch.c source/psp_ge_subset.c)
 target_include_directories(psp_core PUBLIC include)
 find_package(ZLIB REQUIRED)
 target_link_libraries(psp_core PUBLIC ZLIB::ZLIB)
@@ -318,3 +318,9 @@ add_test(NAME startup_trace_sdk_linked COMMAND test_startup_trace_sdk_linked)
 add_executable(test_prx_selective_link tests/test_prx_selective_link.c)
 target_link_libraries(test_prx_selective_link PRIVATE psp_core)
 add_test(NAME prx_selective_link COMMAND test_prx_selective_link)
+
+# Separate CPU/GPU submission/memory/storage/audio profiling; an unmeasured
+# stage is explicitly unavailable, never reported as zero time or speed.
+add_executable(test_stage_metrics tests/test_stage_metrics.c)
+target_link_libraries(test_stage_metrics PRIVATE psp_core)
+add_test(NAME stage_metrics COMMAND test_stage_metrics)
