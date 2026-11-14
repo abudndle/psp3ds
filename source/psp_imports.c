@@ -9,7 +9,8 @@ static int valid_service(PspHleService s) {
  return s==PSP_HLE_SYSTEM_TIME_LOW || s==PSP_HLE_SYSTEM_TIME_WIDE ||
         s==PSP_HLE_SYSTEM_TIME ||
         s==PSP_HLE_IO_OPEN || s==PSP_HLE_IO_READ ||
-        s==PSP_HLE_IO_LSEEK32 || s==PSP_HLE_IO_CLOSE;
+        s==PSP_HLE_IO_LSEEK32 || s==PSP_HLE_IO_CLOSE ||
+        s==PSP_HLE_SET_COMPILED_SDK_VERSION;
 }
 int psp_imports_link(PspCpu *cpu, PspHle *hle, const PspImport *imports,
                      size_t count, const PspExport *exports, size_t export_count) {
