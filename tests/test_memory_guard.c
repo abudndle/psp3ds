@@ -101,6 +101,20 @@ static void over_budget_failures(void){
  assert(psp_memory_guard_policy_ds(&plan,&policy)==0);
  PspMemoryGuard guard={0};
  ControlledAllocator a={0};
+ /* Even a direct public API caller cannot override the measured RAM
+  * budget or 3DS/DS per-class console ceilings. */
+ PspMemoryGuardPolicy forged=policy;
+ forged.total_limit=policy.observed_available_bytes;
+ assert(psp_memory_guard_init(&guard,&forged,
+                              allocate_test,free_test,&a)==-1);
+ forged=policy;
+ forged.class_limit[PSP_MEMORY_GUEST]=1024u*K;
+ assert(psp_memory_guard_init(&guard,&forged,
+                              allocate_test,free_test,&a)==-1);
+ forged=policy;
+ forged.observed_available_bytes=policy.total_limit;
+ assert(psp_memory_guard_init(&guard,&forged,
+                              allocate_test,free_test,&a)==-1);
  assert(psp_memory_guard_init(&guard,&policy,allocate_test,free_test,&a)==0);
  assert(psp_memory_guard_init(&guard,&policy,allocate_test,free_test,&a)==-1);
  void *guest=(void*)UINTPTR_MAX;
