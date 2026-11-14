@@ -10,6 +10,7 @@
 #include "psp_platform_budget.h"
 #include "psp_ds_memory.h"
 #include "psp_runtime_tuning.h"
+#include "psp_play_cutbacks.h"
 #include "psp_video_layout.h"
 #include "psp_native_texture.h"
 #include "psp_nintendo_input.h"
@@ -243,6 +244,8 @@ int main(void){
  printf("START: exit\n");
  uint32_t frame=0;
  int triangle_mode=0;
+ PspPlayCutbacks play;
+ const int cutbacks_ready=psp_play_cutbacks_init(&play,target)==0;
  while(1){
   scanKeys();
   const uint32_t pressed=keysDown();
@@ -258,9 +261,30 @@ int main(void){
    if(!triangle_mode)triangle_mode=psp_nds_triangles_init()==0;
    else {psp_nds_triangles_shutdown();triangle_mode=0;}
   }
+  /* Profile the native display loop using the BlocksDS paired timers.
+   * Full 32-bit cascade avoids overflows of a single 16-bit timer.
+   * Every iteration still handles controller input and VBlank; only
+   * optional synthetic scene presentations are reduced under pressure. */
+  cpuStartTiming(0);
   swiWaitForVBlank();
-  if(triangle_mode)psp_nds_triangles_update();
-  else if(scene_ok)psp_nds_scene_update(frame++);
+  const uint32_t visual_frame=frame++;
+  if(!cutbacks_ready ||
+     psp_play_cutbacks_should_render(&play,visual_frame)){
+   if(triangle_mode)psp_nds_triangles_update();
+   else if(scene_ok)psp_nds_scene_update(visual_frame);
+  }
+  const uint32_t elapsed_us=timerTicks2usec(cpuEndTiming());
+  if(cutbacks_ready){
+   /* No continuous free-heap API on retail DS. Never invent an available
+    * RAM count; only native render-loop timing is used for live feedback.
+    * Allocations are independently bounded by the memory guard. */
+   const int changed=psp_play_cutbacks_observe(&play,
+                                        elapsed_us,0u,0u,NULL);
+   if(changed>0){
+    (void)psp_play_cutbacks_apply_tuning(&play,&tuning);
+    printf("Visual cutbacks: %s\n",psp_play_quality_name(play.quality));
+   }
+  }
  }
  psp_nds_triangles_shutdown();
  return 0;
