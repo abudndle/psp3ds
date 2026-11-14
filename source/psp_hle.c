@@ -13,7 +13,8 @@ int psp_hle_bind(PspHle *hle,uint32_t id,PspHleService service) {
       service!=PSP_HLE_IO_OPEN && service!=PSP_HLE_IO_READ &&
       service!=PSP_HLE_IO_LSEEK32 && service!=PSP_HLE_IO_CLOSE &&
       service!=PSP_HLE_THREAD_CREATE && service!=PSP_HLE_THREAD_WAIT &&
-      service!=PSP_HLE_THREAD_SIGNAL && service!=PSP_HLE_THREAD_EXIT)) return -1;
+      service!=PSP_HLE_THREAD_SIGNAL && service!=PSP_HLE_THREAD_EXIT &&
+      service!=PSP_HLE_SET_COMPILED_SDK_VERSION)) return -1;
  for(size_t i=0;i<hle->count;i++) if(hle->entries[i].syscall_id==id) return -1;
  hle->entries[hle->count].syscall_id=id;
  hle->entries[hle->count].service=service;
@@ -58,6 +59,13 @@ int psp_hle_step(PspHle *hle,PspCpu *cpu) {
  uint64_t us=hle->uptime_us;
  uint32_t v0=0,v1=cpu->gpr[3];
  switch(binding->service){
+ case PSP_HLE_SET_COMPILED_SDK_VERSION:
+   /* PSP SDK setter stores module's caller-reported compile version.
+    * PSP SDK documents 0 on success. This does not initialize
+    * firmware services or grant any extra memory to the title. */
+   hle->compiled_sdk_version=cpu->gpr[4];
+   v0=0u;
+   break;
  case PSP_HLE_SYSTEM_TIME_LOW:v0=(uint32_t)us;break;
  case PSP_HLE_SYSTEM_TIME_WIDE:v0=(uint32_t)us;v1=(uint32_t)(us>>32);break;
  case PSP_HLE_SYSTEM_TIME:{
