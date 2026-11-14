@@ -82,6 +82,14 @@ int main(int argc,char **argv){
    printf("PSP module: %s\n",module.name);
    printf("Import libraries: %u\n",(unsigned)inventory.library_count);
    printf("Imported PSP functions: %u\n",(unsigned)inventory.function_count);
+   PspPrxHleCoverage coverage;
+   if(psp_prx_import_coverage(&cpu,&inventory,&coverage)!=0){
+    fprintf(stderr,"PSP HLE coverage validation: FAILED\n");
+    result=PSP_PRX_IMAGE_FORMAT;
+   }else{
+    printf("Known PSP HLE functions: %u\n",(unsigned)coverage.implemented);
+    printf("Unimplemented PSP functions: %u\n",(unsigned)coverage.unsupported);
+   }
    for(unsigned i=0;i<inventory.library_count;i++)
     printf("  %s: %u functions\n",inventory.libraries[i].name,
            (unsigned)inventory.libraries[i].function_count);
