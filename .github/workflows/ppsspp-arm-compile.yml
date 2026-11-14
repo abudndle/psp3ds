@@ -40,7 +40,7 @@ jobs:
             name="$(basename "$unit" .cpp)"
             echo "Compiling upstream $unit with ARM C++ compiler"
             (
-              if "$DEVKITARM/bin/arm-none-eabi-g++" -std=c++17 -O2 -marm -mcpu=mpcore \
+              if "$DEVKITARM/bin/arm-none-eabi-g++" -std=c++17 -O2 -marm -mcpu=mpcore -mfpu=vfp -mfloat-abi=softfp \
                   -Ivendor/ppsspp -c "vendor/ppsspp/$unit" \
                   -o "build/ppsspp-arm/$name.o" \
                   > "build/ppsspp-arm/$name.log" 2>&1; then
