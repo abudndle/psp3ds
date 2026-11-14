@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define DS_TRACE_BASE UINT32_C(0x08800000)
-static uint8_t code[4096];
+static uint8_t code[8192];
 static uint8_t elf[128];
 static void word(uint8_t *p,uint32_t value){
  for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(value>>(i*8u));
