@@ -324,6 +324,20 @@ static void guest_multi_sprite_list(void) {
  assert(psp_ge_subset_translate_bus(&bus,base+0x80u,8,&via_bus)
         == PSP_GE_SUBSET_OK);
  assert(memcmp(&output,&via_bus,sizeof output)==0);
+ /* Drive the three-sprite guest list through the real MIPS syscall trap. */
+ PspCpu cpu;
+ psp_cpu_init(&cpu,ram,sizeof ram,base,base+0x10u);
+ PspHle hle;
+ psp_hle_init(&hle);
+ assert(psp_hle_bind(&hle,42,PSP_HLE_GE_SUBMIT)==0);
+ PspGeSubsetResult via_hle;
+ psp_hle_attach_ge(&hle,psp_ge_subset_hle_submit,&via_hle);
+ cpu.gpr[4]=base+0x80u;
+ cpu.gpr[5]=8u;
+ assert(psp_guest_bus_write32(&bus,base+0x10u,(42u<<6)|12u)==0);
+ assert(psp_hle_step(&hle,&cpu)==1);
+ assert(cpu.gpr[2]==0 && cpu.fault==0);
+ assert(memcmp(&output,&via_hle,sizeof output)==0);
  /* Third primitive is malformed; the entire scene must be discarded. */
  ram[0x20u+2u*16u+8u+2u]=40u;
  assert(psp_ge_subset_translate_guest(ram,sizeof ram,base,base+0x80u,8,&output)
