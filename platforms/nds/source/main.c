@@ -8,6 +8,7 @@
 #include "psp_guest_bus.h"
 #include "psp_platform_budget.h"
 #include "psp_video_layout.h"
+#include "psp_native_texture.h"
 #include "psp_nintendo_input.h"
 #include "psp_features.h"
 #include "psp_scene.h"
@@ -145,6 +146,19 @@ int main(void){
  if(psp_platform_budget_choose(target,&policy)==0)
   printf("Policy: %s; hot %luK\n",policy.name,
          (unsigned long)(policy.hot_ram_budget/1024u));
+ /* Exercise portable GE texture conversion with a tiny original
+  * fixture; real PSP game textures are not rendered by this diagnostic. */
+ {
+  const PspNativeTexture tex={2,1,2,PSP_TEXTURE_5650,0};
+  const PspNativeTextureRegion rect={0,0,2,1};
+  const uint8_t bytes[]={0x1f,0,0xe0,0x07};
+  uint8_t rgba[8]={0};
+  const int decoded=psp_native_texture_decode_region(
+    &tex,bytes,sizeof bytes,&rect,rgba,8,sizeof rgba)==PSP_TEXTURE_OK &&
+    rgba[0]==255 && rgba[1]==0 && rgba[2]==0 && rgba[3]==255 &&
+    rgba[4]==0 && rgba[5]==255 && rgba[6]==0 && rgba[7]==255;
+  printf("PSP texture decode: %s\n",decoded?"PASS":"FAILED");
+ }
  PspFeatureManifest features;
  if(psp_features_manifest(target,&features)==0){
   printf("Features: %u same IDs\n",(unsigned)PSP_FEATURE_COUNT);
