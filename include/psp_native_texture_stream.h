@@ -11,8 +11,8 @@ extern "C" {
  * immutable stream, without loading the complete PSP texture into RAM.
  * Suitable for a user-owned SD file, NitroFS stream or cache.
  *
- * Scratch <= 2,560 bytes on the stack (linear row 2,048 bytes +
- * four 128-byte PSP swizzle blocks). The caller owns the decoded
+ * Scratch stays under 3 KiB on the stack (linear row 2,048 bytes +
+ * four 128-byte PSP swizzle blocks plus tiny LRU metadata). The caller owns the decoded
  * rectangle, which can be as small as a DS 8x8 tile (256 RGBA bytes).
  * Callback work is on demand. No GPU allocation or firmware emulation.
  */
