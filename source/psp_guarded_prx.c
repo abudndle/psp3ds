@@ -8,9 +8,13 @@ static uint32_t r32(const uint8_t *p){
  return (uint32_t)p[0]|(uint32_t)p[1]<<8|
         (uint32_t)p[2]<<16|(uint32_t)p[3]<<24;
 }
-int psp_guarded_prx_load(PspMemoryGuard *guard,const uint8_t *elf,
-                         size_t len,uint32_t base,PspGuardedPrx *out){
- if(!guard||!elf||!out||out->guest_ram||len<52u||(base&3u))
+int psp_guarded_prx_load_with_reserve(PspMemoryGuard *guard,
+                                      const uint8_t *elf,size_t len,
+                                      uint32_t base,
+                                      uint32_t extra_guest_bytes,
+                                      PspGuardedPrx *out){
+ if(!guard||!elf||!out||out->guest_ram||len<52u||(base&3u) ||
+    extra_guest_bytes>2u*1024u*1024u)
   return -1;
  memset(out,0,sizeof(*out));
  if(memcmp(elf,"\177ELF",4)!=0||elf[4]!=1||elf[5]!=1||elf[6]!=1||
@@ -33,7 +37,8 @@ int psp_guarded_prx_load(PspMemoryGuard *guard,const uint8_t *elf,
   found++;
  }
  if(!found||!required)return -2;
- const uint64_t rounded=(required+4095u)&~UINT64_C(4095);
+ const uint64_t rounded=(required+(uint64_t)extra_guest_bytes+4095u)&
+                        ~UINT64_C(4095);
  if(rounded>PSP_GUARDED_PRX_IMAGE_LIMIT || (uint64_t)base+rounded>UINT32_MAX)
   return -2;
  void *guest=NULL;
@@ -53,6 +58,12 @@ int psp_guarded_prx_load(PspMemoryGuard *guard,const uint8_t *elf,
  out->guest_ram=(uint8_t*)guest;
  out->allocated_bytes=(uint32_t)rounded;
  return 0;
+}
+int psp_guarded_prx_load(PspMemoryGuard *guard,const uint8_t *elf,
+                         size_t elf_size,uint32_t guest_base,
+                         PspGuardedPrx *out){
+ return psp_guarded_prx_load_with_reserve(guard,elf,elf_size,
+                                          guest_base,0u,out);
 }
 int psp_guarded_prx_unload(PspMemoryGuard *guard,PspGuardedPrx *image){
  if(!guard||!image||!image->guest_ram)return -1;
