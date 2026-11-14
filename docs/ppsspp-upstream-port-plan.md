@@ -50,7 +50,7 @@ bash scripts/fetch-ppsspp-upstream.sh
 
 The script checks out the **actual** PPSSPP repository at
 `1aebad2c651ff9d0684ee335e43aceff8fc7e3ec` and sparsely populates
-`Core/MIPS`, `Core/HLE`, `GPU`, `Core/FileSystems`, and `Core/Loaders`.
+`Core/MIPS`, `Core/HLE`, `GPU`, `Core/FileSystems`, and `Core/FileLoaders`.
 The default destination `vendor/ppsspp` is Git-ignored. It refuses to overwrite
 an existing checkout. Upstream source is not yet linked to PSP3DS builds;
 fetching source is a prerequisite, **not** evidence of a working PPSSPP port.
