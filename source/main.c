@@ -15,6 +15,7 @@
 int psp_3ds_scene_init(void);
 int psp_3ds_scene_draw(uint32_t frame);
 int psp_3ds_triangle_draw(uint32_t frame,PspTarget model);
+int psp_3ds_guest_runtime_demo(PspTarget model);
 void psp_3ds_scene_fini(void);
 static const char *type_name(PspFileType t) {
  switch(t) {case PSP_FILE_PBP:return "PBP";case PSP_FILE_ELF:return "MIPS ELF";case PSP_FILE_ISO:return "ISO";case PSP_FILE_CSO:return "CSO";default:return "Unknown";}
@@ -90,6 +91,11 @@ int main(void) {
  const int tune_ok=psp_runtime_tuning_choose(target,&tuning)==0;
  const bool high_clock=tune_ok && tuning.request_new3ds_speedup;
  if(high_clock)osSetSpeedupEnable(true);
+ /* Execute an original synthetic MIPS syscall and an HLE-aware guest
+  * instruction slice using the actual per-model scheduler. */
+ const int guest_demo_ok=psp_3ds_guest_runtime_demo(target)==0;
+ printf("Native guest scheduler: %s\n",guest_demo_ok?"PASS":"FAILED");
+
  if(tune_ok){
   PspBenchResult bench;
   TickCounter ticks={0};
