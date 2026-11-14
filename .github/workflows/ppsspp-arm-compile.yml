@@ -42,7 +42,9 @@ jobs:
             fi
           done
           cat build/ppsspp-arm/status.tsv
-          # -fpermissive temporarily tolerates upstream VFPU u32*/uint32_t* mismatch\n          # on this toolchain. This is NOT a verified ABI or runtime correctness fix.\n          # This is a diagnostic cross-compile, NOT a PSP runtime link or game boot.
+          # -fpermissive temporarily tolerates upstream VFPU u32*/uint32_t* mismatch
+          # on this toolchain. This is NOT a verified ABI or runtime correctness fix.
+          # This is a diagnostic cross-compile, NOT a PSP runtime link or game boot.
           # Preserve all compiler failures as artifacts for the integration batch.
           test "$(wc -l < build/ppsspp-arm/status.tsv)" -eq 5
           # A blocked compiler unit is a failed integration gate, not a green build.
@@ -50,7 +52,7 @@ jobs:
             echo 'FAIL: upstream PPSSPP ARM compile blockers remain' >&2
             exit 1
           fi
-          test "$(find build/ppsspp-arm -name '*.o' | wc -l)" -eq 3
+          test "$(find build/ppsspp-arm -name '*.o' | wc -l)" -eq 5
       - name: Combine real PPSSPP ARM objects into relocatable link unit
         shell: bash
         run: |
