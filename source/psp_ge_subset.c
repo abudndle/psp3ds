@@ -116,3 +116,26 @@ int psp_ge_subset_translate_memory(const uint32_t *words, size_t count,
  }
  return translate(words, count, NULL, 0, memory, size, memory_base, out);
 }
+
+/* A guest display list is little-endian data, not a host uint32_t array.
+   Decode it only after validating the complete command span. */
+int psp_ge_subset_translate_guest(const uint8_t *memory, size_t size,
+                                  uint32_t memory_base, uint32_t list_address,
+                                  size_t word_count, PspGeSubsetResult *out) {
+ if (out) memset(out, 0, sizeof *out);
+ if (!out || !memory || !size || !word_count ||
+     word_count > PSP_GE_SUBSET_MAX_COMMANDS ||
+     (list_address & 3u) || list_address < memory_base)
+  return PSP_GE_SUBSET_BAD_ARGUMENT;
+ size_t offset = (size_t)(list_address - memory_base);
+ if (offset > size || word_count > (size - offset) / 4u)
+  return PSP_GE_SUBSET_MALFORMED;
+ uint32_t words[PSP_GE_SUBSET_MAX_COMMANDS];
+ for (size_t i = 0; i < word_count; ++i) {
+  const uint8_t *p = memory + offset + i * 4u;
+  words[i] = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+             ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+ }
+ return psp_ge_subset_translate_memory(words, word_count, memory, size,
+                                       memory_base, out);
+}
