@@ -5,6 +5,7 @@
 #include "psp_catalog.h"
 #include "psp_platform_budget.h"
 #include "psp_video_layout.h"
+#include "psp_nintendo_input.h"
 #include "psp_features.h"
 #include "psp_scene.h"
 int psp_3ds_scene_init(void);
@@ -34,6 +35,12 @@ static void psp3ds_draw_boot_marker(void) {
   }
  }
 }
+_Static_assert(KEY_A == PSP_NINTENDO_KEY_A &&
+               KEY_B == PSP_NINTENDO_KEY_B &&
+               KEY_DUP == PSP_NINTENDO_KEY_UP &&
+               KEY_DRIGHT == PSP_NINTENDO_KEY_RIGHT &&
+               KEY_X == PSP_NINTENDO_KEY_X,
+               "libctru Nintendo key positions have changed");
 int main(void) {
  osSetSpeedupEnable(true); /* Request New 3DS high-speed mode; old models unaffected. */
  gfxInitDefault();consoleInit(GFX_TOP,NULL);
@@ -107,6 +114,15 @@ int main(void) {
  while(aptMainLoop()){
   hidScanInput();
   u32 pressed=hidKeysDown();
+  circlePosition circle={0};
+  hidCircleRead(&circle);
+  PspNintendoCtrl psp_pad;
+  if(psp_nintendo_ctrl_sample(target,hidKeysHeld(),circle.dx,circle.dy,
+                             &psp_pad)==0 && (pressed&KEY_SELECT)) {
+   printf("PSP pad: %04lx X:%u Y:%u\n",
+          (unsigned long)psp_pad.buttons,(unsigned)psp_pad.lx,
+          (unsigned)psp_pad.ly);
+  }
   if(pressed&KEY_START)break;
   if(pressed&KEY_A){
    if(!gpu_ready)gpu_ready=psp_3ds_scene_init()==0;
