@@ -8,7 +8,14 @@ on:
       - 'scripts/capture_melonds_ci.sh'
       - '.github/workflows/melonds-nds-smoke.yml'
   push:
-    branches: [main]
+    branches: [main, port/ppsspp-interpreter-probe]
+    paths:
+      - 'platforms/nds/**'
+      - 'source/**'
+      - 'include/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - '.github/workflows/melonds-nds-smoke.yml'
   workflow_dispatch:
 permissions:
   contents: read
