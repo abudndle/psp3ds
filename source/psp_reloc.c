@@ -11,10 +11,6 @@ static void write32(uint8_t *p,uint32_t v) {
 }
 typedef struct { size_t offset; uint32_t value; } Write;
 typedef struct { size_t offset; unsigned addr_base; uint32_t old; } PendingHi;
-static int duplicate(const Write *writes,size_t used,size_t offset) {
- for(size_t i=0;i<used;i++)if(writes[i].offset==offset)return 1;
- return 0;
-}
 int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
                     const PspRelocSegment *segments,size_t n) {
  if (!cpu || !cpu->ram || (!records && record_len) || !segments || n==0 || n>256 ||
@@ -23,7 +19,9 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
  if(count && (count>SIZE_MAX/sizeof(Write) || count>SIZE_MAX/sizeof(PendingHi)))return -1;
  Write *writes=count?(Write *)calloc(count,sizeof(Write)):NULL;
  PendingHi *pending=count?(PendingHi *)calloc(count,sizeof(PendingHi)):NULL;
- if(count && (!writes || !pending)){free(writes);free(pending);return -1;}
+ size_t bitmap_bytes=cpu->ram_size/32u+1u;
+ uint8_t *seen=(uint8_t *)calloc(bitmap_bytes,1);
+ if((count && (!writes || !pending)) || !seen){free(writes);free(pending);free(seen);return -1;}
  int status=-2;size_t used=0,hi_count=0;
  for(size_t i=0;i<count;i++) {
   uint32_t rel_off=read32(records+i*8), info=read32(records+i*8+4);
@@ -38,8 +36,10 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
   uint64_t off=guest_addr-cpu->ram_base;
   if(off>cpu->ram_size || cpu->ram_size-(size_t)off<4)goto cleanup;
   /* No duplicate targets: staged or waiting for a LO16. */
-  if(duplicate(writes,used,(size_t)off))goto cleanup;
-  for(size_t j=0;j<hi_count;j++)if(pending[j].offset==(size_t)off)goto cleanup;
+  size_t word=(size_t)off/4u;
+  uint8_t bit=(uint8_t)(1u<<(word&7u));
+  if(seen[word>>3]&bit)goto cleanup;
+  seen[word>>3]|=bit;
   uint32_t old=read32(cpu->ram+(size_t)off);
   uint32_t delta=source->mapped_vaddr-source->original_vaddr;
   uint32_t value;
@@ -97,6 +97,6 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
  for(size_t i=0;i<used;i++)write32(cpu->ram+writes[i].offset,writes[i].value);
  status=0;
 cleanup:
- free(writes);free(pending);
+ free(writes);free(pending);free(seen);
  return status;
 }
