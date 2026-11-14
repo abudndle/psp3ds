@@ -92,13 +92,16 @@ static void write_vertex16(uint8_t *p,uint16_t c,uint16_t x,uint16_t y,uint16_t 
   p[k*2+1]=(uint8_t)(v[k]>>8);
  }
 }
-int psp_3ds_triangle_draw(uint32_t frame,PspTarget target_model){
+int psp_3ds_triangle_draw(uint32_t frame,PspTarget target_model,
+                           uint16_t requested_triangle_limit){
  if(!initialized||!target)return -1;
  PspRuntimeTuning tuning;
  if(psp_runtime_tuning_choose(target_model,&tuning)!=0 ||
     (target_model!=PSP_TARGET_OLD3DS && target_model!=PSP_TARGET_NEW3DS))
   return -1;
- const unsigned count=tuning.triangle_demo_budget;
+ if(requested_triangle_limit==0u)return -1;
+ const unsigned count=requested_triangle_limit<tuning.triangle_demo_budget?
+                 requested_triangle_limit:tuning.triangle_demo_budget;
  if(!count || count>PSP_GE_TRIANGLE_MAX_TRIANGLES)return -1;
  static uint8_t guest_vertices[PSP_GE_TRIANGLE_MAX_TRIANGLES*3u*8u];
  const uint32_t words[6]={
