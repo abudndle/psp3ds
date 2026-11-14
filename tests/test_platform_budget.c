@@ -32,6 +32,23 @@ int main(void){
  assert(psp_platform_budget_validate(&bad)==-1);
  bad=all[PSP_TARGET_NEW3DS];bad.frame_buffer_bytes=1;
  assert(psp_platform_budget_validate(&bad)==-1);
+ /* Retail DS/DSlite cannot claim more than 4MiB total internal RAM or
+  * raise internal PSP guest hot cap by inserting a Slot-2 cartridge.
+  * DSi gets 16MiB only in enhanced DSi mode. */
+ bad=all[PSP_TARGET_DS];bad.hot_ram_budget=1024u*1024u;
+ assert(psp_platform_budget_validate(&bad)==-1);
+ bad=all[PSP_TARGET_DS];bad.cache_budget=4u*1024u*1024u;
+ assert(psp_platform_budget_validate(&bad)==-1);
+ bad=all[PSP_TARGET_DS_SLOT2];bad.cold_data_budget=8u*1024u*1024u;
+ assert(psp_platform_budget_validate(&bad)==-1);
+ bad=all[PSP_TARGET_DS_SLOT2];bad.hot_ram_budget=1024u*1024u;
+ assert(psp_platform_budget_validate(&bad)==-1);
+ bad=all[PSP_TARGET_DSI];bad.hot_ram_budget=4u*1024u*1024u;
+ assert(psp_platform_budget_validate(&bad)==-1);
+ bad=all[PSP_TARGET_DSI];bad.cache_budget=16u*1024u*1024u;
+ assert(psp_platform_budget_validate(&bad)==-1);
+ bad=all[PSP_TARGET_DSI];bad.cold_data_budget=4096u;
+ assert(psp_platform_budget_validate(&bad)==-1);
  puts("PASS: per-model RAM/graphics software policy, frame sizes, fail-closed flags");
  return 0;
 }
