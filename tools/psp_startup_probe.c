@@ -17,15 +17,20 @@
 
 int main(int argc,char **argv){
  if(argc<2||argc>4){
-  fprintf(stderr,"Usage: %s decrypted-EBOOT.elf [max-steps=4096] [--link-sdk-version]\n",argv[0]);
+  fprintf(stderr,"Usage: %s decrypted-EBOOT.elf [max-steps=4096] [--link-sdk-version|--link-verified]\n",argv[0]);
   return 2;
  }
  unsigned steps=4096u;
- int link_sdk=0,steps_set=0;
+ int link_sdk=0,link_verified=0,steps_set=0;
  for(int i=2;i<argc;i++){
   if(strcmp(argv[i],"--link-sdk-version")==0){
-   if(link_sdk)return 2;
+   if(link_sdk||link_verified)return 2;
    link_sdk=1;
+   continue;
+  }
+  if(strcmp(argv[i],"--link-verified")==0){
+   if(link_verified||link_sdk)return 2;
+   link_verified=1;
    continue;
   }
   if(steps_set)return 2;
@@ -125,7 +130,20 @@ int main(int argc,char **argv){
   }
   cfg.hle=&hle;
  }
- if(psp_startup_prepare_cpu(&loaded.cpu,image_bytes,
+ if(link_verified){
+  /* Link only NIDs present in the verified HLE table. Every unsupported
+   * firmware import stays unmodified and stops the bounded execution
+   * trace if the game attempts to call it. */
+  PspPrxHleCoverage linked={0};
+  if(psp_prx_link_verified_imports(&loaded.cpu,&hle,&inventory,&linked)!=0){
+   fprintf(stderr,"Partial verified HLE link failed (no game started)\n");
+   goto cleanup;
+  }
+  cfg.hle=&hle;
+  printf("Verified PSP NIDs linked: %u; unsupported: %u\n",
+         (unsigned)linked.implemented,(unsigned)linked.unsupported);
+ }
+  if(psp_startup_prepare_cpu(&loaded.cpu,image_bytes,
                             BOOT_STACK_BYTES,module.gp)!=0){
   fprintf(stderr,"Unable to reserve a diagnostic guest stack\n");
   goto cleanup;
@@ -151,14 +169,16 @@ int main(int argc,char **argv){
         (unsigned long)trace.pc_fingerprint);
  printf("First unsupported opcode class: %u\n",
         (unsigned)trace.major_opcode);
- if(link_sdk)
+ printf("Handled HLE traps: %lu\n",
+        (unsigned long)trace.handled_hle_traps);
+ if(link_sdk || link_verified)
   printf("SDK version recorded by HLE: 0x%08lx\n",
          (unsigned long)hle.compiled_sdk_version);
  if(trace.stop==PSP_STARTUP_UNLINKED_IMPORT){
   printf("Import library: %s\n",trace.import_library);
   printf("Import NID: 0x%08lx\n",(unsigned long)trace.import_nid);
-  printf("Matching implemented NID: %s (STILL NOT LINKED)\n",
-         trace.import_known_hle?"yes":"no");
+  printf("Matching implemented NID: %s\n",
+         trace.import_known_hle?"yes (not linked here)":"no");
  }else if(trace.stop==PSP_STARTUP_SYSCALL){
   printf("Unbound syscall ID: %lu\n",
          (unsigned long)trace.syscall_id);
