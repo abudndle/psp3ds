@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/ppsspp-arm-compile.yml'
       - 'scripts/fetch-ppsspp-upstream.sh'
+      - 'scripts/patch-ppsspp-vfpu-types.py'
 permissions:
   contents: read
 jobs:
@@ -22,6 +23,11 @@ jobs:
           git -C vendor/ppsspp sparse-checkout add ext/libzip Core/Util Core/Debugger
           test -f vendor/ppsspp/ext/libzip/zip.h
           test "$(git -C vendor/ppsspp rev-parse HEAD)" = "1aebad2c651ff9d0684ee335e43aceff8fc7e3ec"
+      - name: Apply narrow VFPU register pointer compatibility patch
+        shell: bash
+        run: |
+          set -eu
+          python3 scripts/patch-ppsspp-vfpu-types.py vendor/ppsspp
       - name: Attempt real ARM interpreter translation-unit compilation
         shell: bash
         run: |
@@ -34,7 +40,7 @@ jobs:
             name="$(basename "$unit" .cpp)"
             echo "Compiling upstream $unit with ARM C++ compiler"
             (
-              if "$DEVKITARM/bin/arm-none-eabi-g++" -std=c++17 -O2 -marm -mcpu=mpcore -fpermissive \
+              if "$DEVKITARM/bin/arm-none-eabi-g++" -std=c++17 -O2 -marm -mcpu=mpcore \
                   -Ivendor/ppsspp -c "vendor/ppsspp/$unit" \
                   -o "build/ppsspp-arm/$name.o" \
                   > "build/ppsspp-arm/$name.log" 2>&1; then
@@ -55,8 +61,6 @@ jobs:
             fi
           done
           cat build/ppsspp-arm/status.tsv
-          # -fpermissive temporarily tolerates upstream VFPU u32*/uint32_t* mismatch
-          # on this toolchain. This is NOT a verified ABI or runtime correctness fix.
           # This is a diagnostic cross-compile, NOT a PSP runtime link or game boot.
           # Preserve all compiler failures as artifacts for the integration batch.
           test "$(wc -l < build/ppsspp-arm/status.tsv)" -eq 6
