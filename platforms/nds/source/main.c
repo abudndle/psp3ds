@@ -11,6 +11,7 @@
 #include "psp_ds_memory.h"
 #include "psp_runtime_tuning.h"
 #include "psp_play_cutbacks.h"
+#include "psp_lazy_backends.h"
 #include "psp_video_layout.h"
 #include "psp_native_texture.h"
 #include "psp_nintendo_input.h"
@@ -18,6 +19,7 @@
 #include "psp_scene.h"
 #include "psp_ge_subset.h"
 #include "psp_ge_triangles.h"
+int psp_nds_lazy_backends_smoke(PspTarget target);
 int psp_nds_scene_init(void);
 void psp_nds_scene_update(uint32_t frame);
 int psp_nds_triangles_init(void);
@@ -170,6 +172,8 @@ int main(void){
  PspTarget target=isDSiMode()?PSP_TARGET_DSI:
                   slot2_verified?PSP_TARGET_DS_SLOT2:PSP_TARGET_DS;
  psp_nds_memory_report(target,verified_slot2_capacity_bytes,slot2_verified);
+ printf("On-demand backends: %s\n",
+        psp_nds_lazy_backends_smoke(target)==0?"PASS (synthetic)":"FAILED");
  PspRuntimeTuning tuning;
  if(psp_runtime_tuning_choose(target,&tuning)==0) {
   printf("Guest slice: %lu, GPU batch cap %u\n",
