@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C vendor/ppsspp rev-parse HEAD)" = "1aebad2c651ff9d0684ee335e43aceff8fc7e3ec"
-          for dir in Core/MIPS Core/HLE GPU Core/FileSystems Core/FileLoaders; do
+          for dir in Common Core/MIPS Core/HLE Core/HW GPU Core/FileSystems Core/FileLoaders; do
             test -d "vendor/ppsspp/$dir"
             test -n "$(find "vendor/ppsspp/$dir" -type f -print -quit)"
           done
