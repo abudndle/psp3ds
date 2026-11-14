@@ -32,3 +32,11 @@ jobs:
         run: python3 scripts/audit-ppsspp-mips.py vendor/ppsspp
       - name: Inventory transitive interpreter headers
         run: python3 scripts/audit-ppsspp-transitive.py vendor/ppsspp
+      - name: Compile upstream MIPS interpreter translation units (syntax only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/MIPSCodeUtils.cpp; do
+            echo "Checking $file"
+            g++ -std=c++17 -fsyntax-only -Ivendor/ppsspp "vendor/ppsspp/$file"
+          done
