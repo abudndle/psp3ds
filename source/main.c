@@ -8,6 +8,7 @@
 #include "psp_3ds_memory.h"
 #include "psp_3ds_storage.h"
 #include "psp_runtime_tuning.h"
+#include "psp_play_cutbacks.h"
 #include "psp_benchmark.h"
 #include "psp_video_layout.h"
 #include "psp_native_texture.h"
@@ -17,7 +18,8 @@
 #include "psp_scene.h"
 int psp_3ds_scene_init(void);
 int psp_3ds_scene_draw(uint32_t frame);
-int psp_3ds_triangle_draw(uint32_t frame,PspTarget model);
+int psp_3ds_triangle_draw(uint32_t frame,PspTarget model,
+                          uint16_t triangle_limit);
 int psp_3ds_guest_runtime_demo(PspTarget model);
 int psp_3ds_native_memory_probe(PspTarget model);
 int psp_3ds_native_sd_probe(void);
@@ -204,6 +206,11 @@ int main(void) {
  int show_scene=0;
  int show_triangles=0;
  int gpu_ready=0;
+ PspPlayCutbacks play;
+ const int cutbacks_ready=psp_play_cutbacks_init(&play,target)==0;
+ TickCounter play_clock={0};
+ osTickCounterStart(&play_clock);
+ double last_play_ms=0.0;
 #ifdef PSP3DS_SCENE_AUTOSTART
  gpu_ready=psp_3ds_scene_init()==0;
  show_scene=gpu_ready;
@@ -230,15 +237,45 @@ int main(void) {
    if(!gpu_ready)gpu_ready=psp_3ds_scene_init()==0;
    if(gpu_ready){show_triangles=!show_triangles;if(show_triangles)show_scene=0;}
   }
-  if(gpu_ready &&
-     ((show_triangles && psp_3ds_triangle_draw(scene_frame++,target)==0) ||
-      (show_scene && psp_3ds_scene_draw(scene_frame++)==0))) {
-   /* Citro3D submitted the synthetic 2D or triangle scene to PICA200. */
-  } else {
+  /* Cutbacks only reduce OPTIONAL synthetic visual submissions. Never
+   * suppress PSP CPU guest ticks, input, or audio when implemented. */
+  const int showing=gpu_ready && (show_triangles||show_scene);
+  const uint32_t visual_index=scene_frame++;
+  if(showing && cutbacks_ready &&
+     !psp_play_cutbacks_should_render(&play,visual_index)){
+   gspWaitForVBlank(); /* Retain the previously presented picture. */
+  }else if(showing &&
+     ((show_triangles &&
+       psp_3ds_triangle_draw(visual_index,target,
+         cutbacks_ready?play.triangle_limit:1u)==0) ||
+      (show_scene && psp_3ds_scene_draw(visual_index)==0))) {
+   /* Native Citro3D/Citro2D synthetic output, not a PSP game frame. */
+  }else{
    psp3ds_draw_boot_marker();
    gfxFlushBuffers();
    gfxSwapBuffers();
    gspWaitForVBlank();
+  }
+  if(cutbacks_ready){
+   osTickCounterUpdate(&play_clock);
+   const double current_ms=osTickCounterRead(&play_clock);
+   const double delta_ms=current_ms-last_play_ms;
+   last_play_ms=current_ms;
+   uint32_t elapsed_us=0u;
+   if(delta_ms>0.0 && delta_ms<10000.0)
+    elapsed_us=(uint32_t)(delta_ms*1000.0+0.5);
+   const u32 region=osGetMemRegionSize(MEMREGION_APPLICATION);
+   const u32 used=osGetMemRegionUsed(MEMREGION_APPLICATION);
+   const uint32_t free_bytes=region && used<=region?region-used:0u;
+   const uint32_t reserve=free_bytes?
+    target==PSP_TARGET_NEW3DS?PSP_3DS_NEW_HEADROOM:
+                              PSP_3DS_OLD_HEADROOM:0u;
+   const int changed=psp_play_cutbacks_observe(&play,
+                           elapsed_us,free_bytes,reserve,NULL);
+   if(changed>0){
+    (void)psp_play_cutbacks_apply_tuning(&play,&tuning);
+    printf("Visual cutbacks: %s\n",psp_play_quality_name(play.quality));
+   }
   }
  }
  psp_3ds_scene_fini();
