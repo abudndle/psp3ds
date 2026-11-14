@@ -1,4 +1,5 @@
 #include "psp_runtime_guest.h"
+#include "psp_benchmark.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -12,7 +13,7 @@ static uint64_t sample(void *ctx){
  return s->calls++==0?s->first:s->second;
 }
 static void write32(uint8_t *p,uint32_t w){
- for(unsigned i=0;i<4;i++)p[i*1]=(uint8_t)(w>>(i*8u));
+ for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(w>>(i*8u));
 }
 static void program(void){
  for(size_t i=0;i<sizeof guest;i+=4u)
