@@ -22,19 +22,20 @@ static void test_shared_cpu(void){
  int pass=psp_feature_run(PSP_FEATURE_CPU_SMOKE,&value)==0 && value==2u;
  printf("MIPS CPU demo: %s\n",pass?"PASS":"FAILED");
 }
-static void test_slot2_ram(void){
+static int test_slot2_ram(void){
+ int verified_pak=0;
  if(isDSiMode()){
   printf("Slot-2: unavailable (DSi)\n");
-  return;
+  return 0;
  }
  if(!peripheralSlot2Init(SLOT2_PERIPHERAL_EXTRAM)){
   printf("Slot-2: no RAM detected\n");
-  return;
+  return 0;
  }
  if(!peripheralSlot2Open(SLOT2_PERIPHERAL_EXTRAM)){
   printf("Slot-2: cannot unlock RAM\n");
   peripheralSlot2Exit();
-  return;
+  return 0;
  }
  uint32_t capacity=peripheralSlot2RamSize();
  uint32_t banks=peripheralSlot2RamBanks();
@@ -95,12 +96,14 @@ static void test_slot2_ram(void){
     for(unsigned i=0;i<4;i++)region[i]=saved[i];
     for(unsigned i=0;i<4;i++)if(region[i]!=saved[i])routed=0;
     printf("Dual RAM bus: %s\n",routed?"PASS":"FAILED");
+    if(routed)verified_pak=1;
    }
   }
  }
  /* Never present RAM as a general C heap. Close it after the probe. */
  peripheralSlot2Close();
  peripheralSlot2Exit();
+ return verified_pak;
 }
 /* TIMER0 counts at approximately 32768Hz (ARM9 ~33.51 MHz/1024).
  * This is a local device-timer measurement only, never commercial PSP FPS. */
@@ -128,8 +131,12 @@ int main(void){
  int scene_ok=psp_nds_scene_init()==0;
  printf("PSP3DS / DS research\nMode: %s\n",isDSiMode()?"DSi-enhanced":"Nintendo DS");
  printf("Shared CPU; NOT PSP games\n\n");
+ /* Select DS+Pak profile only after 32-location read/write validation
+  * and a passing hot/cold guest data-bus probe. */
+ const int slot2_verified=test_slot2_ram();
  PspPlatformBudget policy;
- PspTarget target=isDSiMode()?PSP_TARGET_DSI:PSP_TARGET_DS;
+ PspTarget target=isDSiMode()?PSP_TARGET_DSI:
+                  slot2_verified?PSP_TARGET_DS_SLOT2:PSP_TARGET_DS;
  PspVideoLayout video;
  if(psp_video_layout_init(target,PSP_VIDEO_DISPLAY_DS_MAIN,
                           PSP_VIDEO_PSP_WIDTH,PSP_VIDEO_PSP_HEIGHT,&video)==0)
@@ -161,7 +168,6 @@ int main(void){
  }
  test_shared_cpu();
  benchmark_shared_mips();
- test_slot2_ram();
  printf("Scene BG/OAM: %s\n",scene_ok?"PASS":"FAILED");
  printf("START: exit\n");
  uint32_t frame=0;
