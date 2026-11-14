@@ -1,4 +1,5 @@
 #include "psp_rom_pager.h"
+#include "psp_rom_file.h"
 #include "psp_platform_budget.h"
 #include <assert.h>
 #include <stdint.h>
@@ -129,6 +130,36 @@ static void bounds_and_failure(void){
  assert(psp_rom_pager_init(&p,NULL,1,4096,read_file,&source,NULL,0)==-1);
  assert(psp_rom_pager_init(&p,hot,1,4096,NULL,&source,NULL,0)==-1);
 }
+static void real_sparse_file(void){
+ /* Exercise an actual seekable host file without allocating 512 MB.
+  * Embedded NitroFS readers use the same standard FILE* adapter. */
+ FILE *file=tmpfile();
+ assert(file);
+ assert(fseek(file,(long)PSP_ROM_PAGER_MAX_IMAGE-1,SEEK_SET)==0);
+ assert(fputc(0,file)!=EOF);
+ static const uint8_t marker[16]={
+  1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+ };
+ const uint32_t off=PSP_ROM_PAGER_MAX_IMAGE-16u;
+ assert(fseek(file,(long)off,SEEK_SET)==0);
+ assert(fwrite(marker,1,sizeof marker,file)==sizeof marker);
+ assert(fflush(file)==0);
+ uint8_t hot[PSP_ROM_PAGER_PAGE_BYTES]={0};
+ PspRomPager p;
+ assert(psp_rom_pager_init(&p,hot,1,PSP_ROM_PAGER_MAX_IMAGE,
+                           psp_rom_file_read,file,NULL,0)==0);
+ uint8_t readback[16]={0};
+ assert(psp_rom_pager_read(&p,off,readback,sizeof readback)==0);
+ assert(memcmp(marker,readback,sizeof marker)==0);
+ assert(psp_rom_pager_read(&p,0u,readback,4u)==0);
+ assert(readback[0]==0u && readback[1]==0u);
+ assert(psp_rom_file_read(NULL,0u,readback,4u)==-1);
+ assert(psp_rom_file_read(file,0u,NULL,4u)==-1);
+ assert(psp_rom_file_read(file,PSP_ROM_PAGER_MAX_IMAGE-2u,
+                          readback,4u)==-1);
+ assert(psp_rom_file_read(file,0u,readback,0u)==-1);
+ assert(fclose(file)==0);
+}
 static void target_budgets(void){
  for(int t=0;t<PSP_TARGET_COUNT;t++){
   PspPlatformBudget b;
@@ -145,7 +176,7 @@ static void target_budgets(void){
  assert(!ds.has_slot2 && pak.has_slot2);
 }
 int main(void){
- host_hot_and_sparse_512mb();cold_memory_pak();
+ host_hot_and_sparse_512mb();cold_memory_pak();real_sparse_file();
  bounds_and_failure();target_budgets();
  puts("PASS: sparse 512 MB cartridge ROM, small LRU hot cache, verified Slot-2 cold tier");
  return 0;
