@@ -3,6 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Large PSP PRX modules can have more than 65,536 relocation records.
+ * A bounded 131,072 record limit is enough for the private Jetpack
+ * compatibility sample while staying below one MiB of input records. */
+#define PSP_RELOC_MAX_RECORDS 131072u
+
 static uint32_t read32(const uint8_t *p) {
  return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;
 }
@@ -11,14 +16,15 @@ static void write32(uint8_t *p,uint32_t v) {
 }
 typedef struct { size_t offset; uint32_t value; } Write;
 typedef struct { size_t offset; unsigned addr_base; uint32_t old; } PendingHi;
-static int duplicate(const Write *writes,size_t used,size_t offset) {
- for(size_t i=0;i<used;i++)if(writes[i].offset==offset)return 1;
- return 0;
+static int compare_writes(const void *a,const void *b) {
+ const Write *first=(const Write*)a,*second=(const Write*)b;
+ return first->offset<second->offset?-1:
+        first->offset>second->offset?1:0;
 }
 int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
                     const PspRelocSegment *segments,size_t n) {
  if (!cpu || !cpu->ram || (!records && record_len) || !segments || n==0 || n>256 ||
-     record_len%8 || record_len/8>65536) return -1;
+     record_len%8 || record_len/8>PSP_RELOC_MAX_RECORDS) return -1;
  size_t count=record_len/8;
  if(count && (count>SIZE_MAX/sizeof(Write) || count>SIZE_MAX/sizeof(PendingHi)))return -1;
  Write *writes=count?(Write *)calloc(count,sizeof(Write)):NULL;
@@ -37,9 +43,8 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
   if (guest_addr>UINT32_MAX || guest_addr<cpu->ram_base)goto cleanup;
   uint64_t off=guest_addr-cpu->ram_base;
   if(off>cpu->ram_size || cpu->ram_size-(size_t)off<4)goto cleanup;
-  /* No duplicate targets: staged or waiting for a LO16. */
-  if(duplicate(writes,used,(size_t)off))goto cleanup;
-  for(size_t j=0;j<hi_count;j++)if(pending[j].offset==(size_t)off)goto cleanup;
+  /* Detect duplicate targets once after staging and sorting the write set.
+   * Repeated linear duplicate scans were quadratic on real large PRXs. */
   uint32_t old=read32(cpu->ram+(size_t)off);
   uint32_t delta=source->mapped_vaddr-source->original_vaddr;
   uint32_t value;
@@ -55,7 +60,14 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
   if(type==6) {
    /* Paired low halves must sign-extend; ORI is allowed standalone only. */
    unsigned opcode=old>>26;
-   if(opcode!=9 && (opcode!=13 || hi_count))goto cleanup; /* ADDIU, or standalone ORI */
+   /* R_MIPS_LO16 commonly relocates signed memory-access offsets,
+    * including LW/SW/LWC1/SWC1. The offset is sign-extended even
+    * when the instruction is not ADDIU. Standalone ORI is retained
+    * for compatibility, but no ORI with pending HI16 is accepted. */
+   if(opcode!=9 && opcode!=32 && opcode!=33 && opcode!=35 &&
+      opcode!=36 && opcode!=37 && opcode!=40 && opcode!=41 &&
+      opcode!=43 && opcode!=49 && opcode!=57 &&
+      (opcode!=13 || hi_count))goto cleanup;
    int32_t low=(int32_t)(int16_t)(old&0xffffu);
    for(size_t j=0;j<hi_count;j++) {
     if(pending[j].addr_base!=addr_base || used>=count)goto cleanup;
@@ -80,6 +92,11 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
   writes[used].offset=(size_t)off;writes[used].value=value;used++;
  }
  if(hi_count)goto cleanup; /* No LO16 was supplied for these HI16 values. */
+ /* Validate every target in O(N log N) rather than O(N^2).
+  * Sorting staged writes is safe because no guest byte has changed.
+  * Reject duplicate target writes before applying anything. */
+ qsort(writes,used,sizeof(*writes),compare_writes);
+ for(size_t i=1;i<used;i++)if(writes[i-1].offset==writes[i].offset)goto cleanup;
  for(size_t i=0;i<used;i++)write32(cpu->ram+writes[i].offset,writes[i].value);
  status=0;
 cleanup:
