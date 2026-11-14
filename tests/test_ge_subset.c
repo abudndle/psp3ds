@@ -216,6 +216,21 @@ static void guest_display_list_from_ram(void) {
  cpu.next_pc = 0x08000010u;
  assert(psp_hle_step(&hle, &cpu) == 1);
  assert(cpu.gpr[2] == UINT32_MAX && submitted.batch.count == 0);
+ assert(cpu.pc == 0x08000010u && cpu.fault == 0);
+ /* Failed submission must not poison subsequent valid guest calls. */
+ cpu.gpr[4] = 0x08000060u;
+ cpu.gpr[5] = 6u;
+ cpu.pc = 0x0800000cu;
+ cpu.next_pc = 0x08000010u;
+ assert(psp_hle_step(&hle, &cpu) == 1);
+ assert(cpu.gpr[2] == 0 && cpu.fault == 0);
+ assert(memcmp(&result, &submitted, sizeof result) == 0);
+ /* Reject an oversized guest command count without publishing stale data. */
+ cpu.gpr[5] = PSP_GE_SUBSET_MAX_COMMANDS + 1u;
+ cpu.pc = 0x0800000cu;
+ cpu.next_pc = 0x08000010u;
+ assert(psp_hle_step(&hle, &cpu) == 1);
+ assert(cpu.gpr[2] == UINT32_MAX && submitted.batch.count == 0);
  cpu.gpr[4] = 0x08000078u;
  assert(psp_ge_subset_submit_cpu(&cpu, 4, 5, &submitted) != PSP_GE_SUBSET_OK);
  assert(submitted.batch.count == 0);
