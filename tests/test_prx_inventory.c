@@ -108,6 +108,9 @@ int main(void){
                                   module.import_end,&inventory)==0);
  assert(inventory.library_count==LIB_COUNT &&
         inventory.function_count==FUNC_COUNT);
+ PspPrxHleCoverage coverage;
+ assert(psp_prx_import_coverage(&cpu,&inventory,&coverage)==0);
+ assert(coverage.implemented==0u && coverage.unsupported==FUNC_COUNT);
  assert(!strcmp(inventory.libraries[0].name,"MockLib00"));
  assert(!strcmp(inventory.libraries[18].name,"MockLib18"));
  assert(inventory.libraries[0].function_count==7u);
@@ -154,6 +157,32 @@ int main(void){
  assert(module.module_address==0u);
  w32(section+12,section_address);
  assert(psp_module_discover(elf,sizeof elf,&cpu,&module)==0);
- puts("PASS: mapped PRX module info, 145 verified imports across 19 libraries, no fake HLE");
+ /* Count only functions present in the real verified PSP HLE export table.
+  * Unknown NIDs are not counted as implemented or patched in guest memory. */
+ PspPrxImportInventory known={0};
+ known.library_count=1u;
+ known.function_count=5u;
+ strcpy(known.libraries[0].name,"IoFileMgrForUser");
+ known.libraries[0].function_count=5u;
+ known.libraries[0].nid_table=GUEST_BASE+0x1400u;
+ const uint32_t nids[5]={
+  0x109f50bcu,0x6a638d83u,0x68963324u,0x810c4bc3u,0xdeadbeefu
+ };
+ for(unsigned i=0;i<5;i++)w32(ram+0x1400u+i*4u,nids[i]);
+ assert(psp_prx_import_coverage(&cpu,&known,&coverage)==0);
+ assert(coverage.implemented==4u && coverage.unsupported==1u);
+ known.libraries[0].name[0]=(char)27;
+ memset(&coverage,0xa5,sizeof coverage);
+ assert(psp_prx_import_coverage(&cpu,&known,&coverage)<0);
+ assert(coverage.implemented==0u && coverage.unsupported==0u);
+ strcpy(known.libraries[0].name,"IoFileMgrForUser");
+ known.libraries[0].nid_table=GUEST_BASE+RAM_SIZE-4u;
+ assert(psp_prx_import_coverage(&cpu,&known,&coverage)<0);
+ assert(coverage.implemented==0u && coverage.unsupported==0u);
+ known.libraries[0].nid_table=GUEST_BASE+0x1400u;
+ known.function_count=4u;
+ assert(psp_prx_import_coverage(&cpu,&known,&coverage)<0);
+ assert(coverage.implemented==0u && coverage.unsupported==0u);
+ puts("PASS: mapped PRX module info, 145 verified imports across 19 libraries, safe real-HLE coverage counting");
  return 0;
 }
