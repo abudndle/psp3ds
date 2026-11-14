@@ -41,14 +41,6 @@ typedef struct {
  uint8_t executable_count;
  uint32_t instruction_cap;
  const PspPrxImportInventory *imports; /* validated read-only inventory */
- /* Optional, caller-owned verified partial import bindings. Only continue
-  * past an import stub if a known NID matches the patched JR RA/SYSCALL
-  * instructions AND the HLE table has the corresponding service.
-  * guest_step MUST execute exactly one instruction/HLE trap via the
-  * existing psp_hle_step(), not simulate a successful return. */
- const PspHle *linked_hle;
- int (*guest_step)(void *context,PspCpu *cpu);
- void *guest_step_context;
  /* Optional, narrowly linked HLE. Caller must link only verified NIDs
   * BEFORE tracing. Every unlinked/unknown import still stops cleanly. */
  PspHle *hle;
