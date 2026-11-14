@@ -5,6 +5,18 @@ static unsigned outstanding(const PspLazyBackends *s){
  for(unsigned i=0;i<PSP_LAZY_SUBSYSTEMS;i++)total+=s->pending[i];
  return total;
 }
+/* Record real backend startup only after its start() callback succeeded.
+ * Existing PspPerf subsystem activity is driven by queued work, not by
+ * a global "start all" request. With no demand this touches no backend. */
+static void sync_subsystems(PspPerf *perf,const PspLazyBackends *s){
+ for(unsigned i=0;i<PSP_LAZY_SUBSYSTEMS;i++){
+  if(s->started[i]){
+   (void)psp_perf_request_subsystem(perf,(PspSubsystem)i);
+   (void)psp_perf_set_subsystem_active(perf,(PspSubsystem)i,
+                                      s->pending[i]!=0u);
+  }
+ }
+}
 int psp_on_demand_guest_step(PspRuntimeTuning *tuning,
                              PspPerf *perf,PspHle *hle,PspCpu *cpu,
                              PspLazyBackends *backends,
@@ -36,8 +48,10 @@ int psp_on_demand_guest_step(PspRuntimeTuning *tuning,
   out->backend_completed=completed;
   out->backend_called=1u;
   out->backend_remaining=outstanding(backends);
+  sync_subsystems(perf,backends);
   if(result<0)return -4;
  }else{
+  sync_subsystems(perf,backends);
   /* Even with no backend work, the guest CPU/event stage above still ran.
    * Do not touch any lazy subsystem or initialize its resources. */
   out->backend_remaining=0;
