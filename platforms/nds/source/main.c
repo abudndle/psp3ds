@@ -16,6 +16,9 @@
 #include "psp_ge_triangles.h"
 int psp_nds_scene_init(void);
 void psp_nds_scene_update(uint32_t frame);
+int psp_nds_triangles_init(void);
+void psp_nds_triangles_update(void);
+void psp_nds_triangles_shutdown(void);
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
@@ -200,8 +203,10 @@ int main(void){
  test_shared_cpu();
  benchmark_shared_mips();
  printf("Scene BG/OAM: %s\n",scene_ok?"PASS":"FAILED");
+ printf("Y: DS native 3D triangles\n");
  printf("START: exit\n");
  uint32_t frame=0;
+ int triangle_mode=0;
  while(1){
   scanKeys();
   const uint32_t pressed=keysDown();
@@ -213,8 +218,14 @@ int main(void){
           (unsigned)psp_pad.ly);
   }
   if(pressed&KEY_START)break;
+  if(pressed&KEY_Y){
+   if(!triangle_mode)triangle_mode=psp_nds_triangles_init()==0;
+   else {psp_nds_triangles_shutdown();triangle_mode=0;}
+  }
   swiWaitForVBlank();
-  if(scene_ok)psp_nds_scene_update(frame++);
+  if(triangle_mode)psp_nds_triangles_update();
+  else if(scene_ok)psp_nds_scene_update(frame++);
  }
+ psp_nds_triangles_shutdown();
  return 0;
 }
