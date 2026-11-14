@@ -26,3 +26,6 @@ build-sanitize/
 psp/roms/*
 !psp/roms/README.txt
 !psp/roms/save/
+
+# Locally fetched PPSSPP source is opt-in and never vendored by default.
+/vendor/ppsspp/
