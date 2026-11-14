@@ -46,6 +46,9 @@ int main(void){
  for(unsigned i=0;i<4;i++)assert(psp_hle_step(&hle,&cpu)==0);
  assert(psp_hle_step(&hle,&cpu)==1);
  assert(cpu.gpr[2]==123456u && cpu.pc==BASE+20);
+ assert(cpu.cp0_status==0 && cpu.cp0_cause==0);
+ assert(cpu.next_pc==BASE+24);
+ assert(cpu.gpr[0]==0);
  assert(cpu.fault==0);
  assert(psp_hle_step(&hle,&cpu)==-3);
  assert(cpu.gpr[8]==7&&cpu.gpr[9]==5&&cpu.gpr[10]==11);
