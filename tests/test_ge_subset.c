@@ -178,6 +178,20 @@ static void guest_display_list_from_ram(void) {
  assert(memcmp(&result, &bridged, sizeof result) == 0);
  assert(psp_ge_subset_translate_bus(&bus, 0x08000078u, 6, &bridged) != PSP_GE_SUBSET_OK);
  assert(bridged.batch.count == 0);
+ /* A cold guest region must never be treated as hot executable GE RAM. */
+ volatile uint16_t cold_words[16] = {0};
+ PspGuestWindow cold;
+ assert(psp_guest_window_init(&cold, cold_words, 0x09000000u,
+                              sizeof cold_words, 1, 1) == 0);
+ PspGuestBus split_bus;
+ assert(psp_guest_bus_init(&split_bus, memory, 0x08000000u,
+                           sizeof memory, &cold) == 0);
+ assert(psp_ge_subset_translate_bus(&split_bus, 0x08000060u, 6,
+                                    &bridged) == PSP_GE_SUBSET_OK);
+ assert(bridged.batch.count == 1);
+ assert(psp_ge_subset_translate_bus(&split_bus, 0x09000000u, 6,
+                                    &bridged) != PSP_GE_SUBSET_OK);
+ assert(bridged.batch.count == 0);
  assert(psp_ge_subset_translate_guest(memory, sizeof memory, 0x08000000u,
          0x08000061u, 6, &result) != PSP_GE_SUBSET_OK);
  assert(result.batch.count == 0);
