@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/fetch-ppsspp-upstream.sh'
       - '.github/workflows/ppsspp-upstream-smoke.yml'
+      - 'scripts/audit-ppsspp-mips.py'
 permissions:
   contents: read
 jobs:
@@ -26,3 +27,5 @@ jobs:
           done
           test -f vendor/ppsspp/LICENSE.TXT || test -f vendor/ppsspp/LICENSE
           echo "Pinned PPSSPP source checkout verified (not yet compiled into PSP3DS)"
+      - name: Audit upstream MIPS interpreter dependencies
+        run: python3 scripts/audit-ppsspp-mips.py vendor/ppsspp
