@@ -87,6 +87,17 @@ int main(void){
   assert(many);
   reset(mem,&cpu,s);
   assert(psp_reloc_apply(&cpu,many,count*8u,s,2)==0);
+  /* A large stream with two writes to one guest word must fail atomically. */
+  wr(mem+4,0x12345678u);
+  rec(many+(count-2u)*8u,4,0,1,2);
+  rec(many+(count-1u)*8u,4,0,1,2);
+  memcpy(before,mem,sizeof mem);
+  assert(psp_reloc_apply(&cpu,many,count*8u,s,2)<0);
+  assert(memcmp(mem,before,sizeof mem)==0);
+  /* A single write at the end of the same stream must succeed. */
+  memset(many+(count-1u)*8u,0,8);
+  assert(psp_reloc_apply(&cpu,many,count*8u,s,2)==0);
+  assert(rd(mem+4)==0x12346678u);
   free(many);
  }
  puts("PASS: HI16/LO16 carry, signed addends, multi-HI pairing, atomicity, large relocation section");return 0;
