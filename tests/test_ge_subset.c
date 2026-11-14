@@ -200,6 +200,10 @@ static void guest_display_list_from_ram(void) {
  PspHle hle;
  psp_hle_init(&hle);
  assert(psp_hle_bind(&hle, 42, PSP_HLE_GE_SUBMIT) == 0);
+ /* Direct calls without a syscall trap must not publish a scene. */
+ assert(psp_ge_subset_hle_submit(&cpu, &submitted) == -1);
+ assert(submitted.batch.count == 0);
+ assert(psp_ge_subset_hle_submit(&cpu, NULL) == -1);
  psp_hle_attach_ge(&hle, psp_ge_subset_hle_submit, &submitted);
  assert(psp_guest_bus_write32(&bus, 0x0800000cu, (42u << 6) | 12u) == 0);
  cpu.pc = 0x0800000cu;
