@@ -161,8 +161,6 @@ jobs:
             build/ppsspp-arm/relocatable-unresolved.txt
             build/guest-memory-arm/*.o
             build/guest-memory-arm/elf-header.txt
-            build/ppsspp-arm/integration-elf-header.txt
-            build/ppsspp-arm/integration-symbols.txt
           if-no-files-found: warn
  build/ppsspp-arm/integration-symbols.txt
           grep -q ' T psp_guest_bus_write32
@@ -197,8 +195,6 @@ jobs:
             build/ppsspp-arm/relocatable-unresolved.txt
             build/guest-memory-arm/*.o
             build/guest-memory-arm/elf-header.txt
-            build/ppsspp-arm/integration-elf-header.txt
-            build/ppsspp-arm/integration-symbols.txt
           if-no-files-found: warn
  build/ppsspp-arm/integration-symbols.txt
           # Relocatable link proves object compatibility, not runtime memory wiring.
@@ -234,4 +230,6 @@ jobs:
             build/ppsspp-arm/relocatable-unresolved.txt
             build/guest-memory-arm/*.o
             build/guest-memory-arm/elf-header.txt
+            build/ppsspp-arm/integration-elf-header.txt
+            build/ppsspp-arm/integration-symbols.txt
           if-no-files-found: warn
