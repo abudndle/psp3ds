@@ -20,8 +20,9 @@ jobs:
         shell: bash
         run: |
           bash scripts/fetch-ppsspp-upstream.sh
-          git -C vendor/ppsspp sparse-checkout add ext/libzip Core/Util Core/Debugger
+          git -C vendor/ppsspp sparse-checkout add ext/libzip ext/cityhash Core/Util Core/Debugger
           test -f vendor/ppsspp/ext/libzip/zip.h
+          test -f vendor/ppsspp/ext/cityhash/city.h
           test "$(git -C vendor/ppsspp rev-parse HEAD)" = "1aebad2c651ff9d0684ee335e43aceff8fc7e3ec"
       - name: Apply narrow VFPU register pointer compatibility patch
         shell: bash
