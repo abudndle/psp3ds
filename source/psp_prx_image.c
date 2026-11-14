@@ -98,8 +98,11 @@ static int prx_map_core(const uint8_t *elf,size_t len,
  }
  PspCpu candidate=*cpu;
  size_t relocated_streams=0;
- const int reloc=psp_reloc_image_apply(elf,len,&candidate,mapped,count,
-                                      &relocated_streams);
+ const int reloc=fresh_scratch?
+   psp_reloc_image_apply_scratch(elf,len,&candidate,mapped,count,
+                                 &relocated_streams):
+   psp_reloc_image_apply(elf,len,&candidate,mapped,count,
+                         &relocated_streams);
  if(reloc!=0 || relocated_streams!=streams){
   if(backup)memcpy(cpu->ram,backup,backup_len);
   free(backup);
