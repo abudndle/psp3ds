@@ -23,6 +23,10 @@ int main(void){
  assert(!bus.has_cold);
  probe.status=PSP_SLOT2_RW_VERIFIED;
  assert(psp_slot2_bus_init(&bus,hot,H,sizeof hot,&probe,cold,H+32,&budget)==-1);
+ /* A verified but misaligned mapping is a configuration error, not absence. */
+ assert(psp_slot2_bus_init(&bus,hot,H,sizeof hot,&probe,cold,C+2,&budget)==-1);
+ /* A guest mapping that wraps the 32-bit address space must be rejected. */
+ assert(psp_slot2_bus_init(&bus,hot,H,sizeof hot,&probe,cold,0xfffff000u,&budget)==-1);
  assert(psp_slot2_bus_init(0,hot,H,sizeof hot,&probe,cold,C,&budget)==-1);
  puts("PASS: verified Slot-2 guest data bus binding and safe fallback");
  return 0;
