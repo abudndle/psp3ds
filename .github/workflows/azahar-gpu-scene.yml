@@ -10,7 +10,14 @@ on:
       - 'tests/test_azahar_gpu_scene.py'
       - '.github/workflows/azahar-gpu-scene.yml'
   push:
-    branches: [main]
+    branches: [main, port/ppsspp-interpreter-probe]
+    paths:
+      - 'platforms/nds/**'
+      - 'source/**'
+      - 'include/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - '.github/workflows/azahar-gpu-scene.yml'
   workflow_dispatch:
 permissions:
   contents: read
