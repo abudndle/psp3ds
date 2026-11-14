@@ -60,6 +60,10 @@ jobs:
             build/ppsspp-arm/all-symbols.txt \
             --output build/ppsspp-arm/link-closure.json
           cat build/ppsspp-arm/link-closure.json
+          python3 scripts/summarize-ppsspp-link-deps.py \
+            build/ppsspp-arm/unresolved-symbols.txt \
+            --output build/ppsspp-arm/dependency-categories.json
+          cat build/ppsspp-arm/dependency-categories.json
           # A dependency inventory is not proof of successful linking.
       - name: Publish cross-compiler evidence
         if: always()
@@ -72,4 +76,5 @@ jobs:
             build/ppsspp-arm/*.o
             build/ppsspp-arm/*symbols.txt
             build/ppsspp-arm/link-closure.json
+            build/ppsspp-arm/dependency-categories.json
           if-no-files-found: warn
