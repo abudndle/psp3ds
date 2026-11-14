@@ -20,7 +20,9 @@ typedef enum {
  PSP_HLE_THREAD_CREATE=8,
  PSP_HLE_THREAD_WAIT=9,
  PSP_HLE_THREAD_SIGNAL=10,
- PSP_HLE_THREAD_EXIT=11
+ PSP_HLE_THREAD_EXIT=11,
+ /* Synthetic test-only graphics submission hook, not a PSP firmware NID. */
+ PSP_HLE_GE_SUBMIT=12
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
@@ -28,13 +30,16 @@ typedef struct {
  size_t count;
  size_t last_binding_index; /* verified cache hint for repeated PSP HLE calls */
  struct PspIo *io; /* attached read-only disc filesystem */
- struct PspThreadCpu *threads; /* optional experimental thread services */
+ struct PspThreadCpu *threads;
+ int (*ge_submit)(const PspCpu *cpu, void *context);
+ void *ge_context; /* optional experimental thread services */
  uint64_t uptime_us;
 } PspHle;
 void psp_hle_init(PspHle *hle);
 int psp_hle_bind(PspHle *hle,uint32_t syscall_id,PspHleService service);
 void psp_hle_attach_io(PspHle *hle,struct PspIo *io);
 void psp_hle_attach_threads(PspHle *hle,struct PspThreadCpu *threads);
+void psp_hle_attach_ge(PspHle *hle, int (*submit)(const PspCpu *, void *), void *context);
 void psp_hle_advance_time(PspHle *hle,uint64_t delta_us);
 /* 1: dispatched, 0: regular instruction; -3: unhandled trap. */
 int psp_hle_step(PspHle *hle,PspCpu *cpu);
