@@ -7,6 +7,7 @@
 #include "psp_guest_window.h"
 #include "psp_guest_bus.h"
 #include "psp_platform_budget.h"
+#include "psp_video_layout.h"
 #include "psp_features.h"
 #include "psp_scene.h"
 #include "psp_ge_subset.h"
@@ -122,6 +123,11 @@ int main(void){
  printf("Shared CPU; NOT PSP games\n\n");
  PspPlatformBudget policy;
  PspTarget target=isDSiMode()?PSP_TARGET_DSI:PSP_TARGET_DS;
+ PspVideoLayout video;
+ if(psp_video_layout_init(target,PSP_VIDEO_DISPLAY_DS_MAIN,
+                          PSP_VIDEO_PSP_WIDTH,PSP_VIDEO_PSP_HEIGHT,&video)==0)
+  printf("PSP video: %ux%u; DS tiles\n",
+    (unsigned)video.viewport_width,(unsigned)video.viewport_height);
  if(psp_platform_budget_choose(target,&policy)==0)
   printf("Policy: %s; hot %luK\n",policy.name,
          (unsigned long)(policy.hot_ram_budget/1024u));
