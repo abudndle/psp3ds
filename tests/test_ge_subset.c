@@ -176,6 +176,23 @@ static void guest_display_list_from_ram(void) {
  PspGeSubsetResult bridged;
  assert(psp_ge_subset_translate_bus(&bus, 0x08000060u, 6, &bridged) == PSP_GE_SUBSET_OK);
  assert(memcmp(&result, &bridged, sizeof result) == 0);
+ PspCpu cpu;
+ psp_cpu_init(&cpu, memory, sizeof memory, 0x08000000u, 0x08000060u);
+ cpu.gpr[4] = 0x08000060u;
+ cpu.gpr[5] = 6;
+ PspGeSubsetResult submitted;
+ assert(psp_ge_subset_submit_cpu(&cpu, 4, 5, &submitted) == PSP_GE_SUBSET_OK);
+ assert(memcmp(&result, &submitted, sizeof result) == 0);
+ cpu.gpr[4] = 0x08000078u;
+ assert(psp_ge_subset_submit_cpu(&cpu, 4, 5, &submitted) != PSP_GE_SUBSET_OK);
+ assert(submitted.batch.count == 0);
+ cpu.gpr[4] = 0x08000060u;
+ cpu.fault = 1;
+ assert(psp_ge_subset_submit_cpu(&cpu, 4, 5, &submitted) == PSP_GE_SUBSET_BAD_ARGUMENT);
+ assert(submitted.batch.count == 0);
+ cpu.fault = 0;
+ assert(psp_ge_subset_submit_cpu(&cpu, 32, 5, &submitted) == PSP_GE_SUBSET_BAD_ARGUMENT);
+ assert(submitted.batch.count == 0);
  assert(psp_ge_subset_translate_bus(&bus, 0x08000078u, 6, &bridged) != PSP_GE_SUBSET_OK);
  assert(bridged.batch.count == 0);
  /* A cold guest region must never be treated as hot executable GE RAM. */
