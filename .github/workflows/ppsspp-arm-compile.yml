@@ -159,9 +159,10 @@ jobs:
             build/ppsspp-arm/dependency-categories.json
             build/ppsspp-arm/relocatable-elf-header.txt
             build/ppsspp-arm/relocatable-unresolved.txt
-            build/ppsspp-arm/integration-elf-header.txt
             build/guest-memory-arm/*.o
             build/guest-memory-arm/elf-header.txt
+            build/ppsspp-arm/integration-elf-header.txt
+            build/ppsspp-arm/integration-symbols.txt
           if-no-files-found: warn
  build/ppsspp-arm/integration-symbols.txt
           grep -q ' T psp_guest_bus_write32
@@ -198,8 +199,7 @@ jobs:
             build/guest-memory-arm/elf-header.txt
           if-no-files-found: warn
  build/ppsspp-arm/integration-symbols.txt
-          # Relocatable linking proves object compatibility only.
-          # No PPSSPP Memory:: adapter, executable, or game boot exists yet.
+          # Relocatable link proves object compatibility, not runtime memory wiring.
       - name: Inventory ARM interpreter link dependencies
         shell: bash
         run: |
