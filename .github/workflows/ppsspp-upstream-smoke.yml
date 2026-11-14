@@ -8,6 +8,7 @@ on:
       - 'scripts/audit-ppsspp-mips.py'
       - 'scripts/audit-ppsspp-transitive.py'
       - 'scripts/summarize-ppsspp-link-deps.py'
+      - 'tests/test_ppsspp_link_deps.py'
 permissions:
   contents: read
 jobs:
@@ -16,6 +17,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Test PPSSPP linker report parser
+        run: python3 tests/test_ppsspp_link_deps.py
       - name: Fetch pinned real PPSSPP sources
         run: bash scripts/fetch-ppsspp-upstream.sh
       - name: Validate source directories and pinned revision
