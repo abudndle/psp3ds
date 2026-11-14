@@ -2,6 +2,8 @@
  * Uses the same public mapper as the Nintendo build. No private bytes are
  * embedded or uploaded and no guest MIPS instructions are executed. */
 #include "psp_prx_image.h"
+#include "psp_module.h"
+#include "psp_prx_inventory.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -67,6 +69,23 @@ int main(int argc,char **argv){
   printf("Guest image: %lu bytes\n",(unsigned long)image.image_bytes);
   printf("Loaded segments: %u\n",(unsigned)image.load_segments);
   printf("Relocation streams: %u\n",(unsigned)image.relocation_streams);
+  PspModuleInfo module;
+  PspPrxImportInventory inventory;
+  if(psp_module_discover(file,(size_t)length,&cpu,&module)!=0){
+   fprintf(stderr,"PRX module metadata: FAILED (no functions executed)\\n");
+   result=PSP_PRX_IMAGE_FORMAT;
+  }else if(psp_prx_import_inventory(&cpu,module.import_top,
+                                     module.import_end,&inventory)!=0){
+   fprintf(stderr,"PRX import inventory: FAILED (no functions executed)\\n");
+   result=PSP_PRX_IMAGE_FORMAT;
+  }else{
+   printf("PSP module: %s\\n",module.name);
+   printf("Import libraries: %u\\n",(unsigned)inventory.library_count);
+   printf("Imported PSP functions: %u\\n",(unsigned)inventory.function_count);
+   for(unsigned i=0;i<inventory.library_count;i++)
+    printf("  %s: %u functions\\n",inventory.libraries[i].name,
+           (unsigned)inventory.libraries[i].function_count);
+  }
   puts("PSP kernel/HLE imports and gameplay were NOT executed.");
  }else fprintf(stderr,"PSP PRX mapping: FAILED (error %d)\n",result);
  free(ram);free(file);
