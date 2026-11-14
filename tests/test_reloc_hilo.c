@@ -59,7 +59,17 @@ int main(void){
   assert(rd(mem+8)==0x3c081235);
   assert(rd(mem+12)==((low&0xffff0000u)|0x8ff0u));
  }
- /* Standalone memory LO16 remains unsupported and must be atomic. */
+ /* Standalone memory LO16 can be encoded when its signed offset fits. */
+ reset(mem,&cpu,s);wr(mem+12,0x8d080010);
+ rec(recs,12,0,1,6);
+ assert(psp_reloc_apply(&cpu,recs,8,s,2)==0);
+ assert(rd(mem+12)==0x8d081010);
+ /* Negative signed offsets remain valid after a small positive delta. */
+ reset(mem,&cpu,s);wr(mem+12,0xad08fff0);
+ rec(recs,12,0,1,6);
+ assert(psp_reloc_apply(&cpu,recs,8,s,2)==0);
+ assert(rd(mem+12)==0xad080ff0);
+ /* Overflowing standalone memory LO16 must be rejected atomically. */
  reset(mem,&cpu,s);wr(mem+12,0x8d087ff0);
  rec(recs,12,0,1,6);memcpy(before,mem,sizeof mem);
  assert(psp_reloc_apply(&cpu,recs,8,s,2)<0 && memcmp(mem,before,sizeof mem)==0);
