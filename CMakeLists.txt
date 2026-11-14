@@ -205,3 +205,8 @@ add_test(NAME slot2_budget COMMAND test_slot2_budget)
 add_executable(test_slot2_bus tests/test_slot2_bus.c)
 target_link_libraries(test_slot2_bus PRIVATE psp_core)
 add_test(NAME slot2_bus COMMAND test_slot2_bus)
+
+# Executable ELF handoff baseline; deliberately not counted as PPSSPP boot.
+add_executable(test_synthetic_elf_execution tests/test_synthetic_elf_execution.c)
+target_link_libraries(test_synthetic_elf_execution PRIVATE psp_core)
+add_test(NAME synthetic_elf_execution COMMAND test_synthetic_elf_execution)
