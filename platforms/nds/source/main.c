@@ -6,6 +6,7 @@
 #include "psp_benchmark.h"
 #include "psp_guest_window.h"
 #include "psp_guest_bus.h"
+#include "psp_slot2_bus.h"
 #include "psp_platform_budget.h"
 #include "psp_features.h"
 #include "psp_scene.h"
@@ -93,6 +94,24 @@ static void test_slot2_ram(void){
     for(unsigned i=0;i<4;i++)region[i]=saved[i];
     for(unsigned i=0;i<4;i++)if(region[i]!=saved[i])routed=0;
     printf("Dual RAM bus: %s\n",routed?"PASS":"FAILED");
+    /* Bind the SDK-confirmed RAM through the production budget selector.
+     * Only touch the first four words and restore them before closing. */
+    PspGuestBus managed;
+    PspPlatformBudget selected;
+    uint8_t managed_hot[16]={0};
+    int attached=psp_slot2_bus_init(&managed,managed_hot,
+                   0x08800000u,sizeof managed_hot,&sweep,region,
+                   0x09000000u,&selected);
+    uint32_t roundtrip=0;
+    int managed_ok=attached==1 && selected.has_slot2 &&
+                   selected.cold_data_budget<=capacity;
+    if(managed_ok)
+      managed_ok=psp_guest_bus_write32(&managed,0x09000000u,0x91abcdefu)==0 &&
+                 psp_guest_bus_read32(&managed,0x09000000u,&roundtrip)==0 &&
+                 roundtrip==0x91abcdefu;
+    for(unsigned i=0;i<4;i++)region[i]=saved[i];
+    for(unsigned i=0;i<4;i++)if(region[i]!=saved[i])managed_ok=0;
+    printf("Managed Slot-2 bus: %s\n",managed_ok?"PASS":"FAILED");
    }
   }
  }
