@@ -149,3 +149,43 @@ Before adjusting real PSP game work quotas, measure elapsed CPU interpreter
 time per guest-instruction slice, frame time, HLE/GE overhead, audio underruns
 and memory usage on hardware. Regression tests check policy caps and safe
 adaptation; `.nds` / `.3dsx` / `.cia` builds alone do not establish gameplay.
+
+## HLE-aware real interpreter scheduling bridge (experimental)
+
+The `psp_runtime_guest_step()` API (`include/psp_runtime_guest.h`,
+`source/psp_runtime_guest.c`) uses the existing
+`psp_perf_run_demand()` interpreter/HLE scheduler with the current
+per-device CPU instruction budget. It does not replace PPSSPP's upstream
+interpreter or implement commercial PSP game boot.
+
+- **Normal runnable slices** execute the selected number of actual MIPS
+  instructions, retaining the existing syscall dispatch, branching, and
+  interpreter exceptions. Host timing is sampled through an optional
+  monotonic callback; only an *entire successful slice* can affect the
+  next budget. A nil, backwards or overflowing measurement cannot tune.
+- **Guest idle or waiting** is delegated to `psp_perf_run_demand`: virtual
+  scheduler/HLE time advances to the pending wake/event, without inventing
+  instructions. An event, partial slice, trap or syscall boundary never
+  triggers performance-policy feedback.
+- **Native old/New 3DS** calls an original synthetic two-stage fixture at
+  startup in `psp_3ds_guest_demo.c`. The first instruction dispatches a
+  bound synthetic system-time syscall through the HLE code. The next step
+  executes the model's selected ADDIU instruction slice, measures real
+  device elapsed time with libctru `TickCounter` and reports its next
+  budget. The New 3DS speedup request is still hardware-gated.
+- **DS, DS+verified Memory Expansion Pak and DSi** continue using the
+  same portable policy rules in native builds. The new real-HLE bridge is
+  integrated into the 3DS diagnostic and host regression suite only; a
+  DS-native linkage and runtime smoke are future work. Slot-2 RAM never
+  increases interpreter clock speed.
+- `test_runtime_guest` tests executed MIPS instruction totals across
+  all five policy profiles, HLE syscalls, scheduler idle events, unchanged
+  virtual clock during runnable work, correct adaptation, faults and
+  non-monotonic timer rejection.
+
+This connects a **compact shared interpreter**, not PPSSPP's full upstream
+guest-memory/HLE implementation. It is an incremental emulator core
+milestone; further milestones must replace/bridge upstream Allegrex and
+VFPU state, load actual PSP homebrew, schedule guest threads and render
+real GE display lists. Compilation and host tests are not evidence of
+real game compatibility or native-device frame rates.
