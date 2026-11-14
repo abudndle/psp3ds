@@ -72,18 +72,18 @@ int main(int argc,char **argv){
   PspModuleInfo module;
   PspPrxImportInventory inventory;
   if(psp_module_discover(file,(size_t)length,&cpu,&module)!=0){
-   fprintf(stderr,"PRX module metadata: FAILED (no functions executed)\\n");
+   fprintf(stderr,"PRX module metadata: FAILED (no functions executed)\n");
    result=PSP_PRX_IMAGE_FORMAT;
   }else if(psp_prx_import_inventory(&cpu,module.import_top,
                                      module.import_end,&inventory)!=0){
-   fprintf(stderr,"PRX import inventory: FAILED (no functions executed)\\n");
+   fprintf(stderr,"PRX import inventory: FAILED (no functions executed)\n");
    result=PSP_PRX_IMAGE_FORMAT;
   }else{
-   printf("PSP module: %s\\n",module.name);
-   printf("Import libraries: %u\\n",(unsigned)inventory.library_count);
-   printf("Imported PSP functions: %u\\n",(unsigned)inventory.function_count);
+   printf("PSP module: %s\n",module.name);
+   printf("Import libraries: %u\n",(unsigned)inventory.library_count);
+   printf("Imported PSP functions: %u\n",(unsigned)inventory.function_count);
    for(unsigned i=0;i<inventory.library_count;i++)
-    printf("  %s: %u functions\\n",inventory.libraries[i].name,
+    printf("  %s: %u functions\n",inventory.libraries[i].name,
            (unsigned)inventory.libraries[i].function_count);
   }
   puts("PSP kernel/HLE imports and gameplay were NOT executed.");
