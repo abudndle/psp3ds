@@ -5,6 +5,7 @@
 #include "Core/MIPS/MIPS.h"
 #include "psp_mips_probe_fixture.h"
 #include "psp_nintendo_input.h"
+#include "psp_native_texture.h"
 
 // The arithmetic probe links no guest memory subsystem. MIPSState's upstream
 // constructor takes this object's address, but the probe never dereferences it.
@@ -47,4 +48,21 @@ extern "C" bool ppsspp_controls_probe() {
         return false;
     return pad.buttons == (PSP_CTRL_CROSS | PSP_CTRL_LEFT) &&
            pad.lx == 0 && pad.ly == 128;
+}
+
+/* Exercise the same PSP GE direct-color decoder on the PPSSPP C++ link
+ * boundary without any OpenGL, Vulkan or D3D runtime. Synthetic only. */
+extern "C" bool ppsspp_texture_probe() {
+    const PspNativeTexture t{2, 1, 2, PSP_TEXTURE_5650, 0};
+    const PspNativeTextureRegion region{0, 0, 2, 1};
+    const uint8_t texels[]{0x1f, 0x00, 0xe0, 0x07};
+    uint8_t pixels[8]{};
+    if (psp_native_texture_decode_region(&t, texels, sizeof(texels),
+                                         &region, pixels, 8, sizeof(pixels)) != PSP_TEXTURE_OK)
+        return false;
+    const uint8_t expected[]{255, 0, 0, 255, 0, 255, 0, 255};
+    for (unsigned i = 0; i < sizeof(pixels); ++i)
+        if (pixels[i] != expected[i])
+            return false;
+    return true;
 }
