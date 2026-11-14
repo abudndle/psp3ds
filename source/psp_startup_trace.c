@@ -188,8 +188,17 @@ int psp_startup_trace_run(PspCpu *cpu,
   }
   /* Fingerprint executed PC path only; no copyrighted opcode bytes. */
   out->pc_fingerprint=(out->pc_fingerprint^pc)*UINT32_C(16777619);
+#if defined(__NDS__)
+  /* This BlocksDS target intentionally links only the compact CPU core.
+   * Full PSP HLE/IoFileMgr/thread dependencies are NOT present. Refuse
+   * requested firmware dispatch rather than linking in a false stub or
+   * extra native runtime libraries on 4-MiB systems. */
+  if(config->hle)return -1;
+  const int status=psp_cpu_step(cpu);
+#else
   const int status=config->hle?
     psp_hle_step(config->hle,cpu):psp_cpu_step(cpu);
+#endif
   out->interpreter_status=status;
   if(status==0 || status==1){
    out->executed++;
