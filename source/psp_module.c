@@ -17,7 +17,9 @@ int psp_module_discover(const uint8_t *elf,size_t size,
  if (!out) return -1;
  memset(out,0,sizeof(*out));
  if (!elf || !cpu || size<52 || memcmp(elf,"\177ELF",4)!=0 ||
-     elf[4]!=1 || elf[5]!=1 || elf[6]!=1 || u16(elf+18)!=8) return -1;
+     elf[4]!=1 || elf[5]!=1 || elf[6]!=1 || u16(elf+18)!=8 ||
+     (u16(elf+16)!=2 && u16(elf+16)!=0xffa0u)) return -1;
+ const int relative_prx=u16(elf+16)==0xffa0u;
  uint32_t shoff=u32(elf+32);
  uint16_t entsize=u16(elf+46), count=u16(elf+48), names=u16(elf+50);
  if (entsize<40 || count==0 || count>1024 || names>=count ||
@@ -36,8 +38,35 @@ int psp_module_discover(const uint8_t *elf,size_t size,
   const uint8_t *end=memchr(name,0,strlen-noff);
   if (!end) return -2;
   if ((size_t)(end-name)==21 && memcmp(name,".rodata.sceModuleInfo",21)==0) {
-   /* The PSP SceModuleInfo structure occupies 52 bytes. */
-   if (found || sectlen<52 || !guest(cpu,a,52)) return -2;
+   /* ET_SCE_PRX sections use offsets from the guest image base.
+    * The relocation loader maps original relative virtual addresses at
+    * ram_base + p_vaddr; do not treat the section address as absolute.
+    * Require the section's file offset and mapped offset to agree with
+    * one file-backed PT_LOAD before consulting any guest bytes. */
+   if(found||sectlen<52)return -2;
+   if(relative_prx){
+    const uint32_t section_offset=u32(sh+16),phoff=u32(elf+28);
+    const uint16_t phsize=u16(elf+42),phcount=u16(elf+44);
+    if(!phcount||phcount>128||phsize<32||
+       !range(size,phoff,(uint64_t)phcount*phsize))return -2;
+    int section_mapped=0;
+    for(unsigned j=0;j<phcount;j++){
+     const uint8_t *ph=elf+phoff+(size_t)j*phsize;
+     if(u32(ph)!=1u)continue;
+     const uint32_t file_off=u32(ph+4),vaddr=u32(ph+8);
+     const uint32_t filesz=u32(ph+16),memsz=u32(ph+20);
+     if(section_offset>=file_off && a>=vaddr &&
+        (uint64_t)section_offset+52u<=(uint64_t)file_off+filesz &&
+        (uint64_t)a+52u<=(uint64_t)vaddr+memsz &&
+        (uint64_t)section_offset-file_off==(uint64_t)a-vaddr){
+      section_mapped=1;break;
+     }
+    }
+    if(!section_mapped ||
+       (uint64_t)cpu->ram_base+a>UINT32_MAX)return -2;
+    a+=cpu->ram_base;
+   }
+   if(!guest(cpu,a,52))return -2;
    found=1;address=a;
   }
  }
