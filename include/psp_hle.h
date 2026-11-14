@@ -20,7 +20,9 @@ typedef enum {
  PSP_HLE_THREAD_CREATE=8,
  PSP_HLE_THREAD_WAIT=9,
  PSP_HLE_THREAD_SIGNAL=10,
- PSP_HLE_THREAD_EXIT=11
+ PSP_HLE_THREAD_EXIT=11,
+ /* PSP SysMemUserForUser NID 0x358CA1BB: verified SDK-version setter. */
+ PSP_HLE_SET_COMPILED_SDK_VERSION=12
 } PspHleService;
 typedef struct { uint32_t syscall_id; PspHleService service; } PspHleBinding;
 typedef struct {
@@ -30,6 +32,7 @@ typedef struct {
  struct PspIo *io; /* attached read-only disc filesystem */
  struct PspThreadCpu *threads; /* optional experimental thread services */
  uint64_t uptime_us;
+ uint32_t compiled_sdk_version; /* per-module SDK configuration */
 } PspHle;
 void psp_hle_init(PspHle *hle);
 int psp_hle_bind(PspHle *hle,uint32_t syscall_id,PspHleService service);
