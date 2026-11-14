@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #define GUARD_INITIALIZED 0x50535047u
-#define KB(x) ((uint32_t)(x)*1024u)
 static uint32_t smaller(uint32_t a,uint32_t b){return a<b?a:b;}
 static void *standard_allocate(void *opaque,size_t size){
  (void)opaque;
@@ -12,14 +11,17 @@ static void standard_release(void *opaque,void *ptr){
  (void)opaque;
  free(ptr);
 }
-static int fill_policy(PspTarget target,uint32_t total,uint32_t reserve,
-                       uint32_t guest,PspMemoryGuardPolicy *out){
+static int fill_policy(PspTarget target,uint32_t total,uint32_t observed,
+                       uint32_t reserve,uint32_t guest,
+                       PspMemoryGuardPolicy *out){
  PspPlatformBudget base;
  if(!out || psp_platform_budget_choose(target,&base)!=0 ||
     psp_platform_budget_validate(&base)!=0)return -1;
- if(!total || !guest)return -1;
+ if(!total || !guest || reserve>observed || total>observed-reserve)
+  return -1;
  out->target=target;
  out->total_limit=total;
+ out->observed_available_bytes=observed;
  out->reserved_outside_guard=reserve;
  out->class_limit[PSP_MEMORY_GUEST]=guest;
  out->class_limit[PSP_MEMORY_TEXTURE]=base.texture_budget;
@@ -54,6 +56,7 @@ int psp_memory_guard_policy_ds(const PspDsMemoryPlan *p,
  const uint32_t aligned=total/PSP_DS_MEMORY_GRANULE*PSP_DS_MEMORY_GRANULE;
  if(!aligned || !p->usable_hot_bytes)return -1;
  return fill_policy(p->target,aligned,
+                    p->confirmed_temporary_heap_bytes,
                     p->confirmed_temporary_heap_bytes-aligned,
                     p->usable_hot_bytes,out);
 }
@@ -79,7 +82,8 @@ int psp_memory_guard_policy_3ds(const Psp3dsMemoryPlan *p,
  /* This aggregate ceiling includes guest RAM and resource caches.
   * It is limited by the live free-APPLICATION-memory report minus
   * model-specific system/audio/rendering headroom. */
- return fill_policy(p->target,p->permitted_guest_bytes,reserve,
+ return fill_policy(p->target,p->permitted_guest_bytes,
+                    p->observed_free_bytes,reserve,
                     p->recommended_guest_bytes,out);
 }
 int psp_memory_guard_init(PspMemoryGuard *g,
@@ -87,11 +91,41 @@ int psp_memory_guard_init(PspMemoryGuard *g,
                           PspGuardMalloc allocate,PspGuardFree release,
                           void *opaque){
  if(!g||!policy||g->initialized==GUARD_INITIALIZED ||
-    (!!allocate!=!!release) ||
-    !policy->total_limit || (unsigned)policy->target>=PSP_TARGET_COUNT)
+    (!!allocate!=!!release) || !policy->total_limit ||
+    (unsigned)policy->target>=PSP_TARGET_COUNT ||
+    !policy->observed_available_bytes ||
+    policy->reserved_outside_guard>=policy->observed_available_bytes ||
+    policy->total_limit>policy->observed_available_bytes-
+                        policy->reserved_outside_guard)
   return -1;
- for(unsigned i=0;i<PSP_MEMORY_GUARD_CLASSES;i++)
-  if(!policy->class_limit[i])return -1;
+ PspPlatformBudget base;
+ if(psp_platform_budget_choose(policy->target,&base)!=0 ||
+    psp_platform_budget_validate(&base)!=0)return -1;
+ const int is_ds=policy->target<=PSP_TARGET_DSI;
+ const uint32_t max_physical=policy->target==PSP_TARGET_DSI?
+         PSP_DSI_MAIN_RAM_BYTES:policy->target<=PSP_TARGET_DS_SLOT2?
+         PSP_DS_MAIN_RAM_BYTES:policy->target==PSP_TARGET_NEW3DS?
+         PSP_3DS_NEW_PHYSICAL:PSP_3DS_OLD_PHYSICAL;
+ if(policy->observed_available_bytes>max_physical)return -1;
+ const uint32_t required_reserve=is_ds?1u:
+        policy->target==PSP_TARGET_NEW3DS?
+        PSP_3DS_NEW_HEADROOM:PSP_3DS_OLD_HEADROOM;
+ if(policy->reserved_outside_guard<required_reserve ||
+    (is_ds && policy->total_limit>
+                policy->observed_available_bytes-
+                policy->observed_available_bytes/4u))
+  return -1;
+ const uint32_t max_guest=is_ds?base.hot_ram_budget:
+      policy->target==PSP_TARGET_NEW3DS?
+      PSP_3DS_NEW_PSP_GUEST_CAP:PSP_3DS_OLD_PSP_GUEST_CAP;
+ if(!policy->class_limit[PSP_MEMORY_GUEST] ||
+    policy->class_limit[PSP_MEMORY_GUEST]>max_guest ||
+    !policy->class_limit[PSP_MEMORY_TEXTURE] ||
+    policy->class_limit[PSP_MEMORY_TEXTURE]>base.texture_budget ||
+    !policy->class_limit[PSP_MEMORY_CACHE] ||
+    policy->class_limit[PSP_MEMORY_CACHE]>base.cache_budget ||
+    !policy->class_limit[PSP_MEMORY_IO] ||
+    policy->class_limit[PSP_MEMORY_IO]>base.io_budget)return -1;
  memset(g,0,sizeof(*g));
  g->policy=*policy;
  g->allocate=allocate?allocate:standard_allocate;
