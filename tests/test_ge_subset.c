@@ -63,7 +63,52 @@ static void guest_memory(void) {
  assert(result.batch.count == 0);
 }
 
+
+static void guest_memory_rejections(void) {
+ const uint8_t valid[] = {
+  0x1f, 0xfc, 3, 0, 4, 0, 0, 0,
+  0x1f, 0xfc, 11, 0, 12, 0, 0, 0
+ };
+ const uint32_t baseline[] = {
+  0x10080000u, 0x01000020u, 0x12800114u,
+  SPRITE_CMD, FINISH, END
+ };
+ uint8_t bytes[sizeof valid];
+ uint32_t commands[sizeof baseline / sizeof baseline[0]];
+ PspGeSubsetResult result;
+ /* Each failure must clear all output, even if the caller reuses it. */
+ for (unsigned scenario = 0; scenario < 10; ++scenario) {
+  memcpy(bytes, valid, sizeof bytes);
+  memcpy(commands, baseline, sizeof baseline);
+  size_t size = sizeof bytes;
+  uint32_t memory_base = 0x08000020u;
+  switch (scenario) {
+   case 0: bytes[0] &= 0x7fu; break; /* non-opaque vertex */
+   case 1: bytes[8] ^= 1u; break; /* mismatched endpoint color */
+   case 2: bytes[14] = 1; break; /* mismatched depth */
+   case 3: bytes[10] = 3; break; /* zero-width rectangle */
+   case 4: bytes[12] = 4; break; /* zero-height rectangle */
+   case 5: bytes[10] = 0xff; bytes[11] = 1; break; /* clipped right */
+   case 6: bytes[12] = 193; break; /* clipped bottom */
+   case 7: size = 15; break; /* incomplete endpoint */
+   case 8: commands[1] = 0x0100001eu; break; /* address before window */
+   case 9: commands[2] = 0; break; /* missing vertex format */
+  }
+  memset(&result, 0xa5, sizeof result);
+  assert(psp_ge_subset_translate_memory(commands, 6, bytes, size,
+                                         memory_base, &result) != PSP_GE_SUBSET_OK);
+  assert(result.batch.count == 0);
+  assert(result.consumed_sprites == 0);
+  assert(result.consumed_commands == 0);
+ }
+ /* A valid command stream must still succeed after rejected inputs. */
+ assert(psp_ge_subset_translate_memory(baseline, 6, valid, sizeof valid,
+                                       0x08000020u, &result) == PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 1 && result.consumed_sprites == 1);
+}
+
 int main(void){
+ guest_memory_rejections();
  guest_memory();
  for(uint32_t frame=0;frame<8;frame++)raster_match(frame*11u);
  const PspGeDecodedSprite sprite={3,4,8,8,0x7c1f};
