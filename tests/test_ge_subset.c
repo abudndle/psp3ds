@@ -279,7 +279,60 @@ static void guest_display_list_from_ram(void) {
  assert(result.batch.count == 0);
 }
 
+static void guest_multi_sprite_list(void) {
+ uint8_t ram[192] = {0};
+ const uint32_t base = 0x08000000u;
+ /* Three 8-byte vertex pairs, directly stored in PSP guest memory. */
+ const uint16_t boxes[3][5] = {
+  {3,4,11,12,0xfc1fu},
+  {20,25,26,32,0x83e0u},
+  {40,50,49,60,0x801fu}
+ };
+ for(size_t i=0;i<3;i++){
+  size_t off=0x20u+i*16u;
+  uint16_t color=boxes[i][4];
+  for(unsigned v=0;v<2;v++){
+   uint16_t x=boxes[i][v?2:0], y=boxes[i][v?3:1];
+   size_t p=off+v*8u;
+   ram[p]=(uint8_t)color;ram[p+1]=(uint8_t)(color>>8);
+   ram[p+2]=(uint8_t)x;ram[p+3]=(uint8_t)(x>>8);
+   ram[p+4]=(uint8_t)y;ram[p+5]=(uint8_t)(y>>8);
+  }
+ }
+ const uint32_t commands[]={
+  0x10080000u,0x01000020u,0x12800114u,
+  SPRITE_CMD,SPRITE_CMD,SPRITE_CMD,FINISH,END
+ };
+ for(size_t i=0;i<sizeof commands/sizeof commands[0];i++)
+  for(unsigned b=0;b<4;b++)
+   ram[0x80u+i*4u+b]=(uint8_t)(commands[i]>>(8u*b));
+ PspGeSubsetResult output;
+ assert(psp_ge_subset_translate_guest(ram,sizeof ram,base,base+0x80u,8,&output)
+        == PSP_GE_SUBSET_OK);
+ assert(output.batch.count==3 && output.consumed_sprites==3);
+ assert(output.consumed_commands==8);
+ for(size_t i=0;i<3;i++){
+  assert(output.batch.rects[i].x==boxes[i][0]);
+  assert(output.batch.rects[i].y==boxes[i][1]);
+  assert(output.batch.rects[i].w==boxes[i][2]-boxes[i][0]);
+  assert(output.batch.rects[i].h==boxes[i][3]-boxes[i][1]);
+  assert(output.batch.rects[i].bgr555==(boxes[i][4]&0x7fffu));
+ }
+ PspGuestBus bus;
+ assert(psp_guest_bus_init(&bus,ram,base,sizeof ram,NULL)==0);
+ PspGeSubsetResult via_bus;
+ assert(psp_ge_subset_translate_bus(&bus,base+0x80u,8,&via_bus)
+        == PSP_GE_SUBSET_OK);
+ assert(memcmp(&output,&via_bus,sizeof output)==0);
+ /* Third primitive is malformed; the entire scene must be discarded. */
+ ram[0x20u+2u*16u+8u+2u]=40u;
+ assert(psp_ge_subset_translate_guest(ram,sizeof ram,base,base+0x80u,8,&output)
+        == PSP_GE_SUBSET_MALFORMED);
+ assert(output.batch.count==0 && output.consumed_sprites==0);
+}
+
 int main(void){
+ guest_multi_sprite_list();
  guest_display_list_from_ram();
  guest_display_list_atomicity();
  guest_memory_rejections();
