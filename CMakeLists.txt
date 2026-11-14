@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(psp3ds_host C)
 set(CMAKE_C_STANDARD 11)
-add_library(psp_core STATIC source/psp_core.c source/psp_loader.c source/psp_hle.c source/psp_imports.c source/psp_nids.c source/psp_prx.c source/psp_prx_inventory.c source/psp_module.c source/psp_reloc.c source/psp_reloc2.c source/psp_reloc_image.c source/psp_perf.c source/psp_iso.c source/psp_cso.c source/psp_disc.c source/psp_paths.c source/psp_catalog.c source/psp_demand.c source/psp_threads.c source/psp_thread_cpu.c source/psp_umd.c source/psp_io.c source/psp_boot.c source/psp_boot_auto.c source/psp_slot2_probe.c source/psp_benchmark.c source/psp_guest_window.c source/psp_guest_bus.c source/psp_rom_pager.c source/psp_rom_file.c source/psp_platform_budget.c source/psp_ds_memory.c source/psp_memory_guard.c source/psp_3ds_memory.c source/psp_3ds_storage.c source/psp_prx_image.c source/psp_runtime_tuning.c source/psp_runtime_guest.c source/psp_video_layout.c source/psp_nintendo_input.c source/psp_native_texture.c source/psp_ge_triangles.c source/psp_features.c source/psp_scene.c source/psp_scene_batch.c source/psp_ge_subset.c)
+add_library(psp_core STATIC source/psp_core.c source/psp_loader.c source/psp_hle.c source/psp_imports.c source/psp_nids.c source/psp_prx.c source/psp_prx_inventory.c source/psp_module.c source/psp_reloc.c source/psp_reloc2.c source/psp_reloc_image.c source/psp_perf.c source/psp_iso.c source/psp_cso.c source/psp_disc.c source/psp_paths.c source/psp_catalog.c source/psp_demand.c source/psp_threads.c source/psp_thread_cpu.c source/psp_umd.c source/psp_io.c source/psp_boot.c source/psp_boot_auto.c source/psp_slot2_probe.c source/psp_benchmark.c source/psp_guest_window.c source/psp_guest_bus.c source/psp_rom_pager.c source/psp_rom_file.c source/psp_platform_budget.c source/psp_ds_memory.c source/psp_memory_guard.c source/psp_guarded_prx.c source/psp_3ds_memory.c source/psp_3ds_storage.c source/psp_prx_image.c source/psp_runtime_tuning.c source/psp_runtime_guest.c source/psp_video_layout.c source/psp_nintendo_input.c source/psp_native_texture.c source/psp_ge_triangles.c source/psp_features.c source/psp_scene.c source/psp_scene_batch.c source/psp_ge_subset.c)
 target_include_directories(psp_core PUBLIC include)
 find_package(ZLIB REQUIRED)
 target_link_libraries(psp_core PUBLIC ZLIB::ZLIB)
@@ -272,3 +272,9 @@ add_test(NAME memory_ds COMMAND test_ds_memory)
 add_executable(test_memory_guard tests/test_memory_guard.c)
 target_link_libraries(test_memory_guard PRIVATE psp_core)
 add_test(NAME memory_guard COMMAND test_memory_guard)
+
+# Ownership-checked executable loads on the real shared PSP PRX mapper;
+# denies oversized DS/DSi images rather than exhausting the console RAM.
+add_executable(test_guarded_prx tests/test_guarded_prx.c)
+target_link_libraries(test_guarded_prx PRIVATE psp_core)
+add_test(NAME guarded_prx COMMAND test_guarded_prx)
