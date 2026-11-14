@@ -148,7 +148,48 @@ static void guest_display_list_atomicity(void) {
  assert(result.batch.count == 0);
 }
 
+
+static void guest_display_list_from_ram(void) {
+ uint8_t memory[128] = {0};
+ const uint8_t vertices[] = {
+  0x1f, 0xfc, 3, 0, 4, 0, 0, 0,
+  0x1f, 0xfc, 11, 0, 12, 0, 0, 0
+ };
+ const uint32_t words[] = {
+  0x10080000u, 0x01000020u, 0x12800114u,
+  SPRITE_CMD, FINISH, END
+ };
+ memcpy(memory + 0x20, vertices, sizeof vertices);
+ for (size_t i = 0; i < sizeof words / sizeof words[0]; ++i) {
+  uint32_t w = words[i];
+  for (unsigned j = 0; j < 4; ++j)
+   memory[0x60 + i * 4 + j] = (uint8_t)(w >> (j * 8));
+ }
+ PspGeSubsetResult result;
+ assert(psp_ge_subset_translate_guest(memory, sizeof memory, 0x08000000u,
+         0x08000060u, 6, &result) == PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 1 && result.batch.rects[0].w == 8);
+ assert(result.consumed_commands == 6 && result.consumed_sprites == 1);
+ assert(psp_ge_subset_translate_guest(memory, sizeof memory, 0x08000000u,
+         0x08000061u, 6, &result) != PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 0);
+ assert(psp_ge_subset_translate_guest(memory, sizeof memory, 0x08000000u,
+         0x08000078u, 6, &result) != PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 0);
+ assert(psp_ge_subset_translate_guest(memory, sizeof memory, 0x08000000u,
+         0x07fffffcu, 6, &result) != PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 0);
+ assert(psp_ge_subset_translate_guest(memory, sizeof memory, 0x08000000u,
+         0x08000060u, PSP_GE_SUBSET_MAX_COMMANDS + 1, &result) != PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 0);
+ memory[0x60 + 3 * 4 + 3] = 0x08; /* unsupported opcode replaces PRIM */
+ assert(psp_ge_subset_translate_guest(memory, sizeof memory, 0x08000000u,
+         0x08000060u, 6, &result) == PSP_GE_SUBSET_UNSUPPORTED);
+ assert(result.batch.count == 0);
+}
+
 int main(void){
+ guest_display_list_from_ram();
  guest_display_list_atomicity();
  guest_memory_rejections();
  guest_memory();
