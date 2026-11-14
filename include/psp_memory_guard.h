@@ -23,6 +23,9 @@ typedef void (*PspGuardFree)(void *opaque,void *pointer);
 typedef struct {
  uint32_t total_limit;
  uint32_t class_limit[PSP_MEMORY_GUARD_CLASSES];
+ /* Observed, not total physically installed RAM: temporary touched heap
+  * size on DS; live free APPLICATION bytes from OS on 3DS. */
+ uint32_t observed_available_bytes;
  uint32_t reserved_outside_guard;
  PspTarget target;
 } PspMemoryGuardPolicy;
