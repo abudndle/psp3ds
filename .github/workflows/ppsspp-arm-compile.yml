@@ -69,6 +69,11 @@ jobs:
             build/ppsspp-arm/ppsspp-interpreter-relocatable.o \
             > build/ppsspp-arm/relocatable-unresolved.txt
           # -r intentionally permits undefined symbols. NOT an executable link.
+          "$DEVKITARM/bin/arm-none-eabi-readelf" -h \
+            build/ppsspp-arm/ppsspp-interpreter-relocatable.o \
+            > build/ppsspp-arm/relocatable-elf-header.txt
+          grep -q "Machine:.*ARM" build/ppsspp-arm/relocatable-elf-header.txt
+          grep -q "Type:.*REL" build/ppsspp-arm/relocatable-elf-header.txt
       - name: Inventory ARM interpreter link dependencies
         shell: bash
         run: |
@@ -97,4 +102,5 @@ jobs:
             build/ppsspp-arm/*symbols.txt
             build/ppsspp-arm/link-closure.json
             build/ppsspp-arm/dependency-categories.json
+            build/ppsspp-arm/relocatable-elf-header.txt
           if-no-files-found: warn
