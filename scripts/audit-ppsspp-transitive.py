@@ -32,7 +32,16 @@ while queue:
         inc = Path(include)
         if inc.is_absolute() or ".." in inc.parts:
             sys.exit(f"Unsafe include path: {include}")
-        queue.append(inc.as_posix())
+        root_candidate = root / inc
+        local_candidate = path.parent / inc
+        if root_candidate.is_file():
+            queue.append(inc.as_posix())
+        elif local_candidate.is_file():
+            queue.append(local_candidate.relative_to(root).as_posix())
+        elif inc.name in {"stdint.h", "stddef.h", "stdbool.h", "inttypes.h"}:
+            continue  # Standard C headers sometimes included with quotes.
+        else:
+            queue.append(inc.as_posix())
 print(f"Visited {len(seen)} upstream files referenced through quoted includes")
 print(f"Missing from sparse checkout: {len(missing)}")
 for name in sorted(missing):
