@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include "psp_platform_budget.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* These native key positions are shared by libctru and libnds for
  * A/B/SELECT/START/D-pad/R/L/X/Y (bits 0 through 11).
  * Pass physical D-pad bits only: 3DS circle-pad direction aliases live
@@ -50,4 +54,8 @@ typedef struct {
 int psp_nintendo_ctrl_sample(PspTarget target, uint32_t native_keys,
                              int32_t circle_dx, int32_t circle_dy,
                              PspNintendoCtrl *out);
+
+#ifdef __cplusplus
+}
+#endif
 #endif
