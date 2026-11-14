@@ -139,3 +139,17 @@ int psp_ge_subset_translate_guest(const uint8_t *memory, size_t size,
  return psp_ge_subset_translate_memory(words, word_count, memory, size,
                                        memory_base, out);
 }
+
+/* The guest bus is the source of truth for hot PSP RAM. This adapter
+   deliberately rejects cold-only addresses until cross-window GE fetches
+   can be made atomic and bounded. */
+int psp_ge_subset_translate_bus(const PspGuestBus *bus, uint32_t list_address,
+                                size_t word_count, PspGeSubsetResult *out) {
+ if (out) memset(out, 0, sizeof *out);
+ if (!out || !bus || !bus->hot || !bus->hot_size ||
+     bus->hot_size > 32u * 1024u * 1024u)
+  return PSP_GE_SUBSET_BAD_ARGUMENT;
+ return psp_ge_subset_translate_guest(bus->hot, bus->hot_size,
+                                      bus->hot_base, list_address,
+                                      word_count, out);
+}
