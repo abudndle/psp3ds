@@ -11,7 +11,7 @@ fi
 mkdir -p "$(dirname "$DEST")"
 git clone --filter=blob:none --no-checkout https://github.com/hrydgard/ppsspp.git "$DEST"
 git -C "$DEST" sparse-checkout init --cone
-git -C "$DEST" sparse-checkout set Core/MIPS Core/HLE GPU Core/FileSystems Core/FileLoaders
+git -C "$DEST" sparse-checkout set Common Core/MIPS Core/HLE Core/HW GPU Core/FileSystems Core/FileLoaders
 git -C "$DEST" checkout --detach "$SHA"
 ACTUAL="$(git -C "$DEST" rev-parse HEAD)"
 if [[ "$ACTUAL" != "$SHA" ]]; then
