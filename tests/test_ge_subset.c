@@ -120,6 +120,7 @@ static void guest_display_list_atomicity(void) {
   SPRITE_CMD, SPRITE_CMD, FINISH, END
  };
  PspGeSubsetResult result;
+ assert(sizeof vertices == 4u * 8u); /* four packed 8-byte vertices */
  assert(psp_ge_subset_translate_memory(commands, 7, vertices,
         sizeof vertices, 0x08000020u, &result) == PSP_GE_SUBSET_OK);
  assert(result.batch.count == 2 && result.consumed_sprites == 2);
