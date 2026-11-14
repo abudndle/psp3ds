@@ -1,6 +1,7 @@
 #ifndef PSP_STARTUP_TRACE_H
 #define PSP_STARTUP_TRACE_H
 #include "psp_core.h"
+#include "psp_hle.h"
 #include "psp_prx_inventory.h"
 #include <stdint.h>
 #include <stddef.h>
@@ -40,6 +41,14 @@ typedef struct {
  uint8_t executable_count;
  uint32_t instruction_cap;
  const PspPrxImportInventory *imports; /* validated read-only inventory */
+ /* Optional, caller-owned verified partial import bindings. Only continue
+  * past an import stub if a known NID matches the patched JR RA/SYSCALL
+  * instructions AND the HLE table has the corresponding service.
+  * guest_step MUST execute exactly one instruction/HLE trap via the
+  * existing psp_hle_step(), not simulate a successful return. */
+ const PspHle *linked_hle;
+ int (*guest_step)(void *context,PspCpu *cpu);
+ void *guest_step_context;
  /* Optional, narrowly linked HLE. Caller must link only verified NIDs
   * BEFORE tracing. Every unlinked/unknown import still stops cleanly. */
  PspHle *hle;
@@ -48,6 +57,7 @@ typedef struct {
 typedef struct {
  PspStartupStop stop;
  uint32_t executed;
+ uint32_t handled_hle_traps; /* successfully dispatched verified calls */
  uint32_t start_pc;
  uint32_t stop_pc;
  uint32_t next_pc;
