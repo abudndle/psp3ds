@@ -23,6 +23,14 @@ typedef struct {
 int psp_guarded_prx_load(PspMemoryGuard *guard,const uint8_t *elf,
                          size_t elf_size,uint32_t guest_base,
                          PspGuardedPrx *out);
+/* Reserve up to 2 MiB of additional zeroed guest RAM ABOVE the mapped
+ * PSP image for diagnostic stack/memory. Charged to the same protected
+ * GUEST budget. This is not the complete PSP kernel's heap allocator. */
+int psp_guarded_prx_load_with_reserve(PspMemoryGuard *guard,
+                                      const uint8_t *elf,size_t elf_size,
+                                      uint32_t guest_base,
+                                      uint32_t extra_guest_bytes,
+                                      PspGuardedPrx *out);
 int psp_guarded_prx_unload(PspMemoryGuard *guard,PspGuardedPrx *image);
 #ifdef __cplusplus
 }
