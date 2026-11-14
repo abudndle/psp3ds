@@ -112,6 +112,28 @@ static int at_import(const PspCpu *cpu,const PspPrxImportInventory *inv,
  if(total!=inv->function_count)return -1;
  return 0;
 }
+/* Only an exact NID that has been atomically bound to a valid syscall
+ * stub may pass the import boundary. This checks both the actual guest
+ * stub and the HLE registry, never assuming that a recognized NID alone
+ * means the service is initialized or emulated correctly. */
+static int linked_import(const PspCpu *cpu,const PspHle *hle,
+                         const PspStartupTraceReport *result,uint32_t pc){
+ if(!cpu||!hle||!result||!result->import_known_hle)return 0;
+ if(!result->import_library[0])return 0;
+ PspHleService service;
+ if(psp_imports_known_service(result->import_library,
+          result->import_nid,&service)!=1)return 0;
+ if(!cpu->ram||!hle->count)return 0;
+ const uint8_t *stub=guest(cpu,(uint64_t)(pc&~7u),8u);
+ if(!stub)return 0;
+ const uint32_t jump=rd32(stub),syscall=rd32(stub+4u);
+ if(jump!=UINT32_C(0x03e00008) || (syscall&63u)!=12u)return 0;
+ const uint32_t id=syscall>>6u;
+ for(size_t i=0;i<hle->count;i++)
+  if(hle->entries[i].syscall_id==id &&
+     hle->entries[i].service==service)return 1;
+ return 0;
+}
 int psp_startup_trace_run(PspCpu *cpu,
                           const PspStartupTraceConfig *config,
                           PspStartupTraceReport *out){
@@ -145,16 +167,24 @@ int psp_startup_trace_run(PspCpu *cpu,
    * into successful fake HLE calls or jump into kernel addresses. */
   const int imported=at_import(cpu,config->imports,pc,out);
   if(imported<0)return -1;
-  if(imported){
+  if(imported && !linked_import(cpu,config->hle,out,pc)){
    out->stop=PSP_STARTUP_UNLINKED_IMPORT;
    return 0;
   }
   /* Fingerprint executed PC path only; no copyrighted opcode bytes. */
   out->pc_fingerprint=(out->pc_fingerprint^pc)*UINT32_C(16777619);
-  const int status=psp_cpu_step(cpu);
+  const int status=config->hle?
+    psp_hle_step(config->hle,cpu):psp_cpu_step(cpu);
   out->interpreter_status=status;
-  if(status==0){
+  if(status==0 || status==1){
    out->executed++;
+   /* A linked import was successfully handled; do not leave its
+    * identity in a subsequent unrelated budget/fault checkpoint. */
+   if(imported){
+    out->import_nid=0;
+    out->import_library[0]=0;
+    out->import_known_hle=0;
+   }
    continue;
   }
   if(status==-2)out->stop=PSP_STARTUP_MEMORY_FAULT;
