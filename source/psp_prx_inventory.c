@@ -100,3 +100,46 @@ int psp_prx_import_coverage(const PspCpu *cpu,
  out->unsupported=(uint16_t)(total-implemented);
  return 0;
 }
+
+int psp_prx_link_verified_imports(PspCpu *cpu,PspHle *hle,
+                                  const PspPrxImportInventory *inv,
+                                  PspPrxHleCoverage *out){
+ if(out)memset(out,0,sizeof(*out));
+ if(!cpu||!cpu->ram||!hle||!inv||!out)return -1;
+ PspPrxHleCoverage coverage;
+ if(psp_prx_import_coverage(cpu,inv,&coverage)!=0 ||
+    coverage.implemented>PSP_HLE_MAX_BINDINGS ||
+    coverage.implemented>PSP_HLE_MAX_BINDINGS-hle->count)
+  return -2;
+ PspImport selected[PSP_HLE_MAX_BINDINGS];
+ unsigned total=0,found=0;
+ /* Preflight ALL library stub ranges and NID addresses, even when their
+  * firmware functions are unsupported. The existing import linker then
+  * validates every selected stub and commits the group atomically. */
+ for(unsigned i=0;i<inv->library_count;i++){
+  const PspPrxLibraryInventory *lib=&inv->libraries[i];
+  const uint32_t count=lib->function_count;
+  const uint8_t *nids=mapped(cpu,lib->nid_table,(size_t)count*4u);
+  if(!nids || !mapped(cpu,lib->stub_table,(size_t)count*8u))return -2;
+  for(unsigned j=0;j<count;j++){
+   const uint32_t nid=u32(nids+(size_t)j*4u);
+   PspHleService service;
+   const int supported=psp_imports_known_service(lib->name,nid,&service);
+   if(supported<0)return -2;
+   if(supported){
+    if(found>=PSP_HLE_MAX_BINDINGS)return -2;
+    const uint64_t addr=(uint64_t)lib->stub_table+8u*j;
+    if(addr>UINT32_MAX)return -2;
+    selected[found].library=lib->name;
+    selected[found].nid=nid;
+    selected[found].stub_address=(uint32_t)addr;
+    found++;
+   }
+  }
+  total+=count;
+ }
+ if(total!=inv->function_count || found!=coverage.implemented)return -2;
+ if(found && psp_imports_link_known(cpu,hle,selected,found)!=0)return -3;
+ *out=coverage;
+ return 0;
+}
