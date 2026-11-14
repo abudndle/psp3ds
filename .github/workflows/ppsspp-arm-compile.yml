@@ -27,17 +27,30 @@ jobs:
         run: |
           set -eu
           mkdir -p build/ppsspp-arm
-          : > build/ppsspp-arm/status.tsv
-          for unit in Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/InterpreterVFPU.cpp Core/MIPS/MIPSTables.cpp Core/MIPS/MIPSCodeUtils.cpp; do
+          # Compile independent translation units concurrently, preserving per-unit logs.
+          units=(Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/InterpreterVFPU.cpp Core/MIPS/MIPSTables.cpp Core/MIPS/MIPSCodeUtils.cpp)
+          pids=()
+          for unit in "${units[@]}"; do
             name="$(basename "$unit" .cpp)"
             echo "Compiling upstream $unit with ARM C++ compiler"
-            if "$DEVKITARM/bin/arm-none-eabi-g++" -std=c++17 -O2 -marm -mcpu=mpcore -fpermissive \
-                -Ivendor/ppsspp -c "vendor/ppsspp/$unit" \
-                -o "build/ppsspp-arm/$name.o" \
-                > "build/ppsspp-arm/$name.log" 2>&1; then
-              printf '%s\tcompiled\n' "$unit" >> build/ppsspp-arm/status.tsv
-            else
-              printf '%s\tblocked\n' "$unit" >> build/ppsspp-arm/status.tsv
+            (
+              if "$DEVKITARM/bin/arm-none-eabi-g++" -std=c++17 -O2 -marm -mcpu=mpcore -fpermissive \
+                  -Ivendor/ppsspp -c "vendor/ppsspp/$unit" \
+                  -o "build/ppsspp-arm/$name.o" \
+                  > "build/ppsspp-arm/$name.log" 2>&1; then
+                printf '%s\tcompiled\n' "$unit" > "build/ppsspp-arm/$name.status"
+              else
+                printf '%s\tblocked\n' "$unit" > "build/ppsspp-arm/$name.status"
+              fi
+            ) &
+            pids+=("$!")
+          done
+          for pid in "${pids[@]}"; do wait "$pid"; done
+          : > build/ppsspp-arm/status.tsv
+          for unit in "${units[@]}"; do
+            name="$(basename "$unit" .cpp)"
+            cat "build/ppsspp-arm/$name.status" >> build/ppsspp-arm/status.tsv
+            if grep -q 'blocked' "build/ppsspp-arm/$name.status"; then
               sed -n '1,50p' "build/ppsspp-arm/$name.log"
             fi
           done
