@@ -28,4 +28,10 @@ int psp_ge_subset_translate(const uint32_t *words,size_t word_count,
 int psp_ge_subset_translate_memory(const uint32_t *words, size_t word_count,
                                    const uint8_t *memory, size_t size,
                                    uint32_t memory_base, PspGeSubsetResult *out);
+/* Explicit PSP-native 480x272 viewport variant. The old function keeps
+ * 256x192 synthetic-scene bounds for existing tests and renderers.
+ * This accepts only opaque, flat-color through-mode sprite pairs. */
+int psp_ge_subset_translate_psp_memory(const uint32_t *words, size_t word_count,
+                                       const uint8_t *memory, size_t size,
+                                       uint32_t memory_base, PspGeSubsetResult *out);
 #endif
