@@ -4,6 +4,7 @@
 #include "psp_scene.h"
 #include "psp_scene_batch.h"
 #include "psp_ge_subset.h"
+#include "psp_ge_triangles.h"
 #include "psp_video_layout.h"
 /* Citro2D submits bounded rectangle primitives to the PICA200 GPU on
  * both original and New 3DS using an original synthetic scene. */
@@ -81,6 +82,52 @@ int psp_3ds_scene_draw(uint32_t frame){
  C3D_FrameEnd(0);
  return ok?0:-1;
 }
+/* Native PICA200/Citro2D triangle submission; deliberately only
+ * the opaque through-mode GE subset. No desktop OpenGL/Vulkan/D3D.
+ * Y in the native frontend enables this original synthetic fixture.
+ * This is not full PSP 3D matrices, depth, textures or game rendering. */
+int psp_3ds_triangle_draw(uint32_t frame){
+ (void)frame;
+ if(!initialized||!target)return -1;
+ static const uint32_t commands[]={
+  0x10080000u,0x01000000u,0x12800114u,
+  0x04030003u,0x0f000000u,0x0c000000u
+ };
+ static const uint8_t vertex_data[]={
+  0x1f,0x80,20,0,20,0,1,0,
+  0xe0,0x83,180,0,30,0,2,0,
+  0x00,0xfc,100,0,150,0,3,0
+ };
+ PspGeTriangleResult decoded;
+ PspVideoLayout layout;
+ if(psp_ge_triangles_decode(commands,6,vertex_data,sizeof vertex_data,
+                            0x08000000u,&decoded)!=PSP_GE_TRIANGLE_OK ||
+    psp_video_layout_init(PSP_TARGET_OLD3DS,PSP_VIDEO_DISPLAY_3DS_BOTTOM,
+                          PSP_GE_TRIANGLE_WIDTH,PSP_GE_TRIANGLE_HEIGHT,
+                          &layout)!=0)return -1;
+ C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+ C2D_TargetClear(target,C2D_Color32(0,0,0,255));
+ C2D_SceneBegin(target);
+ int ok=1;
+ for(unsigned i=0;i<decoded.count;i++){
+  const PspGeTriangle *t=&decoded.triangles[i];
+  float x[3],y[3];
+  for(unsigned v=0;v<3;v++){
+   x[v]=(float)layout.viewport_x+
+        (float)t->v[v].x*layout.viewport_width/layout.source_width;
+   y[v]=(float)layout.viewport_y+
+        (float)t->v[v].y*layout.viewport_height/layout.source_height;
+  }
+  if(!C2D_DrawTriangle(x[0],y[0],color555(t->v[0].color555),
+                       x[1],y[1],color555(t->v[1].color555),
+                       x[2],y[2],color555(t->v[2].color555),0.0f)){
+   ok=0;break;
+  }
+ }
+ C3D_FrameEnd(0);
+ return ok?0:-1;
+}
+
 void psp_3ds_scene_fini(void){
  if(!initialized)return;
  C2D_Fini();
