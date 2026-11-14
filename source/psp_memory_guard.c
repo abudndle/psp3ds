@@ -128,6 +128,9 @@ int psp_memory_guard_init(PspMemoryGuard *g,
     policy->class_limit[PSP_MEMORY_IO]>base.io_budget)return -1;
  memset(g,0,sizeof(*g));
  g->policy=*policy;
+ g->soft_total_limit=policy->total_limit;
+ for(unsigned i=0;i<PSP_MEMORY_GUARD_CLASSES;i++)
+  g->soft_class_limit[i]=policy->class_limit[i];
  g->allocate=allocate?allocate:standard_allocate;
  g->deallocate=release?release:standard_release;
  g->opaque=opaque;
@@ -141,8 +144,17 @@ int psp_memory_guard_acquire(PspMemoryGuard *g,PspMemoryClass cls,
     (unsigned)cls>=PSP_MEMORY_GUARD_CLASSES ||
     !bytes || bytes>UINT32_MAX)return -1;
  const uint32_t request=(uint32_t)bytes;
- if(request>g->policy.total_limit-g->allocated_bytes ||
-    request>g->policy.class_limit[cls]-g->per_class[cls]){
+ /* Both the immutable hard limits and the current soft admission
+  * limits must allow this growth. Existing guest RAM remains mapped even
+  * when soft limits drop below currently allocated sizes. */
+ if(g->allocated_bytes>g->policy.total_limit ||
+    g->allocated_bytes>g->soft_total_limit ||
+    g->per_class[cls]>g->policy.class_limit[cls] ||
+    g->per_class[cls]>g->soft_class_limit[cls] ||
+    request>g->policy.total_limit-g->allocated_bytes ||
+    request>g->soft_total_limit-g->allocated_bytes ||
+    request>g->policy.class_limit[cls]-g->per_class[cls] ||
+    request>g->soft_class_limit[cls]-g->per_class[cls]){
   g->denied_requests++;return -2;
  }
  unsigned slot=PSP_MEMORY_GUARD_SLOTS;
@@ -166,6 +178,19 @@ int psp_memory_guard_acquire(PspMemoryGuard *g,PspMemoryClass cls,
  g->outstanding_allocations++;
  g->successful_allocations++;
  *result=memory;
+ return 0;
+}
+int psp_memory_guard_set_soft_limits(PspMemoryGuard *g,
+                                         uint32_t total,
+                                         const uint32_t cls[PSP_MEMORY_GUARD_CLASSES]){
+ if(!g||g->initialized!=GUARD_INITIALIZED||!cls ||
+    !total||total>g->policy.total_limit)return -1;
+ for(unsigned i=0;i<PSP_MEMORY_GUARD_CLASSES;i++)
+  if(!cls[i]||cls[i]>g->policy.class_limit[i])return -1;
+ /* Validate all fields first; never half-apply an invalid cutback. */
+ g->soft_total_limit=total;
+ for(unsigned i=0;i<PSP_MEMORY_GUARD_CLASSES;i++)
+  g->soft_class_limit[i]=cls[i];
  return 0;
 }
 int psp_memory_guard_release(PspMemoryGuard *g,void *memory){
