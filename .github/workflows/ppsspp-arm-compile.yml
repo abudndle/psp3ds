@@ -26,7 +26,7 @@ jobs:
           set -eu
           mkdir -p build/ppsspp-arm
           : > build/ppsspp-arm/status.tsv
-          for unit in Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/InterpreterVFPU.cpp Core/MIPS/MIPSCodeUtils.cpp; do
+          for unit in Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/InterpreterVFPU.cpp Core/MIPS/MIPSTables.cpp Core/MIPS/MIPSCodeUtils.cpp; do
             name="$(basename "$unit" .cpp)"
             echo "Compiling upstream $unit with ARM C++ compiler"
             if "$DEVKITARM/bin/arm-none-eabi-g++" -std=c++17 -O2 -marm -mcpu=mpcore \
@@ -42,7 +42,7 @@ jobs:
           cat build/ppsspp-arm/status.tsv
           # This is a diagnostic cross-compile, NOT a PSP runtime link or game boot.
           # Preserve all compiler failures as artifacts for the integration batch.
-          test "$(wc -l < build/ppsspp-arm/status.tsv)" -eq 4
+          test "$(wc -l < build/ppsspp-arm/status.tsv)" -eq 5
           # A blocked compiler unit is a failed integration gate, not a green build.
           if grep -q 'blocked' build/ppsspp-arm/status.tsv; then
             echo 'FAIL: upstream PPSSPP ARM compile blockers remain' >&2
@@ -58,6 +58,7 @@ jobs:
             build/ppsspp-arm/Interpreter.o \
             build/ppsspp-arm/InterpreterDispatch.o \
             build/ppsspp-arm/InterpreterVFPU.o \
+            build/ppsspp-arm/MIPSTables.o \
             build/ppsspp-arm/MIPSCodeUtils.o
           test -s build/ppsspp-arm/ppsspp-interpreter-relocatable.o
           "$DEVKITARM/bin/arm-none-eabi-nm" -u -C \
