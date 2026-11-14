@@ -1,6 +1,7 @@
 #ifndef PSP_GE_SUBSET_H
 #define PSP_GE_SUBSET_H
 #include "psp_scene_batch.h"
+#include "psp_guest_bus.h"
 #include <stdint.h>
 #include <stddef.h>
 #define PSP_GE_SUBSET_MAX_COMMANDS 128u
@@ -33,4 +34,8 @@ int psp_ge_subset_translate_memory(const uint32_t *words, size_t word_count,
 int psp_ge_subset_translate_guest(const uint8_t *memory, size_t size,
                                   uint32_t memory_base, uint32_t list_address,
                                   size_t word_count, PspGeSubsetResult *out);
+/* Bridge a guest bus hot RAM region to bounded GE list translation.
+   Cold/Slot-2 windows and CPU submission scheduling are not yet supported. */
+int psp_ge_subset_translate_bus(const PspGuestBus *bus, uint32_t list_address,
+                                size_t word_count, PspGeSubsetResult *out);
 #endif
