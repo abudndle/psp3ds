@@ -6,6 +6,7 @@
 #include "psp_benchmark.h"
 #include "psp_guest_window.h"
 #include "psp_guest_bus.h"
+#include "psp_rom_pager.h"
 #include "psp_platform_budget.h"
 #include "psp_runtime_tuning.h"
 #include "psp_video_layout.h"
@@ -20,6 +21,9 @@ void psp_nds_scene_update(uint32_t frame);
 int psp_nds_triangles_init(void);
 void psp_nds_triangles_update(void);
 void psp_nds_triangles_shutdown(void);
+int psp_nds_rom_pager_synthetic_test(void);
+int psp_nds_rom_pager_verified_slot2_test(volatile uint16_t *region,
+                                           uint32_t capacity);
 #include "../../../include/psp_core.h"
 /* Portable guest CPU demo; not a PSP commercial-game runner. */
 static uint8_t test_ram[64];
@@ -102,7 +106,12 @@ static int test_slot2_ram(void){
     for(unsigned i=0;i<4;i++)region[i]=saved[i];
     for(unsigned i=0;i<4;i++)if(region[i]!=saved[i])routed=0;
     printf("Dual RAM bus: %s\n",routed?"PASS":"FAILED");
-    if(routed)verified_pak=1;
+    if(routed){
+     verified_pak=1;
+     const int paged=psp_nds_rom_pager_verified_slot2_test(region,capacity);
+     printf("Pak cold ROM pages: %s\n",
+            paged==0?"PASS (synthetic)":"FAILED");
+    }
    }
   }
  }
@@ -140,6 +149,9 @@ int main(void){
  /* Select DS+Pak profile only after 32-location read/write validation
   * and a passing hot/cold guest data-bus probe. */
  const int slot2_verified=test_slot2_ram();
+ printf("512MB ROM page index: %s\n",
+        psp_nds_rom_pager_synthetic_test()==0?
+        "PASS (synthetic)":"FAILED");
  PspPlatformBudget policy;
  PspTarget target=isDSiMode()?PSP_TARGET_DSI:
                   slot2_verified?PSP_TARGET_DS_SLOT2:PSP_TARGET_DS;
