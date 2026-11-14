@@ -71,6 +71,21 @@ jobs:
             exit 1
           fi
           test "$(find build/ppsspp-arm -name '*.o' | wc -l)" -eq 10
+      - name: Cross-compile portable PSP3DS guest memory backend
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p build/guest-memory-arm
+          for unit in psp_guest_window psp_guest_bus; do
+            "$DEVKITARM/bin/arm-none-eabi-gcc" -std=c11 -O2 -Wall -Wextra -Werror \
+              -marm -mcpu=mpcore -Iinclude -c "source/${unit}.c" \
+              -o "build/guest-memory-arm/${unit}.o"
+            test -s "build/guest-memory-arm/${unit}.o"
+          done
+          # These are independent portable memory objects, NOT yet PPSSPP Memory::.
+          "$DEVKITARM/bin/arm-none-eabi-readelf" -h build/guest-memory-arm/psp_guest_bus.o \
+            > build/guest-memory-arm/elf-header.txt
+          grep -q "Machine:.*ARM" build/guest-memory-arm/elf-header.txt
       - name: Combine real PPSSPP ARM objects into relocatable link unit
         shell: bash
         run: |
@@ -127,4 +142,6 @@ jobs:
             build/ppsspp-arm/dependency-categories.json
             build/ppsspp-arm/relocatable-elf-header.txt
             build/ppsspp-arm/relocatable-unresolved.txt
+            build/guest-memory-arm/*.o
+            build/guest-memory-arm/elf-header.txt
           if-no-files-found: warn
