@@ -111,3 +111,41 @@ with emulator and physical-device evidence labeled clearly.
   do not infer hardware performance from emulator screenshots.
 
 Related tracking issue: #33; initial upstream probe PRs: #35 and #36.
+
+## New 3DS higher-power policy (experimental)
+
+`source/psp_runtime_tuning.c` picks a tested, bounded software policy by
+hardware family. It **does not** allocate its cache caps or implement
+real PSP game execution. The New 3DS runtime exclusively requests
+`osSetSpeedupEnable(true)` **after** a successful
+`APT_CheckNew3DS` model check; the request is released on shutdown.
+This requests the higher New 3DS ARM11 speed but the OS API has no success
+return, so the app does not claim a measured actual clock speed.
+
+| Target profile | Initial guest instruction slice | Max slice | Triangle demo budget | 128-insn benchmark rounds |
+| --- | ---: | ---: | ---: | ---: |
+| Original DS / DS Lite | 128 | 256 | 4 | 4 |
+| DS / DS Lite with verified Slot-2 Memory Pak | 128 | 256 | 4 | 4 |
+| DSi / DSi XL | 256 | 512 | 8 | 8 |
+| Original 3DS / 3DS XL / 2DS | 2,048 | 4,096 | 8 | 16 |
+| New 3DS / New 3DS XL / New 2DS XL | 8,192 | 16,384 | 24 | 64 |
+
+A 3DS startup synthetic MIPS interpreter benchmark runs with the selected
+round count and uses a system tick timer to report elapsed time. The
+portable controller can grow or shrink its *next* CPU slice with hysteresis,
+clamped to the model's cap. These are prospective emulator scheduling
+limits and a synthetic CPU benchmark. PSP virtual timing remains independent;
+never advance PSP virtual time just because native hardware runs faster.
+
+In the optional **Y** key triangle demo, original 3DS submits eight
+triangles to PICA200 and New 3DS submits 24. This demonstrates model-aware
+bounded hardware GPU work, **not** measured PSP 3D game frame rate or
+PPSSPP graphics compatibility. The DS/DSi triangle renderer uses native
+libnds hardware and does not request the New 3DS boost. The Memory Pak
+provides cold data storage only after verification, not additional
+ARM9/geometry-engine performance.
+
+Before adjusting real PSP game work quotas, measure elapsed CPU interpreter
+time per guest-instruction slice, frame time, HLE/GE overhead, audio underruns
+and memory usage on hardware. Regression tests check policy caps and safe
+adaptation; `.nds` / `.3dsx` / `.cia` builds alone do not establish gameplay.
