@@ -166,3 +166,9 @@ int psp_ge_subset_submit_cpu(const PspCpu *cpu, unsigned address_reg,
                                       cpu->ram_base, cpu->gpr[address_reg],
                                       cpu->gpr[count_reg], out);
 }
+
+int psp_ge_subset_hle_submit(const PspCpu *cpu, void *context) {
+ PspGeSubsetResult *out=(PspGeSubsetResult *)context;
+ if (!out) return -1;
+ return psp_ge_subset_submit_cpu(cpu, 4u, 5u, out)==PSP_GE_SUBSET_OK ? 0 : -1;
+}
