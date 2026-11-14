@@ -227,3 +227,8 @@ add_test(NAME runtime_tuning COMMAND test_runtime_tuning)
 add_executable(test_runtime_guest tests/test_runtime_guest.c)
 target_link_libraries(test_runtime_guest PRIVATE psp_core)
 add_test(NAME runtime_guest COMMAND test_runtime_guest)
+
+# Large real-world-class PSP PRX relocation workload (synthetic data only).
+add_executable(test_reloc_large tests/test_reloc_large.c)
+target_link_libraries(test_reloc_large PRIVATE psp_core)
+add_test(NAME reloc_large COMMAND test_reloc_large)
