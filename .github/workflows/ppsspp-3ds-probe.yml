@@ -8,6 +8,8 @@ on:
       - 'include/psp_mips_probe_fixture.h'
       - 'include/psp_nintendo_input.h'
       - 'source/psp_nintendo_input.c'
+      - 'include/psp_native_texture.h'
+      - 'source/psp_native_texture.c'
       - 'source/psp_features.c'
       - 'scripts/patch_ppsspp_armv6k.py'
       - '.github/workflows/ppsspp-3ds-probe.yml'
@@ -17,6 +19,8 @@ on:
       - 'include/psp_mips_probe_fixture.h'
       - 'include/psp_nintendo_input.h'
       - 'source/psp_nintendo_input.c'
+      - 'include/psp_native_texture.h'
+      - 'source/psp_native_texture.c'
       - 'source/psp_features.c'
       - 'scripts/patch_ppsspp_armv6k.py'
       - '.github/workflows/ppsspp-3ds-probe.yml'
@@ -47,7 +51,7 @@ jobs:
             -D__3DS__ -specs=3dsx.specs -Iinclude -Iupstream-ppsspp -Iupstream-ppsspp/ext \
             -I"$DEVKITPRO/libctru/include" -L"$DEVKITPRO/libctru/lib" \
             ports/ppsspp-3ds/abi_probe.cpp ports/ppsspp-3ds/upstream_probe.cpp \
-            source/psp_nintendo_input.c \
+            source/psp_nintendo_input.c source/psp_native_texture.c \
             upstream-ppsspp/Core/MIPS/Interpreter.cpp upstream-ppsspp/Core/MIPS/MIPS.cpp -lctru -lm -o out/ppsspp-abi-probe.elf
           "$DEVKITPRO/tools/bin/3dsxtool" out/ppsspp-abi-probe.elf out/ppsspp-abi-probe.3dsx
           test -s out/ppsspp-abi-probe.3dsx
