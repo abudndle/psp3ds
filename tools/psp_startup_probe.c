@@ -5,6 +5,7 @@
 #include "psp_startup_trace.h"
 #include "psp_module.h"
 #include "psp_3ds_memory.h"
+#include "psp_imports.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,18 +16,27 @@
 #define BOOT_STACK_BYTES (256u*1024u)
 
 int main(int argc,char **argv){
- if(argc<2||argc>3){
-  fprintf(stderr,"Usage: %s decrypted-EBOOT.elf [max-steps=4096]\n",argv[0]);
+ if(argc<2||argc>4){
+  fprintf(stderr,"Usage: %s decrypted-EBOOT.elf [max-steps=4096] [--link-sdk-version]\n",argv[0]);
   return 2;
  }
  unsigned steps=4096u;
- if(argc==3){
+ int link_sdk=0,steps_set=0;
+ for(int i=2;i<argc;i++){
+  if(strcmp(argv[i],"--link-sdk-version")==0){
+   if(link_sdk)return 2;
+   link_sdk=1;
+   continue;
+  }
+  if(steps_set)return 2;
   char *end=NULL;
-  unsigned long parsed=strtoul(argv[2],&end,10);
-  if(!end||*end||parsed<1u||parsed>PSP_STARTUP_TRACE_MAX_STEPS){
+  unsigned long parsed=strtoul(argv[i],&end,10);
+  if(!end||end==argv[i]||*end||parsed<1u||
+     parsed>PSP_STARTUP_TRACE_MAX_STEPS){
    fprintf(stderr,"Instruction cap must be in 1..8192\n");
    return 2;
   }
+  steps_set=1;
   steps=(unsigned)parsed;
  }
  FILE *f=fopen(argv[1],"rb");
@@ -84,6 +94,37 @@ int main(int argc,char **argv){
  const uint32_t import_count=inventory.function_count;
  const uint32_t lib_count=inventory.library_count;
  cfg.imports=&inventory;
+ PspHle hle;
+ psp_hle_init(&hle);
+ if(link_sdk){
+  /* Enable ONLY the verified NID reached at the first startup checkpoint.
+   * All other imports remain unlinked and fail explicitly in the tracer. */
+  const uint32_t required_nid=UINT32_C(0x358ca1bb);
+  PspImport selected={0};
+  unsigned matches=0;
+  for(unsigned i=0;i<inventory.library_count;i++){
+   const PspPrxLibraryInventory *lib=&inventory.libraries[i];
+   if(strcmp(lib->name,"SysMemUserForUser")!=0)continue;
+   for(unsigned j=0;j<lib->function_count;j++){
+    uint64_t addr=(uint64_t)lib->nid_table+(uint64_t)j*4u;
+    if(addr<loaded.cpu.ram_base || addr+4u>
+       (uint64_t)loaded.cpu.ram_base+loaded.cpu.ram_size)goto cleanup;
+    const uint8_t *p=loaded.cpu.ram+(size_t)(addr-loaded.cpu.ram_base);
+    const uint32_t nid=(uint32_t)p[0]|(uint32_t)p[1]<<8|
+                       (uint32_t)p[2]<<16|(uint32_t)p[3]<<24;
+    if(nid!=required_nid)continue;
+    selected=(PspImport){"SysMemUserForUser",required_nid,
+                          lib->stub_table+8u*j};
+    matches++;
+   }
+  }
+  if(matches!=1u ||
+     psp_imports_link_known(&loaded.cpu,&hle,&selected,1u)!=0){
+   fprintf(stderr,"Optional SDK-version NID unavailable or duplicate\n");
+   goto cleanup;
+  }
+  cfg.hle=&hle;
+ }
  if(psp_startup_prepare_cpu(&loaded.cpu,image_bytes,
                             BOOT_STACK_BYTES,module.gp)!=0){
   fprintf(stderr,"Unable to reserve a diagnostic guest stack\n");
@@ -110,6 +151,9 @@ int main(int argc,char **argv){
         (unsigned long)trace.pc_fingerprint);
  printf("First unsupported opcode class: %u\n",
         (unsigned)trace.major_opcode);
+ if(link_sdk)
+  printf("SDK version recorded by HLE: 0x%08lx\n",
+         (unsigned long)hle.compiled_sdk_version);
  if(trace.stop==PSP_STARTUP_UNLINKED_IMPORT){
   printf("Import library: %s\n",trace.import_library);
   printf("Import NID: 0x%08lx\n",(unsigned long)trace.import_nid);
