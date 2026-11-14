@@ -44,4 +44,3 @@ jobs:
           test "$(find build/upstream-mips -name '*.o' | wc -l)" -eq 3
           file build/upstream-mips/*.o
           echo "Upstream objects compiled for Linux host only; not linked or built for Nintendo hardware."
-          done
