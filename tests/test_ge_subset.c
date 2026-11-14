@@ -181,6 +181,18 @@ static void guest_display_list_from_ram(void) {
  cpu.gpr[4] = 0x08000060u;
  cpu.gpr[5] = 6;
  PspGeSubsetResult submitted;
+ /* Execute real MIPS instructions to populate the submission registers. */
+ cpu.gpr[4] = 0;
+ cpu.gpr[5] = 0;
+ assert(psp_guest_bus_write32(&bus, 0x08000000u, 0x3c040800u) == 0); /* lui a0, 0x0800 */
+ assert(psp_guest_bus_write32(&bus, 0x08000004u, 0x34840060u) == 0); /* ori a0, a0, 0x60 */
+ assert(psp_guest_bus_write32(&bus, 0x08000008u, 0x24050006u) == 0); /* addiu a1, zero, 6 */
+ cpu.pc = 0x08000000u;
+ cpu.next_pc = 0x08000004u;
+ assert(psp_cpu_step(&cpu) == 0);
+ assert(psp_cpu_step(&cpu) == 0);
+ assert(psp_cpu_step(&cpu) == 0);
+ assert(cpu.gpr[4] == 0x08000060u && cpu.gpr[5] == 6u);
  assert(psp_ge_subset_submit_cpu(&cpu, 4, 5, &submitted) == PSP_GE_SUBSET_OK);
  assert(memcmp(&result, &submitted, sizeof result) == 0);
  cpu.gpr[4] = 0x08000078u;
