@@ -60,6 +60,7 @@ static void models(void){
   assert(cpu.gpr[8]==initial && cpu.pc==BASE+4u*initial);
   assert(step.backend_called==0 && step.backend_completed==0 &&
          lazy.initialized_count==0u);
+  assert(perf.initialized_mask==0u && perf.active_mask==0u);
   assert(perf.now_us==0 && hle.uptime_us==0);
   assert(psp_lazy_backends_request(&lazy,PSP_LAZY_AUDIO,3u)==0);
   assert(psp_lazy_backends_request(&lazy,PSP_LAZY_GPU,2u)==0);
@@ -69,6 +70,15 @@ static void models(void){
   assert(step.guest.executed==initial);
   assert(step.backend_called==1 && step.backend_completed==quotas[target]);
   assert(step.backend_remaining==9u-quotas[target]);
+  assert(perf.initialized_mask!=0u && perf.active_mask!=0u);
+  for(unsigned i=0;i<PSP_LAZY_SUBSYSTEMS;i++){
+   if(lazy.started[i]){
+    assert((perf.initialized_mask&(1u<<i))!=0u);
+    assert(((perf.active_mask&(1u<<i))!=0u)==(lazy.pending[i]!=0u));
+   }else{
+    assert((perf.initialized_mask&(1u<<i))==0u);
+   }
+  }
   assert(cpu.gpr[8]==initial*2u);
   assert(perf.now_us==0 && hle.uptime_us==0);
   const uint32_t pc=cpu.pc;
