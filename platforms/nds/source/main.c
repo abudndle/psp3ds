@@ -7,6 +7,7 @@
 #include "psp_guest_window.h"
 #include "psp_guest_bus.h"
 #include "psp_platform_budget.h"
+#include "psp_runtime_tuning.h"
 #include "psp_video_layout.h"
 #include "psp_native_texture.h"
 #include "psp_nintendo_input.h"
@@ -142,6 +143,15 @@ int main(void){
  PspPlatformBudget policy;
  PspTarget target=isDSiMode()?PSP_TARGET_DSI:
                   slot2_verified?PSP_TARGET_DS_SLOT2:PSP_TARGET_DS;
+ PspRuntimeTuning tuning;
+ if(psp_runtime_tuning_choose(target,&tuning)==0) {
+  printf("Guest slice: %lu, GPU batch cap %u\n",
+         (unsigned long)tuning.cpu_slice_current,
+         (unsigned)tuning.triangle_demo_budget);
+  printf("Clock boost: %s\n",
+         tuning.request_new3ds_speedup?"unsupported":"disabled");
+ }
+
  PspVideoLayout video;
  if(psp_video_layout_init(target,PSP_VIDEO_DISPLAY_DS_MAIN,
                           PSP_VIDEO_PSP_WIDTH,PSP_VIDEO_PSP_HEIGHT,&video)==0)
