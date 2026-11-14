@@ -6,6 +6,7 @@ on:
       - 'scripts/fetch-ppsspp-upstream.sh'
       - '.github/workflows/ppsspp-upstream-smoke.yml'
       - 'scripts/audit-ppsspp-mips.py'
+      - 'scripts/audit-ppsspp-transitive.py'
 permissions:
   contents: read
 jobs:
@@ -29,3 +30,5 @@ jobs:
           echo "Pinned PPSSPP source checkout verified (not yet compiled into PSP3DS)"
       - name: Audit upstream MIPS interpreter dependencies
         run: python3 scripts/audit-ppsspp-mips.py vendor/ppsspp
+      - name: Inventory transitive interpreter headers
+        run: python3 scripts/audit-ppsspp-transitive.py vendor/ppsspp
