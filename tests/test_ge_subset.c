@@ -207,6 +207,10 @@ static void guest_display_list_from_ram(void) {
  assert(psp_hle_step(&hle, &cpu) == 1);
  assert(cpu.gpr[2] == 0);
  assert(memcmp(&result, &submitted, sizeof result) == 0);
+ assert(cpu.pc == 0x08000010u && cpu.fault == 0);
+ /* HLE must resume normal guest instructions after the GE submission. */
+ assert(psp_guest_bus_write32(&bus, 0x08000010u, 0x24060007u) == 0);
+ assert(psp_cpu_step(&cpu) == 0 && cpu.gpr[6] == 7u);
  cpu.gpr[4] = 0x08000078u;
  cpu.pc = 0x0800000cu;
  cpu.next_pc = 0x08000010u;
