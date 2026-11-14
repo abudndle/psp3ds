@@ -117,6 +117,7 @@ static int at_import(const PspCpu *cpu,const PspPrxImportInventory *inv,
  * stub and the HLE registry, never assuming that a recognized NID alone
  * means the service is initialized or emulated correctly. */
 static int linked_import(const PspCpu *cpu,const PspHle *hle,
+                         const PspPrxImportInventory *imports,
                          const PspStartupTraceReport *result,uint32_t pc){
  if(!cpu||!hle||!result||!result->import_known_hle)return 0;
  if(!result->import_library[0])return 0;
@@ -124,7 +125,19 @@ static int linked_import(const PspCpu *cpu,const PspHle *hle,
  if(psp_imports_known_service(result->import_library,
           result->import_nid,&service)!=1)return 0;
  if(!cpu->ram||!hle->count)return 0;
- const uint8_t *stub=guest(cpu,(uint64_t)(pc&~7u),8u);
+ if(!imports)return 0;
+ uint64_t stub_address=0;
+ for(unsigned i=0;i<imports->library_count;i++){
+  const PspPrxLibraryInventory *lib=&imports->libraries[i];
+  const uint64_t first=lib->stub_table;
+  const uint64_t end=first+(uint64_t)lib->function_count*8u;
+  if(pc>=first && pc<end){
+   stub_address=first+(((uint64_t)pc-first)/8u)*8u;
+   break;
+  }
+ }
+ if(!stub_address)return 0;
+ const uint8_t *stub=guest(cpu,stub_address,8u);
  if(!stub)return 0;
  const uint32_t jump=rd32(stub),syscall=rd32(stub+4u);
  if(jump!=UINT32_C(0x03e00008) || (syscall&63u)!=12u)return 0;
@@ -167,7 +180,8 @@ int psp_startup_trace_run(PspCpu *cpu,
    * into successful fake HLE calls or jump into kernel addresses. */
   const int imported=at_import(cpu,config->imports,pc,out);
   if(imported<0)return -1;
-  if(imported && !linked_import(cpu,config->hle,out,pc)){
+  if(imported && !linked_import(cpu,config->hle,config->imports,
+                                 out,pc)){
    out->stop=PSP_STARTUP_UNLINKED_IMPORT;
    return 0;
   }
