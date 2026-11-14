@@ -34,7 +34,7 @@ jobs:
           set -eu
           mkdir -p build/ppsspp-arm
           # Compile independent translation units concurrently, preserving per-unit logs.
-          units=(Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/InterpreterVFPU.cpp Core/MIPS/MIPSVFPUUtils.cpp Core/MIPS/MIPSDis.cpp Core/MIPS/MIPSDisVFPU.cpp Core/MIPS/MIPSTables.cpp Core/MIPS/MIPSCodeUtils.cpp)
+          units=(Core/MIPS/Interpreter.cpp Core/MIPS/InterpreterDispatch.cpp Core/MIPS/InterpreterVFPU.cpp Core/MIPS/MIPSVFPUUtils.cpp Core/MIPS/MIPSDis.cpp Core/MIPS/MIPSDisVFPU.cpp Core/MIPS/MIPS.cpp Core/MIPS/MIPSTables.cpp Core/MIPS/MIPSCodeUtils.cpp)
           pids=()
           for unit in "${units[@]}"; do
             name="$(basename "$unit" .cpp)"
@@ -63,13 +63,13 @@ jobs:
           cat build/ppsspp-arm/status.tsv
           # This is a diagnostic cross-compile, NOT a PSP runtime link or game boot.
           # Preserve all compiler failures as artifacts for the integration batch.
-          test "$(wc -l < build/ppsspp-arm/status.tsv)" -eq 8
+          test "$(wc -l < build/ppsspp-arm/status.tsv)" -eq 9
           # A blocked compiler unit is a failed integration gate, not a green build.
           if grep -q 'blocked' build/ppsspp-arm/status.tsv; then
             echo 'FAIL: upstream PPSSPP ARM compile blockers remain' >&2
             exit 1
           fi
-          test "$(find build/ppsspp-arm -name '*.o' | wc -l)" -eq 8
+          test "$(find build/ppsspp-arm -name '*.o' | wc -l)" -eq 9
       - name: Combine real PPSSPP ARM objects into relocatable link unit
         shell: bash
         run: |
@@ -82,6 +82,7 @@ jobs:
             build/ppsspp-arm/MIPSVFPUUtils.o \
             build/ppsspp-arm/MIPSDis.o \
             build/ppsspp-arm/MIPSDisVFPU.o \
+            build/ppsspp-arm/MIPS.o \
             build/ppsspp-arm/MIPSTables.o \
             build/ppsspp-arm/MIPSCodeUtils.o
           test -s build/ppsspp-arm/ppsspp-interpreter-relocatable.o
