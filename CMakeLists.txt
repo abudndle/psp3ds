@@ -306,3 +306,9 @@ target_link_libraries(psp_startup_probe PRIVATE psp_core)
 add_executable(test_hle_sdk_version tests/test_hle_sdk_version.c)
 target_link_libraries(test_hle_sdk_version PRIVATE psp_core)
 add_test(NAME hle_sdk_version COMMAND test_hle_sdk_version)
+
+# Exact imported SDK-version HLE linked only after NID validation. Unknown
+# firmware calls still stop before guest code can execute past a stub.
+add_executable(test_startup_trace_sdk_linked tests/test_startup_trace_sdk_linked.c)
+target_link_libraries(test_startup_trace_sdk_linked PRIVATE psp_core)
+add_test(NAME startup_trace_sdk_linked COMMAND test_startup_trace_sdk_linked)
