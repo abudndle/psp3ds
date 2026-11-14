@@ -55,7 +55,14 @@ int psp_reloc_apply(PspCpu *cpu, const uint8_t *records, size_t record_len,
   if(type==6) {
    /* Paired low halves must sign-extend; ORI is allowed standalone only. */
    unsigned opcode=old>>26;
-   if(opcode!=9 && (opcode!=13 || hi_count))goto cleanup; /* ADDIU, or standalone ORI */
+   /* LO16 sign-extended immediates also occur in loads/stores (e.g.
+    * LW/SW/LBU/LHU/SB/SH). Accept them only with a pending HI16;
+    * standalone load/store relocations need separate addend handling. */
+   int memory_op = opcode==32 || opcode==35 || opcode==36 ||
+                   opcode==40 || opcode==43 || opcode==49 ||
+                   opcode==57;
+   if (opcode!=9 && !(opcode==13 && !hi_count) &&
+       !(memory_op && hi_count)) goto cleanup;
    int32_t low=(int32_t)(int16_t)(old&0xffffu);
    for(size_t j=0;j<hi_count;j++) {
     if(pending[j].addr_base!=addr_base || used>=count)goto cleanup;
