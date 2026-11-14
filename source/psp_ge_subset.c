@@ -1,4 +1,5 @@
 #include "psp_ge_subset.h"
+#include "psp_video_layout.h"
 #include <string.h>
 static uint16_t read_le16(const uint8_t *bytes) {
  return (uint16_t)(bytes[0] | ((uint16_t)bytes[1] << 8));
@@ -32,6 +33,7 @@ static int read_sprite(const uint8_t *memory, size_t size, uint32_t memory_base,
 static int translate(const uint32_t *words, size_t count,
                      const PspGeDecodedSprite *sprites, size_t sprite_count,
                      const uint8_t *memory, size_t size, uint32_t memory_base,
+                     uint16_t limit_width, uint16_t limit_height,
                      PspGeSubsetResult *out) {
  uint32_t base = 0, address = 0;
  int has_format = 0, has_address = 0;
@@ -66,8 +68,9 @@ static int translate(const uint32_t *words, size_t count,
    }
    ++used;
    const PspGeDecodedSprite *s = &decoded;
-   if(!s->w||!s->h||s->x>=256u||s->y>=192u||
-      (uint32_t)s->x+s->w>256u||(uint32_t)s->y+s->h>192u||
+   if(!s->w||!s->h||s->x>=limit_width||s->y>=limit_height||
+      (uint32_t)s->x+s->w>limit_width||
+      (uint32_t)s->y+s->h>limit_height||
       s->bgr555>UINT16_C(0x7fff))return PSP_GE_SUBSET_MALFORMED;
    if(staged.batch.count>=PSP_SCENE_MAX_RECTS)return PSP_GE_SUBSET_OVERFLOW;
    PspSceneRect *r=&staged.batch.rects[staged.batch.count++];
@@ -104,7 +107,8 @@ static int translate(const uint32_t *words, size_t count,
 int psp_ge_subset_translate(const uint32_t *words, size_t count,
                             const PspGeDecodedSprite *sprites, size_t sprite_count,
                             PspGeSubsetResult *out) {
- return translate(words, count, sprites, sprite_count, NULL, 0, 0, out);
+ return translate(words, count, sprites, sprite_count, NULL, 0, 0,
+                  256u, 192u, out);
 }
 
 int psp_ge_subset_translate_memory(const uint32_t *words, size_t count,
@@ -114,5 +118,19 @@ int psp_ge_subset_translate_memory(const uint32_t *words, size_t count,
   if (out) memset(out, 0, sizeof(*out));
   return PSP_GE_SUBSET_BAD_ARGUMENT;
  }
- return translate(words, count, NULL, 0, memory, size, memory_base, out);
+ return translate(words, count, NULL, 0, memory, size, memory_base,
+                  256u, 192u, out);
+}
+
+/* Preserve strict GE command/vertex validation; relax only the coordinate
+ * range for the PSP-native 480x272 viewport. Unsupported state still fails. */
+int psp_ge_subset_translate_psp_memory(const uint32_t *words, size_t count,
+                                       const uint8_t *memory, size_t size,
+                                       uint32_t memory_base, PspGeSubsetResult *out) {
+ if (!memory || !size) {
+  if (out) memset(out, 0, sizeof(*out));
+  return PSP_GE_SUBSET_BAD_ARGUMENT;
+ }
+ return translate(words, count, NULL, 0, memory, size, memory_base,
+                  PSP_VIDEO_PSP_WIDTH, PSP_VIDEO_PSP_HEIGHT, out);
 }
