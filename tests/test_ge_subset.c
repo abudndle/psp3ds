@@ -338,6 +338,20 @@ static void guest_multi_sprite_list(void) {
  assert(psp_hle_step(&hle,&cpu)==1);
  assert(cpu.gpr[2]==0 && cpu.fault==0);
  assert(memcmp(&output,&via_hle,sizeof output)==0);
+ /* GE VADDR can be reissued between sprite primitives to select another
+    vertex pair. This exercises stateful display-list address updates. */
+ const uint32_t redirected[]={
+  0x10080000u,0x01000020u,0x12800114u,
+  SPRITE_CMD,0x01000040u,SPRITE_CMD,0x01000030u,SPRITE_CMD,FINISH,END
+ };
+ for(size_t i=0;i<sizeof redirected/sizeof redirected[0];i++)
+  assert(psp_guest_bus_write32(&bus,base+0xa0u+(uint32_t)i*4u,redirected[i])==0);
+ assert(psp_ge_subset_translate_guest(ram,sizeof ram,base,base+0xa0u,10,&output)
+        == PSP_GE_SUBSET_OK);
+ assert(output.batch.count==3);
+ assert(output.batch.rects[0].x==3);
+ assert(output.batch.rects[1].x==40);
+ assert(output.batch.rects[2].x==20);
  /* Third primitive is malformed; the entire scene must be discarded. */
  ram[0x20u+2u*16u+8u+2u]=40u;
  assert(psp_ge_subset_translate_guest(ram,sizeof ram,base,base+0x80u,8,&output)
