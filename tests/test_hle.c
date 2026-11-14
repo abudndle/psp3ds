@@ -35,6 +35,7 @@ int main(void){
  psp_cpu_init(&cpu,mem,sizeof mem,BASE,BASE);
  cpu.gpr[4]=BASE+132;cpu.gpr[5]=6;
  assert(psp_hle_step(&hle,&cpu)==1 && cpu.gpr[2]==UINT32_MAX && ge_calls==2);
+ psp_hle_init(&hle); /* reset synthetic binding before capacity tests */
  assert(psp_hle_bind(NULL,1,PSP_HLE_SYSTEM_TIME_LOW)==-1);
  assert(psp_hle_bind(&hle,0x100000,PSP_HLE_SYSTEM_TIME_LOW)==-1);
  assert(psp_hle_bind(&hle,10,(PspHleService)99)==-1);
