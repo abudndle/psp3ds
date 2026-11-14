@@ -1,4 +1,5 @@
 #include "psp_guarded_prx.h"
+#include "psp_startup_trace.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -73,10 +74,25 @@ static void all_targets_small_executable(void){
    assert(guard.outstanding_allocations==0u);
    assert(psp_guarded_prx_unload(&guard,&image)==-1);
   }
+  PspGuardedPrx stack_test={0};
+  assert(psp_guarded_prx_load_with_reserve(&guard,elf,sizeof elf,
+                                          BASE,65536u,&stack_test)==0);
+  assert(stack_test.allocated_bytes==69632u);
+  assert(stack_test.image.image_bytes==96u);
+  assert(psp_startup_prepare_cpu(&stack_test.cpu,
+                                 stack_test.image.image_bytes,
+                                 65536u,BASE+64u)==0);
+  assert(stack_test.cpu.gpr[29]==BASE+stack_test.allocated_bytes-16u);
+  assert(stack_test.cpu.gpr[28]==BASE+64u);
+  assert(stack_test.guest_ram[stack_test.allocated_bytes-4096u]==0u);
+  assert(psp_guarded_prx_unload(&guard,&stack_test)==0);
+  assert(psp_guarded_prx_load_with_reserve(&guard,elf,sizeof elf,
+        BASE,2u*1024u*1024u+1u,&stack_test)==-1);
+  assert(!stack_test.guest_ram);
   PspMemoryGuardReport report;
   assert(psp_memory_guard_close(&guard,&report)==0);
-  assert(report.successful_allocations==16u &&
-         report.successful_releases==16u &&
+  assert(report.successful_allocations==17u &&
+         report.successful_releases==17u &&
          report.reclaimed_allocations==0u);
  }
 }
