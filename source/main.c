@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "psp_core.h"
 #include "psp_catalog.h"
 #include "psp_platform_budget.h"
