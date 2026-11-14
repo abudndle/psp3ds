@@ -1,4 +1,5 @@
 #include "psp_ge_subset.h"
+#include "psp_hle.h"
 #include "psp_scene.h"
 #include <assert.h>
 #include <stdio.h>
@@ -195,6 +196,22 @@ static void guest_display_list_from_ram(void) {
  assert(cpu.gpr[4] == 0x08000060u && cpu.gpr[5] == 6u);
  assert(psp_ge_subset_submit_cpu(&cpu, 4, 5, &submitted) == PSP_GE_SUBSET_OK);
  assert(memcmp(&result, &submitted, sizeof result) == 0);
+ /* Complete emulated syscall -> HLE callback -> GE batch path. */
+ PspHle hle;
+ psp_hle_init(&hle);
+ assert(psp_hle_bind(&hle, 42, PSP_HLE_GE_SUBMIT) == 0);
+ psp_hle_attach_ge(&hle, psp_ge_subset_hle_submit, &submitted);
+ assert(psp_guest_bus_write32(&bus, 0x0800000cu, (42u << 6) | 12u) == 0);
+ cpu.pc = 0x0800000cu;
+ cpu.next_pc = 0x08000010u;
+ assert(psp_hle_step(&hle, &cpu) == 1);
+ assert(cpu.gpr[2] == 0);
+ assert(memcmp(&result, &submitted, sizeof result) == 0);
+ cpu.gpr[4] = 0x08000078u;
+ cpu.pc = 0x0800000cu;
+ cpu.next_pc = 0x08000010u;
+ assert(psp_hle_step(&hle, &cpu) == 1);
+ assert(cpu.gpr[2] == UINT32_MAX && submitted.batch.count == 0);
  cpu.gpr[4] = 0x08000078u;
  assert(psp_ge_subset_submit_cpu(&cpu, 4, 5, &submitted) != PSP_GE_SUBSET_OK);
  assert(submitted.batch.count == 0);
