@@ -107,7 +107,49 @@ static void guest_memory_rejections(void) {
  assert(result.batch.count == 1 && result.consumed_sprites == 1);
 }
 
+
+static void guest_display_list_atomicity(void) {
+ const uint8_t vertices[] = {
+  0x1f, 0xfc, 3, 0, 4, 0, 0, 0,
+  0x1f, 0xfc, 11, 0, 12, 0, 0,
+  0xe0, 0x83, 20, 0, 21, 0, 0, 0,
+  0xe0, 0x83, 27, 0, 30, 0, 0, 0
+ };
+ uint32_t commands[] = {
+  0x10080000u, 0x01000020u, 0x12800114u,
+  SPRITE_CMD, SPRITE_CMD, FINISH, END
+ };
+ PspGeSubsetResult result;
+ assert(psp_ge_subset_translate_memory(commands, 7, vertices,
+        sizeof vertices, 0x08000020u, &result) == PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 2 && result.consumed_sprites == 2);
+ /* A bad second sprite must not expose the first as a partial frame. */
+ uint8_t corrupt[sizeof vertices];
+ memcpy(corrupt, vertices, sizeof corrupt);
+ corrupt[25] ^= 1u; /* second sprite's endpoint color */
+ memset(&result, 0xa5, sizeof result);
+ assert(psp_ge_subset_translate_memory(commands, 7, corrupt,
+        sizeof corrupt, 0x08000020u, &result) != PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 0 && result.consumed_sprites == 0);
+ /* Commands after END, and state mutations after FINISH, are rejected. */
+ uint32_t trailing[] = {
+  0x10080000u, 0x01000020u, 0x12800114u,
+  SPRITE_CMD, FINISH, END, 0
+ };
+ assert(psp_ge_subset_translate_memory(trailing, 7, vertices,
+        sizeof vertices, 0x08000020u, &result) != PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 0);
+ uint32_t late_state[] = {
+  0x10080000u, 0x01000020u, 0x12800114u,
+  SPRITE_CMD, FINISH, 0x01000020u, END
+ };
+ assert(psp_ge_subset_translate_memory(late_state, 7, vertices,
+        sizeof vertices, 0x08000020u, &result) != PSP_GE_SUBSET_OK);
+ assert(result.batch.count == 0);
+}
+
 int main(void){
+ guest_display_list_atomicity();
  guest_memory_rejections();
  guest_memory();
  for(uint32_t frame=0;frame<8;frame++)raster_match(frame*11u);
