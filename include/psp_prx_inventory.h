@@ -37,6 +37,18 @@ typedef struct {
 int psp_prx_import_inventory(const PspCpu *cpu,uint32_t top,uint32_t end,
                              PspPrxImportInventory *out);
 
+/* Read-only capability audit against the HLE functions actually implemented
+ * by psp_nids.c. Unknown imports remain unsupported; never patch guest RAM.
+ * Revalidates the NID memory spans and library names before reading.
+ * On error output is zero. */
+typedef struct {
+ uint16_t implemented;
+ uint16_t unsupported;
+} PspPrxHleCoverage;
+int psp_prx_import_coverage(const PspCpu *cpu,
+                            const PspPrxImportInventory *inventory,
+                            PspPrxHleCoverage *out);
+
 #ifdef __cplusplus
 }
 #endif
