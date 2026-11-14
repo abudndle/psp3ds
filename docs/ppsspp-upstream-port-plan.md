@@ -37,3 +37,25 @@ This repository is **not** currently a full PPSSPP fork. Do not label its DS/3DS
 - HLE call compatibility against upstream behavior and PSP autotests.
 - Audio, savedata, scheduling and input timing.
 - Hardware performance profiling and honest per-target compatibility reporting.
+
+## Reproducible upstream source checkout (first migration milestone)
+
+Run from a Linux/macOS shell with Git installed:
+
+```sh
+bash scripts/fetch-ppsspp-upstream.sh
+# Optional custom destination:
+# bash scripts/fetch-ppsspp-upstream.sh /tmp/ppsspp-source
+```
+
+The script checks out the **actual** PPSSPP repository at
+`1aebad2c651ff9d0684ee335e43aceff8fc7e3ec` and sparsely populates
+`Core/MIPS`, `Core/HLE`, `GPU`, `Core/FileSystems`, and `Core/Loaders`.
+The default destination `vendor/ppsspp` is Git-ignored. It refuses to overwrite
+an existing checkout. Upstream source is not yet linked to PSP3DS builds;
+fetching source is a prerequisite, **not** evidence of a working PPSSPP port.
+
+Before integrating an upstream source file, record its exact path, license,
+required upstream dependencies, and the target abstraction replacing its
+platform assumptions. Preserve copyright/license notices and test behavior
+against upstream PSP homebrew test cases.
