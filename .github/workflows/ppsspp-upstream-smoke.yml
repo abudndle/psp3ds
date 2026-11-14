@@ -47,6 +47,19 @@ jobs:
           # Record unresolved symbols to guide the actual integration work.
           nm -u -C build/upstream-mips/*.o > build/upstream-mips/unresolved-symbols.txt
           test -s build/upstream-mips/unresolved-symbols.txt
+          # Attempt an actual link: compiling object files is not integration.
+          # Expected to fail until PPSSPP's transitive dependencies are wired.
+          cat > build/upstream-mips/link-probe.cpp <<'EOF'
+          int main() { return 0; }
+          EOF
+          if g++ -std=c++17 -o build/upstream-mips/link-probe \
+              build/upstream-mips/link-probe.cpp build/upstream-mips/*.o \
+              > build/upstream-mips/link-probe.log 2>&1; then
+            echo "PPSSPP MIPS host link probe passed"
+          else
+            echo "PPSSPP MIPS host link probe blocked; see artifact"
+            head -n 40 build/upstream-mips/link-probe.log
+          fi
           echo "Upstream PPSSPP interpreter dependencies (first 60):"
           head -n 60 build/upstream-mips/unresolved-symbols.txt
           echo "Upstream objects compiled for Linux host only; not linked or built for Nintendo hardware."
@@ -55,5 +68,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ppsspp-mips-link-dependencies
-          path: build/upstream-mips/unresolved-symbols.txt
+          path: |
+            build/upstream-mips/unresolved-symbols.txt
+            build/upstream-mips/link-probe.log
           if-no-files-found: warn
