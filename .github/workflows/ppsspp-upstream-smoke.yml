@@ -7,6 +7,7 @@ on:
       - '.github/workflows/ppsspp-upstream-smoke.yml'
       - 'scripts/audit-ppsspp-mips.py'
       - 'scripts/audit-ppsspp-transitive.py'
+      - 'scripts/summarize-ppsspp-link-deps.py'
 permissions:
   contents: read
 jobs:
@@ -60,6 +61,10 @@ jobs:
             echo "PPSSPP MIPS host link probe blocked; see artifact"
             head -n 40 build/upstream-mips/link-probe.log
           fi
+          python3 scripts/summarize-ppsspp-link-deps.py \
+            build/upstream-mips/unresolved-symbols.txt \
+            --output build/upstream-mips/dependency-summary.json
+          cat build/upstream-mips/dependency-summary.json
           echo "Upstream PPSSPP interpreter dependencies (first 60):"
           head -n 60 build/upstream-mips/unresolved-symbols.txt
           echo "Upstream objects compiled for Linux host only; not linked or built for Nintendo hardware."
@@ -71,4 +76,5 @@ jobs:
           path: |
             build/upstream-mips/unresolved-symbols.txt
             build/upstream-mips/link-probe.log
+            build/upstream-mips/dependency-summary.json
           if-no-files-found: warn
