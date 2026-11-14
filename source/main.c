@@ -4,6 +4,7 @@
 #include "psp_core.h"
 #include "psp_catalog.h"
 #include "psp_platform_budget.h"
+#include "psp_video_layout.h"
 #include "psp_features.h"
 #include "psp_scene.h"
 int psp_3ds_scene_init(void);
@@ -44,6 +45,11 @@ int main(void) {
  PspPlatformBudget policy;
  PspTarget target=(R_SUCCEEDED(hardware) && new_model)?
     PSP_TARGET_NEW3DS:PSP_TARGET_OLD3DS;
+ PspVideoLayout video;
+ if(psp_video_layout_init(target,PSP_VIDEO_DISPLAY_3DS_TOP,
+                          PSP_VIDEO_PSP_WIDTH,PSP_VIDEO_PSP_HEIGHT,&video)==0)
+  printf("PSP video: %ux%u viewport; PICA200\n",
+    (unsigned)video.viewport_width,(unsigned)video.viewport_height);
  if(psp_platform_budget_choose(target,&policy)==0 &&
     psp_platform_budget_validate(&policy)==0){
   printf("Policy: %s\n",policy.name);
