@@ -9,7 +9,8 @@ static uint32_t rd32(const uint8_t *p){return (uint32_t)p[0] | (uint32_t)p[1]<<8
 static void fixture(uint8_t *elf,uint8_t *ram) {
  memset(elf,0,512);memset(ram,0xa5,512);
  memcpy(elf,"\177ELF",4);elf[4]=1;elf[5]=1;elf[6]=1;
- w16(elf+18,8);w32(elf+32,256);w16(elf+46,40);w16(elf+48,3);w16(elf+50,1);
+ /* These existing fixtures represent fixed-address ELF32 ET_EXEC. */
+ w16(elf+16,2);w16(elf+18,8);w32(elf+32,256);w16(elf+46,40);w16(elf+48,3);w16(elf+50,1);
  memcpy(elf+160,"\0.shstrtab\0.rodata.sceModuleInfo\0",34);
  w32(elf+296,1);w32(elf+312,160);w32(elf+316,34);
  w32(elf+336,11);w32(elf+348,BASE+64);w32(elf+356,52);
