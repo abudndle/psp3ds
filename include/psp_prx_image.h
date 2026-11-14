@@ -39,6 +39,16 @@ typedef enum {
 int psp_prx_image_map_relocated(const uint8_t *elf,size_t elf_size,
                                 PspCpu *cpu,PspPrxImageResult *out);
 
+/* For newly allocated, exclusively owned scratch guest RAM only.
+ * Unlike map_relocated(), this variant does not copy the entire guest
+ * buffer just to roll back on failure; the CALLER MUST DISCARD the whole
+ * scratch arena if any error occurs. No guest memory contents are
+ * guaranteed preserved on failure. CPU registers and result remain
+ * unchanged/zero until successful relocation and entry initialization.
+ * Do not use on shared/active guest RAM or with overlapping ELF bytes. */
+int psp_prx_image_map_fresh(const uint8_t *elf,size_t elf_size,
+                             PspCpu *cpu,PspPrxImageResult *out);
+
 #ifdef __cplusplus
 }
 #endif
