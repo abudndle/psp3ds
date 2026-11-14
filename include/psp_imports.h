@@ -14,4 +14,8 @@ int psp_imports_link(PspCpu *cpu, PspHle *hle, const PspImport *imports,
    Unsupported functions fail atomically; this is not a full firmware NID DB. */
 int psp_imports_link_known(PspCpu *cpu, PspHle *hle,
                            const PspImport *imports, size_t count);
+/* Query the same verified HLE export table without modifying guest memory.
+ * Returns 1 if implemented, 0 if unavailable, -1 on invalid arguments. */
+int psp_imports_known_service(const char *library,uint32_t nid,
+                              PspHleService *service);
 #endif
