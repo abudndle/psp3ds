@@ -7,6 +7,9 @@ int main(void) {
     uint8_t hot[32] = {0};
     PspGuestBus bus;
     uint32_t value = 0;
+    uint8_t byte = 0;
+    uint16_t half = 0;
+    uint64_t wide = 0;
     assert(psp_guest_bus_init(&bus, hot, UINT32_C(0x08800000), sizeof hot, NULL) == 0);
     assert(psp_ppsspp_translate_address(UINT32_C(0x88800000), &value) == 0);
     assert(value == UINT32_C(0x08800000));
@@ -23,6 +26,14 @@ int main(void) {
     assert(psp_ppsspp_adapter_fetch32(&bus, UINT32_C(0xa8800001), &value) == -1);
     assert(psp_ppsspp_adapter_read32(&bus, UINT32_C(0x88800020), &value) == -1);
     assert(psp_ppsspp_adapter_write32(&bus, UINT32_C(0xc8800000), 0) == -1);
+    assert(psp_ppsspp_adapter_write8(&bus, UINT32_C(0xa8800004), 0x5a) == 0);
+    assert(psp_ppsspp_adapter_read8(&bus, UINT32_C(0x88800004), &byte) == 0 && byte == 0x5a);
+    assert(psp_ppsspp_adapter_write16(&bus, UINT32_C(0x88800006), UINT16_C(0xbeef)) == 0);
+    assert(psp_ppsspp_adapter_read16(&bus, UINT32_C(0xa8800006), &half) == 0 && half == UINT16_C(0xbeef));
+    assert(psp_ppsspp_adapter_write64(&bus, UINT32_C(0xa8800008), UINT64_C(0x1122334455667788)) == 0);
+    assert(psp_ppsspp_adapter_read64(&bus, UINT32_C(0x88800008), &wide) == 0 && wide == UINT64_C(0x1122334455667788));
+    assert(psp_ppsspp_adapter_read64(&bus, UINT32_C(0xa880001c), &wide) == -1);
+    assert(psp_ppsspp_adapter_write16(&bus, UINT32_C(0x88800001), 0) == -1);
     puts("PASS: KSEG0/KSEG1 aliases and checked guest memory (not PPSSPP execution)");
     return 0;
 }
