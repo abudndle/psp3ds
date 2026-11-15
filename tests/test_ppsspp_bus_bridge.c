@@ -13,6 +13,7 @@ int main(void) {
     PspGuestBus bus;
     PspGuestWindow cold;
     uint32_t instruction = 0, word = 0;
+    uint64_t wide = 0;
     uint16_t half = 0;
     uint8_t byte = 0;
     assert(psp_guest_window_init(&cold, cold_words, COLD, sizeof cold_words, 1, 1) == 0);
@@ -27,6 +28,15 @@ int main(void) {
     assert(psp_ppsspp_bus_store32(&bus, COLD, UINT32_C(0x8d090000)) == 0);
     assert(psp_ppsspp_bus_fetch32(&bus, COLD, &word) == 0 && word == UINT32_C(0x8d090000));
     assert(psp_ppsspp_bus_load32(&bus, COLD, &word) == 0 && word == UINT32_C(0x8d090000));
+    assert(psp_ppsspp_bus_store64(&bus, BASE + 8, UINT64_C(0x1122334455667788)) == 0);
+    assert(psp_ppsspp_bus_load64(&bus, BASE + 8, &wide) == 0);
+    assert(wide == UINT64_C(0x1122334455667788));
+    assert(psp_ppsspp_bus_store64(&bus, COLD + 8, UINT64_C(0x8899aabbccddeeff)) == 0);
+    assert(psp_ppsspp_bus_load64(&bus, COLD + 8, &wide) == 0);
+    assert(wide == UINT64_C(0x8899aabbccddeeff));
+    assert(psp_ppsspp_bus_load64(&bus, BASE + 1, &wide) == -1);
+    assert(psp_ppsspp_bus_store64(&bus, BASE + 28, UINT64_C(1)) == -1);
+    assert(psp_ppsspp_bus_load64(&bus, COLD + sizeof cold_words - 4, &wide) == -1);
     assert(psp_ppsspp_bus_fetch32(&bus, BASE + 1, &instruction) == -1);
     assert(psp_ppsspp_bus_fetch32(&bus, BASE + sizeof hot, &instruction) == -1);
     assert(psp_ppsspp_bus_load16(&bus, COLD + 1, &half) == -1);
