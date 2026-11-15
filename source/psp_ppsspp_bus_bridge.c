@@ -1,6 +1,13 @@
 #include "psp_ppsspp_bus_bridge.h"
 
 int psp_ppsspp_bus_fetch32(const PspGuestBus *bus, uint32_t pc, uint32_t *instruction) {
+    /* Slot-2 cold memory is data-only. Never execute instructions from it. */
+    if (!bus || !bus->hot || !instruction || (pc & 3u) ||
+        pc < bus->hot_base)
+        return -1;
+    uint64_t offset = (uint64_t)pc - bus->hot_base;
+    if (offset > bus->hot_size || bus->hot_size - offset < 4u)
+        return -1;
     return psp_guest_bus_read32(bus, pc, instruction);
 }
 int psp_ppsspp_bus_load8(const PspGuestBus *bus, uint32_t address, uint8_t *value) {
