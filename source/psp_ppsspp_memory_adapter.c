@@ -28,3 +28,24 @@ int psp_ppsspp_adapter_write32(const PspGuestBus *bus, uint32_t address, uint32_
         return -1;
     return psp_ppsspp_bus_store32(bus, physical, value);
 }
+
+#define DEFINE_ADAPTER_READ(bits, type) \
+int psp_ppsspp_adapter_read##bits(const PspGuestBus *bus, uint32_t address, type *value) { \
+    uint32_t physical; \
+    if (psp_ppsspp_translate_address(address, &physical)) return -1; \
+    return psp_ppsspp_bus_load##bits(bus, physical, value); \
+}
+#define DEFINE_ADAPTER_WRITE(bits, type) \
+int psp_ppsspp_adapter_write##bits(const PspGuestBus *bus, uint32_t address, type value) { \
+    uint32_t physical; \
+    if (psp_ppsspp_translate_address(address, &physical)) return -1; \
+    return psp_ppsspp_bus_store##bits(bus, physical, value); \
+}
+DEFINE_ADAPTER_READ(8, uint8_t)
+DEFINE_ADAPTER_READ(16, uint16_t)
+DEFINE_ADAPTER_READ(64, uint64_t)
+DEFINE_ADAPTER_WRITE(8, uint8_t)
+DEFINE_ADAPTER_WRITE(16, uint16_t)
+DEFINE_ADAPTER_WRITE(64, uint64_t)
+#undef DEFINE_ADAPTER_READ
+#undef DEFINE_ADAPTER_WRITE
