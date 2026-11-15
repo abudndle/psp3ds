@@ -215,3 +215,8 @@ add_test(NAME synthetic_elf_execution COMMAND test_synthetic_elf_execution)
 add_executable(test_ppsspp_bus_bridge tests/test_ppsspp_bus_bridge.c)
 target_link_libraries(test_ppsspp_bus_bridge PRIVATE psp_core)
 add_test(NAME ppsspp_bus_bridge COMMAND test_ppsspp_bus_bridge)
+
+# Synthetic ELF loader-to-guest-memory handoff (not PPSSPP interpreter execution).
+add_executable(test_elf_bus_fetch tests/test_elf_bus_fetch.c)
+target_link_libraries(test_elf_bus_fetch PRIVATE psp_core)
+add_test(NAME elf_bus_fetch COMMAND test_elf_bus_fetch)
