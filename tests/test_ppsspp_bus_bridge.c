@@ -42,7 +42,7 @@ int main(void) {
     assert(instruction == UINT32_C(0xdeadbeef));
     assert(psp_ppsspp_bus_fetch32(&bus, BASE + 28, &instruction) == 0);
     assert(psp_ppsspp_bus_fetch32(&bus, BASE + 29, &instruction) == -1);
-    assert(psp_ppsspp_bus_fetch32(&bus, NULL, &instruction) == -1);
+    assert(psp_ppsspp_bus_fetch32(NULL, BASE, &instruction) == -1);
     assert(psp_ppsspp_bus_fetch32(&bus, BASE, NULL) == -1);
     assert(psp_ppsspp_bus_fetch32(&bus, BASE + 1, &instruction) == -1);
     assert(psp_ppsspp_bus_fetch32(&bus, BASE + sizeof hot, &instruction) == -1);
