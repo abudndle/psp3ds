@@ -6,6 +6,7 @@ on:
       - '.github/workflows/ppsspp-arm-compile.yml'
       - 'scripts/fetch-ppsspp-upstream.sh'
       - 'scripts/patch-ppsspp-vfpu-types.py'
+      - 'scripts/audit-ppsspp-memory-access.py'
 permissions:
   contents: read
 jobs:
@@ -24,6 +25,14 @@ jobs:
           test -f vendor/ppsspp/ext/libzip/zip.h
           test -f vendor/ppsspp/ext/cityhash/city.h
           test "$(git -C vendor/ppsspp rev-parse HEAD)" = "1aebad2c651ff9d0684ee335e43aceff8fc7e3ec"
+      - name: Inventory unchecked upstream memory paths
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p build/ppsspp-arm
+          python3 scripts/audit-ppsspp-memory-access.py \
+            vendor/ppsspp/Core/MemMap.h \
+            --output build/ppsspp-arm/memory-access-audit.json
       - name: Apply narrow VFPU register pointer compatibility patch
         shell: bash
         run: |
@@ -163,6 +172,7 @@ jobs:
             build/ppsspp-arm/status.tsv
             build/ppsspp-arm/*.o
             build/ppsspp-arm/*symbols.txt
+            build/ppsspp-arm/memory-access-audit.json
             build/ppsspp-arm/link-closure.json
             build/ppsspp-arm/dependency-categories.json
             build/ppsspp-arm/relocatable-elf-header.txt
