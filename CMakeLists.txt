@@ -236,3 +236,7 @@ endif()
 add_executable(test_ppsspp_cpp_abi tests/test_ppsspp_cpp_abi.cpp)
 target_link_libraries(test_ppsspp_cpp_abi PRIVATE psp_core)
 add_test(NAME ppsspp_cpp_abi COMMAND test_ppsspp_cpp_abi)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME unattended_rotation COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_unattended_rotation.py)
+endif()
