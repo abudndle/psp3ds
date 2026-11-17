@@ -230,3 +230,9 @@ add_test(NAME ppsspp_memory_adapter COMMAND test_ppsspp_memory_adapter)
 if(Python3_Interpreter_FOUND)
   add_test(NAME ppsspp_memory_audit COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_ppsspp_memory_audit.py)
 endif()
+
+# Native C++ consumer proves checked C bridge linkage and status semantics.
+# This does not execute the upstream PPSSPP interpreter.
+add_executable(test_ppsspp_cpp_abi tests/test_ppsspp_cpp_abi.cpp)
+target_link_libraries(test_ppsspp_cpp_abi PRIVATE psp_core)
+add_test(NAME ppsspp_cpp_abi COMMAND test_ppsspp_cpp_abi)
