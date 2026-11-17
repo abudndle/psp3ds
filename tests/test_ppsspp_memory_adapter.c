@@ -87,6 +87,30 @@ int main(void) {
     assert(psp_ppsspp_checked_fetch32(&bus, UINT32_C(0x88800000), &value) ==
            PSP_PPSSPP_ACCESS_OK);
     assert(value == UINT32_C(0x24080007));
+    assert(psp_ppsspp_checked_write8(&bus, UINT32_C(0x88800010), 0x7b) ==
+           PSP_PPSSPP_ACCESS_OK);
+    assert(psp_ppsspp_checked_read8(&bus, UINT32_C(0xa8800010), &byte) ==
+           PSP_PPSSPP_ACCESS_OK && byte == 0x7b);
+    assert(psp_ppsspp_checked_write16(&bus, UINT32_C(0x88800012), 0x1234) ==
+           PSP_PPSSPP_ACCESS_OK);
+    assert(psp_ppsspp_checked_read16(&bus, UINT32_C(0xa8800012), &half) ==
+           PSP_PPSSPP_ACCESS_OK && half == 0x1234);
+    assert(psp_ppsspp_checked_write64(&bus, UINT32_C(0xa9000008),
+                                      UINT64_C(0x1122334455667788)) ==
+           PSP_PPSSPP_ACCESS_OK);
+    assert(psp_ppsspp_checked_read64(&bus, UINT32_C(0x89000008), &wide) ==
+           PSP_PPSSPP_ACCESS_OK && wide == UINT64_C(0x1122334455667788));
+    wide = UINT64_C(0xdeadbeef);
+    assert(psp_ppsspp_checked_read64(&bus, UINT32_C(0x8880001c), &wide) ==
+           PSP_PPSSPP_ACCESS_UNALIGNED);
+    assert(wide == UINT64_C(0xdeadbeef));
+    assert(psp_ppsspp_checked_read64(&bus, UINT32_C(0x88800020), &wide) ==
+           PSP_PPSSPP_ACCESS_UNMAPPED);
+    assert(wide == UINT64_C(0xdeadbeef));
+    assert(psp_ppsspp_checked_write16(&bus, UINT32_C(0xa9000001), 0x1111) ==
+           PSP_PPSSPP_ACCESS_UNALIGNED);
+    assert(psp_ppsspp_checked_read8(&bus, UINT32_C(0x88800000), NULL) ==
+           PSP_PPSSPP_ACCESS_UNMAPPED);
     puts("PASS: KSEG0/KSEG1 aliases and checked guest memory (not PPSSPP execution)");
     return 0;
 }
