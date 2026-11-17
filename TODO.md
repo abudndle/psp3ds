@@ -11,6 +11,7 @@ Last reviewed: 2026-11-16. Statuses are evidence-based; a passing build is not p
 - [x] Implement PSP cached/uncached KSEG address aliases for checked bus operations.
 - [x] Implement synthetic ELF loader-to-guest-bus instruction fetch regression (not upstream interpreter execution).
 - [x] Restrict instruction fetches to hot internal memory, rejecting cold Slot-2 data and invalid fetches.
+- [x] Add a standalone checked-access classifier (mapped, unmapped, unaligned, nonexecutable); not yet connected to PPSSPP CPU exceptions.
 - [x] Fix null-bus regression test compilation failure; host regression run 43812721259 passed.
 - [x] Document why upstream PPSSPP Core/MemMap.cpp cannot be compiled directly with bare-metal devkitARM.
 - [x] Add CI memory-access inventory with host regression; run 43988979509 and host run 43988979526 passed for initial MemMap.h-only audit.
