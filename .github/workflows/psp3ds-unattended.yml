@@ -1,0 +1,154 @@
+name: PSP3DS unattended coding rotation
+
+# Activation is opt-in because each Codex run uses billable model inference.
+# Configure OPENAI_API_KEY and repository variable PSP3DS_UNATTENDED_ENABLED=true.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: psp3ds-unattended-rotation
+  cancel-in-progress: false
+
+jobs:
+  codex:
+    if: vars.PSP3DS_UNATTENDED_ENABLED == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [memory, interpreter, platform]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout source without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Skip workstream with open automation PR
+        id: queue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          LANE: ${{ matrix.lane }}
+        run: |
+          set -euo pipefail
+          count="$(gh pr list --state open --head "psp3ds-bot/$LANE" --json number --jq 'length')"
+          if [[ "$count" -ne 0 ]]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Existing $LANE PR pending; no duplicate agent run."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run one scoped Codex task
+        if: steps.queue.outputs.ready == 'true'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ':workspace'
+          prompt: |
+            Read .github/codex/psp3ds-unattended.md before modifying anything.
+            Workstream: ${{ matrix.lane }}.
+            Read TODO.md and repository tests. Implement exactly one bounded
+            improvement for the assigned workstream, with tests. Do not create
+            commits or change CI or secret files. Do not claim a PSP game boots.
+      - name: Package narrow source patch
+        if: steps.queue.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only source, tests, public documentation and headers are eligible.
+          # This explicitly excludes .github, private assets and vendored code.
+          git add -- source include tests docs TODO.md
+          git diff --cached --binary > proposed.patch
+          if [[ ! -s proposed.patch ]]; then
+            echo "No code changes selected for this workstream"
+            exit 0
+          fi
+          git diff --cached --name-only > changed-files.txt
+          while IFS= read -r file; do
+            case "$file" in
+              source/*|include/*|tests/*|docs/*|TODO.md) ;;
+              *) echo "Disallowed path: $file" >&2; exit 1 ;;
+            esac
+          done < changed-files.txt
+          # Avoid accidentally uploading sensitive/private files in a patch.
+          if grep -Ei '/(secret|credential|token|private|\.env)(/|\.|$)' changed-files.txt; then
+            echo "Sensitive-looking file path rejected" >&2
+            exit 1
+          fi
+      - name: Upload candidate changes
+        if: steps.queue.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-candidate-${{ matrix.lane }}
+          path: proposed.patch
+          if-no-files-found: ignore
+          retention-days: 3
+
+  publish:
+    needs: codex
+    if: vars.PSP3DS_UNATTENDED_ENABLED == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [memory, interpreter, platform]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Download candidate patch
+        uses: actions/download-artifact@v4
+        with:
+          name: psp3ds-candidate-${{ matrix.lane }}
+          path: candidate
+        continue-on-error: true
+      - name: Validate and apply candidate patch
+        id: patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -s candidate/proposed.patch ]]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git apply --check candidate/proposed.patch
+          git apply candidate/proposed.patch
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          changed = subprocess.check_output(
+              ["git", "diff", "--name-only", "-z"]
+          ).decode().split("\0")
+          allowed = ("source/", "include/", "tests/", "docs/")
+          for name in filter(None, changed):
+              if name != "TODO.md" and not name.startswith(allowed):
+                  raise SystemExit("Disallowed patch path: " + name)
+          PY
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - name: Open separate workstream pull request
+        if: steps.patch.outputs.ready == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          branch: psp3ds-bot/${{ matrix.lane }}
+          base: main
+          commit-message: 'bot(${{ matrix.lane }}): propose next bounded PSP3DS milestone'
+          title: 'bot(${{ matrix.lane }}): next PSP3DS milestone candidate'
+          body: |
+            Automatically proposed by the PSP3DS unattended coding rotation.
+            Workstream: ${{ matrix.lane }}.
+            Tests and platform workflows must complete successfully before merge.
+            This does not certify PSP game compatibility.
+          delete-branch: true
