@@ -32,7 +32,12 @@ jobs:
           mkdir -p build/ppsspp-arm
           python3 scripts/audit-ppsspp-memory-access.py \
             vendor/ppsspp/Core/MemMap.h \
-            --output build/ppsspp-arm/memory-access-audit.json
+            --output build/ppsspp-arm/memory-access-audit.json \
+            --additional vendor/ppsspp/Core/MIPS/Interpreter.cpp \
+              vendor/ppsspp/Core/MIPS/InterpreterDispatch.cpp \
+              vendor/ppsspp/Core/MIPS/InterpreterVFPU.cpp \
+              vendor/ppsspp/Core/MIPS/MIPS.cpp \
+              vendor/ppsspp/Core/MIPS/MIPSCodeUtils.cpp
       - name: Apply narrow VFPU register pointer compatibility patch
         shell: bash
         run: |
