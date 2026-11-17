@@ -17,6 +17,9 @@ assert "permission-profile: ':workspace'" in workflow
 assert "pull-requests: read" in workflow
 assert "pull-requests: write" in workflow
 assert "needs: codex" in workflow
+assert "needs: [codex, verify]" in workflow
+assert "ctest --test-dir build/unattended --output-on-failure" in workflow
+assert "name: psp3ds-verified-${{ matrix.lane }}" in workflow
 assert "if: always() && vars.PSP3DS_UNATTENDED_ENABLED == 'true'" in workflow
 assert "peter-evans/create-pull-request@v7" in workflow
 assert "psp3ds-bot/${{ matrix.lane }}" in workflow
