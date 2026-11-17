@@ -93,8 +93,53 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
-  publish:
+  verify:
     needs: codex
+    if: always() && vars.PSP3DS_UNATTENDED_ENABLED == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [memory, interpreter, platform]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download coding candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: psp3ds-candidate-${{ matrix.lane }}
+          path: candidate
+        continue-on-error: true
+      - name: Build and test candidate without write token
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -s candidate/proposed.patch ]]; then
+            echo "No patch for this lane" 
+            exit 0
+          fi
+          git apply --check candidate/proposed.patch
+          git apply candidate/proposed.patch
+          git diff --check
+          cmake -S . -B build/unattended -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/unattended --parallel 2
+          ctest --test-dir build/unattended --output-on-failure
+      - name: Publish verified patch artifact
+        if: success() && hashFiles('candidate/proposed.patch') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp3ds-verified-${{ matrix.lane }}
+          path: candidate/proposed.patch
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: [codex, verify]
     if: always() && vars.PSP3DS_UNATTENDED_ENABLED == 'true'
     strategy:
       fail-fast: false
@@ -111,7 +156,7 @@ jobs:
       - name: Download candidate patch
         uses: actions/download-artifact@v4
         with:
-          name: psp3ds-candidate-${{ matrix.lane }}
+          name: psp3ds-verified-${{ matrix.lane }}
           path: candidate
         continue-on-error: true
       - name: Validate and apply candidate patch
