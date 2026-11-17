@@ -1,5 +1,33 @@
 #include "psp_ppsspp_memory_adapter.h"
 
+PspPpssppAccessResult psp_ppsspp_check_access(
+    const PspGuestBus *bus, uint32_t address, unsigned bytes, int instruction_fetch) {
+    uint32_t physical;
+    if (!bus || !bus->hot || (bytes != 1u && bytes != 2u &&
+                             bytes != 4u && bytes != 8u))
+        return PSP_PPSSPP_ACCESS_UNMAPPED;
+    if ((address & (bytes - 1u)) != 0u)
+        return PSP_PPSSPP_ACCESS_UNALIGNED;
+    if (instruction_fetch && bytes != 4u)
+        return PSP_PPSSPP_ACCESS_UNMAPPED;
+    if (psp_ppsspp_translate_address(address, &physical))
+        return PSP_PPSSPP_ACCESS_UNMAPPED;
+    const uint64_t start = physical;
+    const uint64_t end = start + bytes;
+    const uint64_t hot_start = bus->hot_base;
+    const uint64_t hot_end = hot_start + bus->hot_size;
+    if (start >= hot_start && end <= hot_end)
+        return PSP_PPSSPP_ACCESS_OK;
+    if (bus->has_cold && bus->cold.enabled && bus->cold.words) {
+        const uint64_t cold_start = bus->cold.guest_base;
+        const uint64_t cold_end = cold_start + bus->cold.capacity;
+        if (start >= cold_start && end <= cold_end)
+            return instruction_fetch ? PSP_PPSSPP_ACCESS_NONEXECUTABLE :
+                                       PSP_PPSSPP_ACCESS_OK;
+    }
+    return PSP_PPSSPP_ACCESS_UNMAPPED;
+}
+
 int psp_ppsspp_translate_address(uint32_t address, uint32_t *physical) {
     if (!physical)
         return -1;
