@@ -12,8 +12,9 @@ It is intentionally **inactive** until a coding service has been authorized.
 - If its `psp3ds-bot/<workstream>` pull request is still open, the workstream
   skips the cycle rather than stacking more changes on an unreviewed branch.
 - The coding job only has read access to the repository. It serializes a source
-  patch. A distinct publishing job applies and checks that patch before opening
-  a pull request.
+  patch. An isolated read-only verification job then builds and runs host
+  regressions against that patch. A distinct publishing job applies only a
+  verified patch before opening a pull request.
 - A failed coding job should not prevent other successful workstreams from
   publishing their candidate patches. No patch is merged automatically.
 - On the next eligible cycle after its pull request is merged/closed, the
