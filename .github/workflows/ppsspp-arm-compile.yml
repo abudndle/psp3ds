@@ -76,7 +76,7 @@ jobs:
         run: |
           set -eu
           mkdir -p build/guest-memory-arm
-          for unit in psp_guest_window psp_guest_bus psp_ppsspp_bus_bridge; do
+          for unit in psp_guest_window psp_guest_bus psp_ppsspp_bus_bridge psp_ppsspp_memory_adapter; do
             "$DEVKITARM/bin/arm-none-eabi-gcc" -std=c11 -O2 -Wall -Wextra -Werror \
               -marm -mcpu=mpcore -Iinclude -c "source/${unit}.c" \
               -o "build/guest-memory-arm/${unit}.o"
@@ -121,7 +121,8 @@ jobs:
             build/ppsspp-arm/ppsspp-interpreter-relocatable.o \
             build/guest-memory-arm/psp_guest_window.o \
             build/guest-memory-arm/psp_guest_bus.o \
-            build/guest-memory-arm/psp_ppsspp_bus_bridge.o
+            build/guest-memory-arm/psp_ppsspp_bus_bridge.o \
+            build/guest-memory-arm/psp_ppsspp_memory_adapter.o
           "$DEVKITARM/bin/arm-none-eabi-readelf" -h \
             build/ppsspp-arm/interpreter-with-guest-bus-relocatable.o \
             > build/ppsspp-arm/integration-elf-header.txt
@@ -133,6 +134,8 @@ jobs:
           grep -q ' T psp_guest_bus_read32$' build/ppsspp-arm/integration-symbols.txt
           grep -q ' T psp_guest_bus_write32$' build/ppsspp-arm/integration-symbols.txt
           grep -q ' T psp_ppsspp_bus_fetch32$' build/ppsspp-arm/integration-symbols.txt
+          grep -q ' T psp_ppsspp_adapter_fetch32$' build/ppsspp-arm/integration-symbols.txt
+          grep -q ' T psp_ppsspp_adapter_read64$' build/ppsspp-arm/integration-symbols.txt
           # Relocatable link proves object compatibility, not runtime memory wiring.
       - name: Inventory ARM interpreter link dependencies
         shell: bash
