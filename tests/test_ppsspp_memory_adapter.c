@@ -50,6 +50,20 @@ int main(void) {
     assert(value == UINT32_C(0xdeadbeef));
     assert(psp_ppsspp_adapter_fetch32(&bus, UINT32_C(0x88800000), &value) == 0);
     assert(value == UINT32_C(0x24080007));
+    assert(psp_ppsspp_check_access(&bus, UINT32_C(0x88800000), 4, 1) ==
+           PSP_PPSSPP_ACCESS_OK);
+    assert(psp_ppsspp_check_access(&bus, UINT32_C(0xa9000000), 4, 0) ==
+           PSP_PPSSPP_ACCESS_OK);
+    assert(psp_ppsspp_check_access(&bus, UINT32_C(0x89000000), 4, 1) ==
+           PSP_PPSSPP_ACCESS_NONEXECUTABLE);
+    assert(psp_ppsspp_check_access(&bus, UINT32_C(0x88800001), 4, 1) ==
+           PSP_PPSSPP_ACCESS_UNALIGNED);
+    assert(psp_ppsspp_check_access(&bus, UINT32_C(0x88800020), 4, 1) ==
+           PSP_PPSSPP_ACCESS_UNMAPPED);
+    assert(psp_ppsspp_check_access(&bus, UINT32_C(0x88800000), 3, 0) ==
+           PSP_PPSSPP_ACCESS_UNMAPPED);
+    assert(psp_ppsspp_check_access(NULL, UINT32_C(0x88800000), 4, 0) ==
+           PSP_PPSSPP_ACCESS_UNMAPPED);
     puts("PASS: KSEG0/KSEG1 aliases and checked guest memory (not PPSSPP execution)");
     return 0;
 }
