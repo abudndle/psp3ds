@@ -20,10 +20,14 @@ with tempfile.TemporaryDirectory() as folder:
         "u8 *GetPointerUnchecked(u32 address);\n"
         "void MemcpyUnchecked(void *p, u32 a, u32 n);\n"
     )
+    additional = directory / "Interpreter.cpp"
+    additional.write_text("auto x = ReadUnchecked_U8(addr);\n")
     subprocess.run([sys.executable, str(SCRIPT), str(header),
+                    "--additional", str(additional),
                     "--output", str(output)], check=True)
     report = json.loads(output.read_text())
-    assert report["count"] >= 4, report
+    assert report["count"] >= 5, report
+    assert any(item["source"] == str(additional) for item in report["matches"])
     assert {item["kind"] for item in report["matches"]} >= {
         "base_pointer_arithmetic", "unchecked_pointer_api",
         "unchecked_scalar_api", "unchecked_copy_api"}
