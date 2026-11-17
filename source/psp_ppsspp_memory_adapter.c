@@ -57,6 +57,32 @@ PspPpssppAccessResult psp_ppsspp_checked_write32(
            PSP_PPSSPP_ACCESS_OK : PSP_PPSSPP_ACCESS_UNMAPPED;
 }
 
+#define DEFINE_CHECKED_READ(bits, type) \
+PspPpssppAccessResult psp_ppsspp_checked_read##bits( \
+    const PspGuestBus *bus, uint32_t address, type *value) { \
+    if (!value) return PSP_PPSSPP_ACCESS_UNMAPPED; \
+    PspPpssppAccessResult status = psp_ppsspp_check_access(bus, address, bits / 8u, 0); \
+    if (status != PSP_PPSSPP_ACCESS_OK) return status; \
+    return psp_ppsspp_adapter_read##bits(bus, address, value) == 0 ? \
+           PSP_PPSSPP_ACCESS_OK : PSP_PPSSPP_ACCESS_UNMAPPED; \
+}
+#define DEFINE_CHECKED_WRITE(bits, type) \
+PspPpssppAccessResult psp_ppsspp_checked_write##bits( \
+    const PspGuestBus *bus, uint32_t address, type value) { \
+    PspPpssppAccessResult status = psp_ppsspp_check_access(bus, address, bits / 8u, 0); \
+    if (status != PSP_PPSSPP_ACCESS_OK) return status; \
+    return psp_ppsspp_adapter_write##bits(bus, address, value) == 0 ? \
+           PSP_PPSSPP_ACCESS_OK : PSP_PPSSPP_ACCESS_UNMAPPED; \
+}
+DEFINE_CHECKED_READ(8, uint8_t)
+DEFINE_CHECKED_READ(16, uint16_t)
+DEFINE_CHECKED_READ(64, uint64_t)
+DEFINE_CHECKED_WRITE(8, uint8_t)
+DEFINE_CHECKED_WRITE(16, uint16_t)
+DEFINE_CHECKED_WRITE(64, uint64_t)
+#undef DEFINE_CHECKED_READ
+#undef DEFINE_CHECKED_WRITE
+
 int psp_ppsspp_translate_address(uint32_t address, uint32_t *physical) {
     if (!physical)
         return -1;
