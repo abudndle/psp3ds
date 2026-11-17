@@ -3,6 +3,9 @@
 #include "psp_guest_window.h"
 #include <stdint.h>
 #include <stddef.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* Explicit, nonoverlapping guest DATA regions.
  * Hot region is native internal RAM; cold region uses 16-bit Slot-2 access.
  * This is not wired to psp_cpu_step() or general PSP executable mapping.
@@ -22,4 +25,7 @@ int psp_guest_bus_read32(const PspGuestBus *bus,uint32_t addr,uint32_t *value);
 int psp_guest_bus_write8(const PspGuestBus *bus,uint32_t addr,uint8_t value);
 int psp_guest_bus_write16(const PspGuestBus *bus,uint32_t addr,uint16_t value);
 int psp_guest_bus_write32(const PspGuestBus *bus,uint32_t addr,uint32_t value);
+#ifdef __cplusplus
+}
+#endif
 #endif
