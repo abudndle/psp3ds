@@ -15,6 +15,8 @@ PATTERNS = {
     "unchecked_pointer_api": re.compile(r"\b(?:GetPointerUnchecked|GetPointerWriteUnchecked|GetBlockShadowEntry)\s*\("),
     "unchecked_scalar_api": re.compile(r"\b(?:ReadUnchecked|WriteUnchecked)_(?:U8|U16|U32|U64|Float)\s*\("),
     "unchecked_copy_api": re.compile(r"\bMemcpyUnchecked\s*\("),
+    "direct_memory_base": re.compile(r"\b(?:Memory::)?base\s*(?:\[|\+)"),
+    "pointer_cast": re.compile(r"\b(?:GetPointer|GetPointerWrite|GetPointerUnchecked|GetPointerWriteUnchecked)\s*\("),
 }
 
 def inventory(source):
@@ -36,7 +38,8 @@ def main():
     for source_file in [args.header, *args.additional]:
         for match in inventory(source_file.read_text(encoding="utf-8")):
             matches.append({"source": str(source_file), **match})
-    result = {"source": str(args.header), "count": len(matches), "matches": matches,
+    counts = {kind: sum(m["kind"] == kind for m in matches) for kind in PATTERNS}
+    result = {"source": str(args.header), "count": len(matches), "by_kind": counts, "matches": matches,
               "warning": "Inventory only: PPSSPP interpreter memory is not connected to the checked PSP3DS bus."}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
