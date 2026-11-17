@@ -28,6 +28,35 @@ PspPpssppAccessResult psp_ppsspp_check_access(
     return PSP_PPSSPP_ACCESS_UNMAPPED;
 }
 
+PspPpssppAccessResult psp_ppsspp_checked_fetch32(
+    const PspGuestBus *bus, uint32_t pc, uint32_t *instruction) {
+    if (!instruction)
+        return PSP_PPSSPP_ACCESS_UNMAPPED;
+    PspPpssppAccessResult status = psp_ppsspp_check_access(bus, pc, 4u, 1);
+    if (status != PSP_PPSSPP_ACCESS_OK)
+        return status;
+    return psp_ppsspp_adapter_fetch32(bus, pc, instruction) == 0 ?
+           PSP_PPSSPP_ACCESS_OK : PSP_PPSSPP_ACCESS_UNMAPPED;
+}
+PspPpssppAccessResult psp_ppsspp_checked_read32(
+    const PspGuestBus *bus, uint32_t address, uint32_t *value) {
+    if (!value)
+        return PSP_PPSSPP_ACCESS_UNMAPPED;
+    PspPpssppAccessResult status = psp_ppsspp_check_access(bus, address, 4u, 0);
+    if (status != PSP_PPSSPP_ACCESS_OK)
+        return status;
+    return psp_ppsspp_adapter_read32(bus, address, value) == 0 ?
+           PSP_PPSSPP_ACCESS_OK : PSP_PPSSPP_ACCESS_UNMAPPED;
+}
+PspPpssppAccessResult psp_ppsspp_checked_write32(
+    const PspGuestBus *bus, uint32_t address, uint32_t value) {
+    PspPpssppAccessResult status = psp_ppsspp_check_access(bus, address, 4u, 0);
+    if (status != PSP_PPSSPP_ACCESS_OK)
+        return status;
+    return psp_ppsspp_adapter_write32(bus, address, value) == 0 ?
+           PSP_PPSSPP_ACCESS_OK : PSP_PPSSPP_ACCESS_UNMAPPED;
+}
+
 int psp_ppsspp_translate_address(uint32_t address, uint32_t *physical) {
     if (!physical)
         return -1;
