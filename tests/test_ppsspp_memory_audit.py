@@ -21,12 +21,16 @@ with tempfile.TemporaryDirectory() as folder:
         "void MemcpyUnchecked(void *p, u32 a, u32 n);\n"
     )
     additional = directory / "Interpreter.cpp"
-    additional.write_text("auto x = ReadUnchecked_U8(addr);\n")
+    additional.write_text("auto x = ReadUnchecked_U8(addr);\n"
+                          "auto p = Memory::base + addr;\n"
+                          "auto q = GetPointer(addr);\n")
     subprocess.run([sys.executable, str(SCRIPT), str(header),
                     "--additional", str(additional),
                     "--output", str(output)], check=True)
     report = json.loads(output.read_text())
-    assert report["count"] >= 5, report
+    assert report["count"] >= 7, report
+    assert report["by_kind"]["direct_memory_base"] >= 1
+    assert report["by_kind"]["pointer_cast"] >= 1
     assert any(item["source"] == str(additional) for item in report["matches"])
     assert {item["kind"] for item in report["matches"]} >= {
         "base_pointer_arithmetic", "unchecked_pointer_api",
