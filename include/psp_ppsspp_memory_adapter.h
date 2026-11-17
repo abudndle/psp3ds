@@ -11,6 +11,17 @@ extern "C" {
  * This is a translation primitive, not a replacement for PPSSPP MemMap.
  * Unmapped addresses must be rejected by the checked bus.
  */
+/* Deterministic access validation for a future PPSSPP exception bridge.
+ * Validation does not perform the access or raise a CPU exception. */
+typedef enum {
+    PSP_PPSSPP_ACCESS_OK = 0,
+    PSP_PPSSPP_ACCESS_UNMAPPED = 1,
+    PSP_PPSSPP_ACCESS_UNALIGNED = 2,
+    PSP_PPSSPP_ACCESS_NONEXECUTABLE = 3
+} PspPpssppAccessResult;
+PspPpssppAccessResult psp_ppsspp_check_access(
+    const PspGuestBus *bus, uint32_t address, unsigned bytes, int instruction_fetch);
+
 int psp_ppsspp_translate_address(uint32_t guest_address, uint32_t *physical_address);
 int psp_ppsspp_adapter_fetch32(const PspGuestBus *bus, uint32_t pc, uint32_t *instruction);
 int psp_ppsspp_adapter_read8(const PspGuestBus *bus, uint32_t address, uint8_t *value);
