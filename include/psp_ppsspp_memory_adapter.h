@@ -22,6 +22,14 @@ typedef enum {
 PspPpssppAccessResult psp_ppsspp_check_access(
     const PspGuestBus *bus, uint32_t address, unsigned bytes, int instruction_fetch);
 
+/* Status-returning entry points for future interpreter exception mapping.
+ * They do not raise MIPS exceptions; output is unchanged on failure. */
+PspPpssppAccessResult psp_ppsspp_checked_fetch32(
+    const PspGuestBus *bus, uint32_t pc, uint32_t *instruction);
+PspPpssppAccessResult psp_ppsspp_checked_read32(
+    const PspGuestBus *bus, uint32_t address, uint32_t *value);
+PspPpssppAccessResult psp_ppsspp_checked_write32(
+    const PspGuestBus *bus, uint32_t address, uint32_t value);
 int psp_ppsspp_translate_address(uint32_t guest_address, uint32_t *physical_address);
 int psp_ppsspp_adapter_fetch32(const PspGuestBus *bus, uint32_t pc, uint32_t *instruction);
 int psp_ppsspp_adapter_read8(const PspGuestBus *bus, uint32_t address, uint8_t *value);
