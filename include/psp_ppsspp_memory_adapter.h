@@ -30,6 +30,12 @@ PspPpssppAccessResult psp_ppsspp_checked_read32(
     const PspGuestBus *bus, uint32_t address, uint32_t *value);
 PspPpssppAccessResult psp_ppsspp_checked_write32(
     const PspGuestBus *bus, uint32_t address, uint32_t value);
+PspPpssppAccessResult psp_ppsspp_checked_read8(const PspGuestBus *, uint32_t, uint8_t *);
+PspPpssppAccessResult psp_ppsspp_checked_read16(const PspGuestBus *, uint32_t, uint16_t *);
+PspPpssppAccessResult psp_ppsspp_checked_read64(const PspGuestBus *, uint32_t, uint64_t *);
+PspPpssppAccessResult psp_ppsspp_checked_write8(const PspGuestBus *, uint32_t, uint8_t);
+PspPpssppAccessResult psp_ppsspp_checked_write16(const PspGuestBus *, uint32_t, uint16_t);
+PspPpssppAccessResult psp_ppsspp_checked_write64(const PspGuestBus *, uint32_t, uint64_t);
 int psp_ppsspp_translate_address(uint32_t guest_address, uint32_t *physical_address);
 int psp_ppsspp_adapter_fetch32(const PspGuestBus *bus, uint32_t pc, uint32_t *instruction);
 int psp_ppsspp_adapter_read8(const PspGuestBus *bus, uint32_t address, uint8_t *value);
