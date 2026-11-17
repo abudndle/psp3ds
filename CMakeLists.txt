@@ -225,3 +225,7 @@ add_test(NAME elf_bus_fetch COMMAND test_elf_bus_fetch)
 add_executable(test_ppsspp_memory_adapter tests/test_ppsspp_memory_adapter.c)
 target_link_libraries(test_ppsspp_memory_adapter PRIVATE psp_core)
 add_test(NAME ppsspp_memory_adapter COMMAND test_ppsspp_memory_adapter)
+
+if(Python3_Interpreter_FOUND)
+  add_test(NAME ppsspp_memory_audit COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_ppsspp_memory_audit.py)
+endif()
