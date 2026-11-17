@@ -29,13 +29,18 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("header", type=pathlib.Path)
     p.add_argument("--output", type=pathlib.Path, required=True)
+    p.add_argument("--additional", type=pathlib.Path, nargs="*", default=[],
+                   help="Additional interpreter call-site files to inventory")
     args = p.parse_args()
-    matches = inventory(args.header.read_text(encoding="utf-8"))
+    matches = []
+    for source_file in [args.header, *args.additional]:
+        for match in inventory(source_file.read_text(encoding="utf-8")):
+            matches.append({"source": str(source_file), **match})
     result = {"source": str(args.header), "count": len(matches), "matches": matches,
               "warning": "Inventory only: PPSSPP interpreter memory is not connected to the checked PSP3DS bus."}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    print(f"Found {len(matches)} unchecked pointer/memory API sites in {args.header}")
+    print(f"Found {len(matches)} unchecked pointer/memory API sites across {1 + len(args.additional)} files")
     if not matches:
         raise SystemExit("FAIL: no matching sites; audit patterns or upstream source must be reviewed")
 
