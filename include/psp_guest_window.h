@@ -1,6 +1,9 @@
 #ifndef PSP_GUEST_WINDOW_H
 #define PSP_GUEST_WINDOW_H
 #include <stddef.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <stdint.h>
 /* Volatile 16-bit bus window for a SDK-verified, single-bank Slot-2 RAM
  * peripheral. It is a checked DATA access adapter, not direct host RAM,
@@ -21,4 +24,7 @@ int psp_guest_window_read32(const PspGuestWindow *w,uint32_t addr,uint32_t *out)
 int psp_guest_window_write8(const PspGuestWindow *w,uint32_t addr,uint8_t value);
 int psp_guest_window_write16(const PspGuestWindow *w,uint32_t addr,uint16_t value);
 int psp_guest_window_write32(const PspGuestWindow *w,uint32_t addr,uint32_t value);
+#ifdef __cplusplus
+}
+#endif
 #endif
