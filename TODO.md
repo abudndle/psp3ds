@@ -14,9 +14,10 @@ Last reviewed: 2026-11-16. Statuses are evidence-based; a passing build is not p
 - [x] Fix null-bus regression test compilation failure; host regression run 43812721259 passed.
 - [x] Document why upstream PPSSPP Core/MemMap.cpp cannot be compiled directly with bare-metal devkitARM.
 - [x] Add CI memory-access inventory with host regression; run 43988979509 and host run 43988979526 passed for initial MemMap.h-only audit.
+- [x] Expand memory audit to five PPSSPP MIPS translation units; ARM audit run 43989253951 and host run 43989279696 passed.
 
 ## Priority 0 — actual PPSSPP execution (not yet completed)
-- [ ] Audit every direct pointer/inline memory access in pinned upstream Core/MemMap.h and all interpreter call sites; avoid unchecked host pointer dereferences. **In progress:** CI inventories MemMap.h plus five MIPS source units; coverage is heuristic and not a complete safety proof.
+- [ ] Audit every direct pointer/inline memory access in pinned upstream Core/MemMap.h and all interpreter call sites; avoid unchecked host pointer dereferences. **In progress:** CI inventories MemMap.h plus five MIPS source units, including direct Memory::base and pointer APIs; coverage is heuristic and not a complete safety proof.
 - [ ] Implement a genuine bare-metal PPSSPP Memory:: backend with guest address translation, access validation, fault/exception semantics and coherent read/write/fetch.
 - [ ] Integrate backend with upstream interpreter; do not claim integration based solely on ARM relocatable object linking.
 - [ ] Fully link a runnable minimal upstream PPSSPP interpreter harness, resolving dependencies without POSIX mmap stubs.
